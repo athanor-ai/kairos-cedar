@@ -70,7 +70,10 @@ RUN rustup install ${RUST_NIGHTLY} \
     && rm -rf /opt/rustup/toolchains/*/share/doc /opt/rustup/toolchains/*/share/man
 
 # ── Cedar CLI (Rust reference implementation) ────────────────────────
-RUN cargo install cedar-policy-cli \
+# cedar-policy-cli's transitive deps require Rust edition 2024 (stabilised
+# in 1.85); stable 1.82 fails. Use the nightly toolchain installed above
+# for Verus to compile the CLI.
+RUN cargo +${RUST_NIGHTLY} install cedar-policy-cli \
     && cp /opt/cargo/bin/cedar /usr/local/bin/cedar \
     && cedar --version
 
