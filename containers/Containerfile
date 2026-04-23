@@ -23,6 +23,13 @@
 
 FROM docker.io/library/amazonlinux:2023.8.20250818.0
 
+# OCI labels — auto-links the package to the kairos-cedar repo on ghcr
+# (so the package inherits the repo's public visibility instead of the
+# org-default internal), and surfaces the project metadata cleanly.
+LABEL org.opencontainers.image.source="https://github.com/athanor-ai/kairos-cedar"
+LABEL org.opencontainers.image.description="kairos-cedar monolith — Lean + Rust + Verus + Go + Dafny + Cedar, all on PATH. One image, every toolchain. See https://github.com/athanor-ai/kairos-cedar."
+LABEL org.opencontainers.image.licenses="MIT"
+
 # ── System deps ──────────────────────────────────────────────────────
 RUN dnf update -y && dnf install -y \
       shadow-utils findutils which util-linux \
