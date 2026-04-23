@@ -181,11 +181,37 @@ def Expr.unfold_support (P : α → ExprF α → Prop) (x : α) (e : Expr) : Pro
     Expr.unfold_support P xa a ∧
     Expr.unfold_support P xb b
 
--- Expr.support_unfold_congr elided in this V1 port: the full
--- `support_unfold` + congruence pair is a ~130-LOC induction with
--- deeply nested case analysis. Palamedes's `generator_search` should
--- succeed without it for the flat-type + 2-recursive-arm shape; if
--- it fails with a support-related goal, reintroduce the congruence.
+/-- The load-bearing simp rule Palamedes's `generator_search` needs:
+    the support of an `Expr.unfold` is characterised by
+    `Expr.unfold_support` applied to the step function's support.
+
+    Ported (in structure) from `palamedes-lean/Palamedes/Data/STLC/
+    Term.lean:188-319` with the five Cedar-micro constructors in
+    place of STLC's four. The flat arms (`litInt`, `litBool`, `var`)
+    are symmetric and each closes in roughly 15 LOC. The two
+    recursive arms (`ite` ternary, `and` binary) are parallel to
+    STLC's `abs` + `app` but with extra fuel bookkeeping on `ite`.
+
+    Scaffolding committed with `sorry` so the `@[simp]` tag is
+    in place and `generator_search` can fire against it;
+    full closure lands in a follow-up commit + is paper §5.2
+    correctness precondition. -/
+@[simp]
+theorem Expr.support_unfold {α : Type} {f : α → Gen (ExprF α)} {x : α} :
+    _root_.Gen.support (Expr.unfold f x) =
+      Expr.unfold_support (fun x' => _root_.Gen.support (f x')) x := by
+  -- See docstring above; five constructor cases, each with two
+  -- iff directions, adapted from STLC support_unfold.
+  sorry
+
+theorem Expr.support_unfold_congr
+    {α : Type} {f f' : α → Gen (ExprF α)} {b : α}
+    (hf : ∀ {b}, _root_.Gen.support (f b) = _root_.Gen.support (f' b)) :
+    _root_.Gen.support (Expr.unfold f b) = _root_.Gen.support (Expr.unfold f' b) := by
+  rw [Expr.support_unfold, Expr.support_unfold]
+  congr
+  funext x' e
+  rw [hf]
 
 -- ── Total / Aesop registration ──────────────────────────────────────
 

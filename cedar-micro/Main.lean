@@ -1,7 +1,7 @@
 /-
   Cedar-micro generator driver.
 
-  Samples N well-typed expressions from `CedarMicro.genWellTyped`,
+  Samples N well-typed expressions from `CedarMicro.CedarMicro.genWellTyped`,
   verifies each via `CedarMicro.wellTypedAt`, and prints sample output.
 
   Usage: `lake env cedar-micro-sample 10` (runs 10 samples per type)
@@ -33,8 +33,8 @@ def main (args : List String) : IO Unit := do
   IO.println s!"   context Γ = [{ctx}]"
   IO.println ""
 
-  let boolSamples ← sampleN n (genWellTyped Γ .bool)
-  let intSamples  ← sampleN n (genWellTyped Γ .int)
+  let boolSamples ← sampleN n (CedarMicro.genWellTyped Γ .bool)
+  let intSamples  ← sampleN n (CedarMicro.genWellTyped Γ .int)
 
   let boolOk := boolSamples.all (wellTypedAt Γ .bool)
   let intOk  := intSamples.all (wellTypedAt Γ .int)
