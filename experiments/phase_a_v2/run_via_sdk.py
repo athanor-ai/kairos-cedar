@@ -49,6 +49,53 @@ from kairos.generator_synthesize import (  # noqa: E402
 )
 from kairos.trace import NoopTraceSink, SupabaseTraceSink  # noqa: E402
 
+# Direct Azure-hosted Kimi K2.6 caller. Bypasses litellm's azure_ai/
+# provider mapping which currently mis-routes kimi-k2.6-1 to the
+# anthropic provider (ATH-528 fixed MODEL_PRICES; provider routing is
+# separate and ATH-539-eligible).
+import json as _json
+import urllib.request as _urlreq
+
+
+def _kimi_direct_llm_call(
+    prompt: str, model: str,
+    *, max_tokens: int = 32000, timeout_sec: int = 300,
+) -> tuple[str, int, int, float]:
+    timeout = timeout_sec
+    system = ""
+    user = prompt
+    """Match the kairos.generator_synthesize llm_call contract:
+    returns (text, tokens_in, tokens_out, cost_usd)."""
+    url = f"{os.environ['KIMI_K26_API_BASE']}/chat/completions?api-version=2024-05-01-preview"
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": user})
+    body = {
+        "model": os.environ.get("KIMI_K26_MODEL", "kimi-k2.6-1"),
+        "messages": messages,
+        # Kimi 2.6 is a reasoning model; needs lots of budget.
+        "max_tokens": max(max_tokens, 32000),
+        "temperature": 0.1,
+    }
+    req = _urlreq.Request(
+        url,
+        data=_json.dumps(body).encode(),
+        headers={"api-key": os.environ["KIMI_K26_API_KEY"],
+                 "Content-Type": "application/json"},
+        method="POST",
+    )
+    with _urlreq.urlopen(req, timeout=timeout) as resp:
+        payload = _json.loads(resp.read().decode())
+    msg = payload["choices"][0]["message"]
+    text = msg.get("content") or ""
+    usage = payload.get("usage", {})
+    tokens_in = int(usage.get("prompt_tokens", 0) or 0)
+    tokens_out = int(usage.get("completion_tokens", 0) or 0)
+    # Kimi K2.6 price per ATH-528 entry: $1 / $3 per million.
+    cost_usd = (tokens_in * 1.0 + tokens_out * 3.0) / 1_000_000
+    return text, tokens_in, tokens_out, cost_usd
+
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
 CEDAR_MICRO = REPO_ROOT / "cedar-micro"
@@ -157,6 +204,7 @@ def main() -> int:
         target_rejection_rate=0.1,
         n_samples=10,
         trace_sink=sink,
+        llm_call=_kimi_direct_llm_call,  # bypass litellm routing gap
         # NB: default sample_terms asks the LLM for samples alongside the
         # generator, which is fine for the V2 smoke. Native Lean sampling
         # via `lean_native_sampler` above is wired in for V2.1.
@@ -176,8 +224,8 @@ def main() -> int:
     (traces / "sdk_summary.json").write_text(json.dumps(summary, indent=2))
     print(f"[phase A v2] {json.dumps(summary, indent=2)}")
 
-    if result.generator_source:
-        (outputs / "sdk_generator_source.lean").write_text(result.generator_source)
+    if result.final_generator_source:
+        (outputs / "sdk_generator_source.lean").write_text(result.final_generator_source)
         print(f"[phase A v2] generator source: outputs/sdk_generator_source.lean")
 
     return 0 if result.converged else 1
