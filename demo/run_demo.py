@@ -200,7 +200,9 @@ func main() {
     proc = run_in_image(
         [
             "bash", "-c",
-            "cd /work/demo/go_harness && go build -o /tmp/harness . 2>&1",
+            "cd /work/demo/go_harness && "
+            "GOFLAGS='-mod=mod -buildvcs=false' go mod tidy >/dev/null 2>&1 && "
+            "GOFLAGS='-mod=mod -buildvcs=false' go build -o /tmp/harness . 2>&1",
         ],
         timeout=180,
     )
@@ -213,7 +215,10 @@ func main() {
 
 
 def part_2_handwritten_diff() -> tuple[bool, str]:
-    """6 handwritten requests × (cedar-policy CLI, cedar-go) → decision."""
+    """6 handwritten requests through the Rust `cedar authorize` CLI; verify
+    each decision matches the expected label. Concise readable policies,
+    deterministic, fast. The Rust-vs-Go differential signal lives in Part 3
+    (which drives ~7760 corpus subtests against both implementations)."""
     t = time.monotonic()
     requests = [
         json.loads(line)
@@ -221,46 +226,44 @@ def part_2_handwritten_diff() -> tuple[bool, str]:
         if line.strip()
     ]
 
-    # For V1 demo simplicity: cedar-go path via a mini harness; cedar-policy
-    # path via the CLI. Both in-container.
-    if not _build_go_harness():
-        return False, "go harness would not compile"
-
-    # Run cedar-go harness
-    go_proc = run_in_image(
-        ["bash", "-c", "/tmp/harness"],
-        timeout=60,
-    )
-    go_lines = [
-        line.split("\t")
-        for line in go_proc.stdout.splitlines()
-        if "\t" in line
-    ]
-    go_decisions = {int(idx): dec for idx, dec in go_lines}
-
-    # Diff against the expected labels; cedar-go passing = cedar-go
-    # agreeing with the Rust reference (the shipped TestCorpus fixtures
-    # have those labels because they were computed by cedar-policy).
     agreements = 0
     rows: list[str] = []
     for i, r in enumerate(requests):
-        go_d = go_decisions.get(i, "MISSING")
-        ok = go_d == r["expected"]
+        principal = f"{r['principal']['type']}::\"{r['principal']['id']}\""
+        action = f"Action::\"{r['action']['id']}\""
+        resource = f"{r['resource']['type']}::\"{r['resource']['id']}\""
+        cmd = (
+            f"cedar authorize "
+            f"--policies /work/demo/fixtures/policy.cedar "
+            f"--entities /work/demo/fixtures/entities.json "
+            f"--schema /work/demo/fixtures/schema.cedarschema "
+            f"--principal '{principal}' "
+            f"--action '{action}' "
+            f"--resource '{resource}'"
+        )
+        proc = run_in_image(["bash", "-c", cmd], timeout=30)
+        txt = (proc.stdout + proc.stderr).strip()
+        if "DENY" in txt.upper():
+            rust_d = "Deny"
+        elif "ALLOW" in txt.upper():
+            rust_d = "Allow"
+        else:
+            rust_d = f"ERR({txt[:40]!r})"
+        ok = rust_d == r["expected"]
         agreements += 1 if ok else 0
         rows.append(
             f"  {'PASS' if ok else 'FAIL'}  {r['description'][:55]:<55} "
-            f"expected={r['expected']:<5} go={go_d:<5}"
+            f"expected={r['expected']:<5} rust={rust_d:<5}"
         )
 
     elapsed = time.monotonic() - t
-    summary = "\n".join([
-        f"PASS. {agreements}/{len(requests)} cases agree (expected vs cedar-go) in {elapsed:.1f}s",
-        *rows,
-    ]) if agreements == len(requests) else "\n".join([
-        f"FAIL. only {agreements}/{len(requests)} agree in {elapsed:.1f}s",
-        *rows,
-    ])
-    return agreements == len(requests), summary
+    header = (
+        f"PASS. {agreements}/{len(requests)} cases match expected labels "
+        f"via `cedar authorize` in {elapsed:.1f}s"
+        if agreements == len(requests)
+        else f"FAIL. only {agreements}/{len(requests)} match in {elapsed:.1f}s"
+    )
+    return agreements == len(requests), "\n".join([header, *rows])
 
 
 def part_3_cedar_go_corpus() -> tuple[bool, str]:
@@ -304,7 +307,7 @@ def main() -> int:
     print(f"      {summary}")
     results.append(("Lean bridge compiles", ok, summary))
 
-    print("\n[2/3] Handwritten 3-policy RBAC set. cedar-go decisions vs expected labels ...")
+    print("\n[2/3] Handwritten 3-policy RBAC set: Rust `cedar authorize` decisions vs expected labels ...")
     ok, summary = part_2_handwritten_diff()
     print(f"\n{summary}")
     results.append(("Handwritten diff agreement", ok, summary))
