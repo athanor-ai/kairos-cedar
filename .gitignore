@@ -30,3 +30,4 @@ scratch/
 
 # Docker build cache (if it ever leaks in)
 .docker/
+cedar-spec-bridge/lake-manifest.json
