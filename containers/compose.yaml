@@ -1,5 +1,5 @@
 # One image, every toolchain. Pull `ghcr.io/athanor-ai/kairos-cedar:latest`
-# once; Lean (both toolchains), Rust + Verus, Go, Dafny, Z3, Cedar CLI —
+# once; Lean (both toolchains), Rust + Verus, Go, Dafny, Z3, Cedar CLI . 
 # everything is on PATH. Zero host setup on the user's side.
 #
 # `./scripts/dc <cmd...>` is the thin wrapper around `docker compose run`.

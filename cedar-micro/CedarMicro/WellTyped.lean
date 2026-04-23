@@ -1,5 +1,5 @@
 /-
-  CedarMicro.WellTyped — the generator target.
+  CedarMicro.WellTyped. the generator target.
 
   Defines a functional typechecker `getType : Expr → List Ty → Option Ty`
   in the Palamedes STLC-style (exactly matching
@@ -60,7 +60,7 @@ def isWellTyped (Γ : List Ty) (e : Expr) : Prop :=
   ∃ (τ : Ty), getType e Γ = τ
 
 -- TODO(V1): invoke generator_search once the full Palamedes scaffolding
--- is in place. The blocker is NOT the predicate — it's the ~1400 LOC
+-- is in place. The blocker is NOT the predicate. it's the ~1400 LOC
 -- per-type scaffolding Palamedes's Aesop tactic needs. Specifically
 -- (per `Palamedes/Data/STLC/{Ty,Term}.lean`), we need for each
 -- recursive type τ:
@@ -83,7 +83,7 @@ def isWellTyped (Γ : List Ty) (e : Expr) : Prop :=
 --   end Total
 --
 -- plus `τ.rec`-shaped `as_or` / `deforest_eq` lemmas (our existing
--- hand-rolled versions use `τ.fold` but STLC's use the recursor —
+-- hand-rolled versions use `τ.fold` but STLC's use the recursor . 
 -- Palamedes's pattern-match rules expect the recursor form).
 --
 -- Sample:

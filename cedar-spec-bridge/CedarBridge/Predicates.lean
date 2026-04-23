@@ -1,5 +1,5 @@
 /-
-  CedarBridge.Predicates — Prop-valued predicates over cedar-spec's
+  CedarBridge.Predicates. Prop-valued predicates over cedar-spec's
   def-based Cedar.Validation.typeOf, shaped so a Palamedes-style
   generator_search can target them.
 
@@ -33,7 +33,7 @@ public def isWellTyped (env : TypeEnv) (e : Expr) : Prop :=
   ∃ te c, Cedar.Validation.typeOf e [] env = .ok (te, c)
 
 /--
-  `isWellTypedWithCaps env c e` — same, with a caller-supplied starting
+  `isWellTypedWithCaps env c e`. same, with a caller-supplied starting
   capability set. Kept as a distinct predicate so later policies that
   check inside-a-conditional-arm typing can compose the capability
   threading Palamedes observes.

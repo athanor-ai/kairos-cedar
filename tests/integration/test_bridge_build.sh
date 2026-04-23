@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Integration test — end-to-end: pull the monolith image (or use a
+# Integration test. end-to-end: pull the monolith image (or use a
 # locally built cedar-spec:dev / kairos-cedar:dev tag), mount the
 # repo, run `lake build` against cedar-spec-bridge. Exits 0 on green.
 #

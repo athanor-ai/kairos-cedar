@@ -1,64 +1,53 @@
 # Architecture
 
-## Why one image
+## Single-image toolchain
 
-Every toolchain in this repo has a version pin that disagrees with at least one other:
+The workbench composes artefacts from several upstream projects (see `README.md` references). Each upstream pins a different toolchain version:
 
-| Tool                 | Pin                                      | Why                                   |
-| -------------------- | ---------------------------------------- | ------------------------------------- |
-| Lean (cedar-spec)    | 4.29.1 + batteries                       | cedar-spec's `lean-toolchain`         |
-| Lean (palamedes)     | 4.24.0 + Mathlib + Aesop + Plausible     | palamedes-lean's `lean-toolchain`     |
-| Rust                 | 1.82 stable + 1.94 nightly               | Cedar on stable, Verus on nightly     |
-| Verus                | 0.2026.03.28 binary                      | matches the nightly above             |
-| Go                   | 1.24                                     | cedar-go's `go.mod` minimum           |
-| Dafny + Z3           | Dafny 4.9.1 (ships Z3)                   | symbolic-compilation diff track       |
-| Cedar CLI            | v4.3.1+ via `cargo install`              | Rust reference implementation         |
+| Component | Toolchain | Source |
+| --- | --- | --- |
+| `cedar-spec/cedar-lean` | Lean 4.29.1, `batteries` only | [4] |
+| `palamedes-lean` | Lean 4.24.0, Mathlib, Aesop, Plausible | [6] |
+| `cedar-policy` (Rust reference) | Rust stable 1.82+ | [2] |
+| Verus (optional) | Rust nightly 1.94 | [9] |
+| `cedar-go` | Go 1.24 | [3] |
+| Dafny + Z3 (symbolic track) | Dafny 4.9.1, Z3 4.12.1 | Dafny project |
+| Cedar CLI | `cedar-policy-cli` crate | [2] |
 
-You cannot build all of these on a host without a combinatorial mess of PATH juggling, virtualenvs, and rustup overrides. Our single image (`containers/Containerfile`) installs all of them side-by-side — `elan` ships two Lean toolchains, `rustup` ships two Rust toolchains, everything else sits at `/usr/local/bin`. The `scripts/dc` wrapper keeps the dev UX similar to a native invocation:
+Host installation of the above is impractical due to conflicting global state (two `elan` profiles, two `rustup` toolchains, system-wide Go). The workbench installs all of them into a single container image, published at `ghcr.io/athanor-ai/kairos-cedar`. Toolchain selection inside the image is local: switch Lean via `elan default leanprover/lean4:<version>` per Lake project, invoke the appropriate rust toolchain via `cargo +<toolchain>`.
 
-```bash
-./scripts/dc lean --version            # default: 4.29.1
-./scripts/dc bash -c 'elan default leanprover/lean4:v4.24.0 && lean --version'  # swap
+The `scripts/dc` wrapper shells a command into the image with the repository mounted at `/work`:
+
+```
+./scripts/dc lean --version
 ./scripts/dc cargo --version
-./scripts/dc verus --version
 ./scripts/dc go version
 ./scripts/dc dafny --version
 ./scripts/dc cedar --version
 ```
 
-The monolith costs ~12 GB and ~25 min to build locally; we publish it to [`ghcr.io/athanor-ai/kairos-cedar`](https://github.com/athanor-ai/kairos-cedar/pkgs/container/kairos-cedar) so most users `docker pull` it once (~2 min on a reasonable connection) and never rebuild.
+## Lean bridge
 
-## Why a Lean bridge
+`cedar-spec/cedar-lean` defines `Cedar.Validation.typeOf : Expr → Capabilities → TypeEnv → Except TypeError (TypedExpr × Capabilities)` as a functional `def`, not as an inductive relation. The derivation technique of [7] requires an inductive-`Prop` shape; the technique of [6] operates on predicates and handles the functional shape via rewrites.
 
-cedar-spec's `Cedar.Validation.typeOf` is a `def`, not an `inductive ... → Prop`. The Paraskevopoulou/Lampropoulos '22 derivation technique wants an inductive relation so it can enumerate derivation trees. Palamedes is more forgiving — it works on predicates — but the idiomatic invocation still wants `Prop`-valued shapes.
-
-`cedar-spec-bridge/` is a thin Lake subproject that depends on cedar-spec and adds:
+To avoid forking `cedar-spec`, the bridge project at `cedar-spec-bridge/` imports the upstream package unchanged and adds `Prop`-valued wrappers:
 
 ```lean
 def isWellTyped (env : TypeEnv) (e : Expr) : Prop :=
   ∃ te c, Cedar.Validation.typeOf e [] env = .ok (te, c)
 ```
 
-`typeOf` is unchanged. We never fork cedar-spec; we compose with it. That keeps upstream updates cheap — `git submodule update` and we pick up AWS's latest.
+Upstream updates are consumed by `git submodule update --remote cedar-spec`. The bridge is the single place where `cedar-spec` types are translated into the shape expected by the synthesis target.
 
-The bridge is only ~30 lines today. It will grow as we add similar wrappers for `Cedar.Validation.validateSchema`, `Cedar.Spec.isAuthorized`, and the symbolic-compilation soundness lemma.
+## Two formal-methods track
 
-## Two formal methods (optional track)
+The container image ships both Lean 4 and Verus [9]. A subset of Cedar's evaluator expressed in Verus-annotated Rust can be proved against a separately authored algebraic specification; the same subset is already proved against the Lean evaluator in [4] via the symbolic-compilation soundness theorem. If the Verus-derived verdicts disagree with Lean-derived verdicts on the same input, the divergence indicates a specification defect in at least one of the two formal models. No code on this track has been written yet; see `docs/ROADMAP.md`.
 
-The `rust-verus` container isn't just for running the cedar-policy reference implementation. It also ships [Verus](https://github.com/verus-lang/verus), so we can do an experiment the Cedar team has not published on: annotate a Rust subset of the evaluator with Verus `requires`/`ensures`, prove it against an independent algebraic spec, and compare the Verus-derived verdicts against cedar-spec's Lean-derived verdicts on the same inputs.
+## Differential testing plan
 
-If Lean and Verus ever disagree about what a Cedar expression should evaluate to, we've found something interesting: either the Lean model has a bug, the Verus spec has a bug, or the implementation has a bug that slipped past both. Any of those is publishable.
+The generator derived from the Lean formalisation emits policies and requests that, by construction, type-check and evaluate under the Lean semantics. The corpus is then executed against:
 
-See the [roadmap](./ROADMAP.md) for the phased plan.
+1. The Rust reference `cedar-policy` [2]: expected to agree on every input.
+2. The Go reimplementation `cedar-go` [3]: expected to agree where feature support is declared (known gaps: schema validator, partial evaluation, policy templates as of v1.6.0).
 
-## Generator derivation lineage
-
-Two papers, both by groups we want to invite to collaborate:
-
-1. **Paraskevopoulou / Eline / Lampropoulos, *Computing Correctly with Inductive Relations*, PLDI '22.** Given an inductive relation `P`, derive a QuickChick-compatible random generator for values satisfying `P`, plus a mechanized soundness/completeness proof. Implemented in Rocq as a plugin + Ltac2 metaprogramming. Strong correctness story. Requires the relation to be in inductive-Prop form and covers a specific grammar of constructor shapes (the paper details the extensions for non-linear patterns, function calls in conclusions, and existentials).
-
-2. **Goldstein / Peleg / Torczon / Sainati / Lampropoulos / Pierce, *The Search for Constrained Random Generators*, PLDI '26.** Tool: **Palamedes**. Given a predicate (not necessarily inductive), synthesize a constrained random generator via Aesop proof search over a denotational semantics of generators. Handles recursive predicates by rewriting catamorphism-shaped predicates to anamorphism-shaped generators. Lean-native. More automated but weaker correctness guarantee (support-based, not distributional).
-
-We pick Palamedes as the primary V1 target for two reasons: (a) Cedar's `typeOf` is a `def` / catamorphism shape that matches Palamedes's recursive-predicate handling, and (b) Palamedes is already Lean — no Rocq-to-Lean port of the tactic infrastructure. We keep `cedar-palamedes:dev` as a separate container so we can iterate on the V3 (generator-derivation) track in parallel with the V1 (workbench + differential testing scaffolding) track.
-
-If Palamedes's Aesop proof search fails to make progress on Cedar's full `Expr` (it may — our `CedarMicro` smoke fails at Aesop until per-type `as_or`/`deforest_eq` lemmas are registered), we fall back to the PLDI '22 recipe, implemented manually in Lean metaprogramming. That's more work but we know it's possible.
+Disagreements between (1) and (2) indicate a defect in at least one implementation or an ambiguity in the specification. The corpus from [8] shipped with `cedar-go v1.6.0` yields zero disagreements. New disagreements are expected on fresh, type-directed inputs, which is the motivation for the generator work.

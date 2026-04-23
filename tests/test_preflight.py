@@ -43,7 +43,7 @@ class DockerCheckTest(unittest.TestCase):
 
     def test_docker_cli_present(self) -> None:
         if shutil.which("docker") is None:
-            self.skipTest("docker not installed — CI-only failure mode")
+            self.skipTest("docker not installed. CI-only failure mode")
         r = preflight.check_docker()
         # If the daemon is reachable we pass; if not, we expect the
         # failure to name 'docker daemon reachable' so the user knows

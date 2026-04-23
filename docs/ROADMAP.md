@@ -1,52 +1,53 @@
 # Roadmap
 
-## V0 — infrastructure (this commit)
+Phased plan from infrastructure (V0, shipped) through full differential coverage (V3).
 
-- [x] Containerized pins for every toolchain (Lean 4.29.1 + 4.24.0, Rust 1.82/1.94, Verus 0.2026.03.28, Go 1.24)
-- [x] Git submodules for upstream: cedar-spec, palamedes-lean, cedar-go, cedar-integration-tests
-- [x] Minimum-viable Lean bridge: `CedarBridge.isWellTyped env e` as a `Prop`-valued wrapper around cedar-spec's `def Cedar.Validation.typeOf`
-- [x] Preflight script, thin dev wrapper `scripts/dc`, CI runs preflight + spec container build
-- [x] Baseline observation: cedar-go v1.6.0 passes 7759/7759 of its shipped corpus (zero Rust↔Go divergence on the oracle)
+## V0: infrastructure
 
-## V1 — Palamedes on Cedar-micro
+- Containerised toolchain (`containers/Containerfile`) publishing a single image to `ghcr.io/athanor-ai/kairos-cedar`.
+- Upstream submodules pinned: `cedar-spec`, `palamedes-lean`, `cedar-go`, `cedar-integration-tests`.
+- Lean bridge (`cedar-spec-bridge/`): `isWellTyped env e := ∃ te c, Cedar.Validation.typeOf e [] env = .ok (te, c)` compiles against upstream `cedar-spec`.
+- Preflight script, thin dev wrapper `scripts/dc`, unit and integrity tests, CI.
+- Baseline observation: the shipped `cedar-policy/cedar-integration-tests` corpus yields zero Rust/Go disagreements at `cedar-go v1.6.0`. The Rust reference and Go reimplementation agree on the published oracle.
 
-Prove the generator-derivation approach works on a small Cedar subset before scaling to the full `Expr`.
+## V1: Palamedes synthesis on a flat Cedar-shape subset
 
-- [ ] Cedar-micro type system: `Expr := litInt | litBool | var | ite | and` + `Ty := int | bool`. Roughly 150 LOC Lean, fits entirely inside the palamedes container (4.24.0 + Mathlib). This sidesteps the cedar-spec toolchain mismatch for the proof-of-concept.
-- [ ] Port the ~1400 LOC of `Palamedes/Data/STLC/` recursion-scheme scaffolding (`TyF α` companion functor, `as_or` / `deforest_eq` lemmas, `fold` / `accuM`) to the Cedar-micro shape.
-- [ ] Invoke `generator_search` against `isWellTyped` for Cedar-micro. Verify Aesop makes progress, not "made no progress" (the symptom when scaffolding is absent).
-- [ ] Sample 10⁴ well-typed Cedar-micro expressions, histogram depth + constructor frequency.
+Prove the synthesis technique of [6] applies to a Cedar-shape type system before scaling to the full `cedar-spec` grammar.
 
-## V2 — Palamedes on full Cedar `Expr`
+- Minimum subset: `Ty = bool | int`, `Expr = litInt Int | litBool Bool | var Nat | ite | and`. Approximately 150 additional lines of Lean beyond the scaffolding port.
+- Port the `Palamedes/Data/STLC/*.lean` pattern to the subset: companion functor, recursion schemes, fold coercions, `Gen.arb_τ`, `Gen.case_τ`, `CorrectGen` variants, totality lemmas registered with `@[simp, aesop safe (rule_sets := [totality])]`, and recursor-form `as_or` / `deforest_eq` rewrites. `Ty` portion is done; `Expr` is the open work item.
+- Invoke `generator_search (fun e => isWellTyped Γ e)` and verify Aesop closes the goal.
+- Sample 10^4 expressions and verify they all type-check under `Cedar.Validation.typeOf` (should hold by construction if the derivation is sound).
 
-- [ ] Fork palamedes-lean, bump toolchain to 4.29.1 + mathlib-4.29.x. Submit upstream PR when green. (Alternative fallback: keep Palamedes on 4.24 and hand-copy the type-system modules from cedar-spec into a 4.24-compatible project. Uglier but unblocks parallel work if the bump is heavy.)
-- [ ] Port cedar-spec's `Cedar.Spec.Expr` into the companion-functor shape. 12 constructors; likely 2–3x the STLC scaffolding in LOC. Focus on the ones the typechecker actually cases on; defer extension types (`call`) until last.
-- [ ] Re-derive `isWellTyped` using the full `Cedar.Validation.typeOf`. Verify generator_search closes the goal.
-- [ ] Differential test: sample 10⁵ policies, run through both cedar-policy (Rust) and cedar-go, log disagreements.
+## V2: Full `Cedar.Spec.Expr`
 
-## V3 — Beyond type checking
+- Upgrade `palamedes-lean` to Lean 4.29.1 and the Mathlib revision compatible with cedar-spec's pin. This removes the two-toolchain workaround and lets the Palamedes tactic operate directly on types imported from `cedar-spec`.
+- Port the full 12-constructor `Cedar.Spec.Expr` into the companion-functor form the Palamedes scaffolding expects. Extension-typed operators (`call`, datetime, IP) are deferred to the end because they introduce richer arity patterns.
+- Add `isWellFormedSchema` and `isValidRequest` bridges mirroring `isWellTyped`. The generator then produces end-to-end `(policy, schema, entity-store, request)` tuples.
+- Execute the generated corpus against `cedar-policy` [2] and `cedar-go` [3]. The experimental question: does fresh, type-directed input exercise shapes the existing `cedar-policy/cedar-integration-tests` corpus [8] does not, and does that expose divergences?
 
-Cedar has three semantic tiers the generator can target; V1/V2 cover the type-checker only.
+## V3: Evaluation and symbolic compilation
 
-- [ ] Evaluation: generate policies + entity stores + requests such that `cedar-policy::authorize` returns `Allow`; differentially test cedar-go on the same fixture.
-- [ ] Symbolic compilation: generate policies compatible with cedar-spec's `Cedar.SymCC.Compiler`; test the SMT encoding against the concrete evaluator's verdict on matched requests.
-- [ ] Hybrid: one generator emits a single `(policy, schema, request)` tuple triply-consistent across all three tiers, so any impl that disagrees on any tier is flagged.
+Extend the generator from type-checking to the two other semantic tiers exercised by Cedar implementations:
 
-## Ongoing — Rust verification tooling (Verus)
+- Evaluation: generate entity stores and requests so that `cedar-policy::authorize` returns a prescribed decision, and compare against `cedar-go`'s decision on the same fixture.
+- Symbolic compilation: generate policies compatible with `Cedar.SymCC.Compiler` and test the SMT encoding against the concrete evaluator's verdict on matched requests. Uses Dafny + Z3 for an independent SMT oracle.
 
-The `rust-verus` container ships with [Verus](https://github.com/verus-lang/verus) 0.2026.03.28 (Rust nightly 1.94) because we expect two lines of work:
+## Verus track (optional, parallel)
 
-- [ ] **Diff-harness correctness.** Verus-annotate the Rust harness that compares cedar-policy vs cedar-go per case. `requires`/`ensures` on the comparator, invariants on the aggregation. Small, defensible — puts Verus on the fleet-critical path with near-zero risk.
-- [ ] **Two-formal-methods differential.** Verus-prove a subset of cedar-policy's evaluator against an algebraic spec; compare the Verus-derived verdicts against cedar-spec's Lean-derived verdicts on the same inputs. If Lean and Verus disagree on what a policy's behaviour should be, we've found either a Lean-spec bug, a Verus-proof bug, or an impl bug — all publishable.
+- Level 1: annotate the Rust differential-test harness (the code that runs both implementations and compares decisions) with Verus `requires` and `ensures` preconditions. Proves harness correctness.
+- Level 2: annotate a subset of `cedar-policy`'s evaluator (boolean, integer primitives, no entity lookups) and prove soundness against an algebraic specification. Compare the Verus-derived verdicts against the Lean-derived verdicts on identical fixtures. Divergences indicate a defect in at least one of the two formal models.
 
 ## Out of scope
 
-- Hosting a long-running fuzz job. Integrate this with `cargo fuzz` or a managed service if you need one.
-- Closing Lean proofs in cedar-spec itself. That's upstream's job; we consume `typeOf` as a black box.
-- Shipping a PyPI / crates.io package. This repo is a research workbench, not a library.
+- Long-running fuzz orchestration. Integrate with `cargo fuzz` or a managed fuzzer if continuous fuzzing is required.
+- Closing proofs in `cedar-spec` itself. The upstream project owns that work; this repository consumes `typeOf` as a black box.
+- A published library package. This repository is a research workbench.
 
 ## Open questions
 
-1. How close can Palamedes's Aesop tactic get on Cedar's actual `Expr` without hand-written synthesis rules? We haven't measured. STLC works out of the box; Cedar is materially more complex (records, sets, extension types).
-2. Do we need the full type environment to be inductive, or does Palamedes handle `def`-based checkers with a thin Prop wrapper? The wrapper works for us on `typeOf` already; whether it scales to the full env-check chain is V2 work.
-3. What's the right correctness proof for the *generator*? The PLDI '22 derivation gives you sound+complete automatically. Palamedes (per the paper) has a weaker correctness story (supports-based, not distributional). For differential testing either is sufficient, but for a paper claim we'd want to pin it down.
+1. What fraction of Cedar's `Expr` grammar can the synthesis tactic of [6] cover without hand-written synthesis rules? Measured only on the shipped STLC benchmark so far.
+2. Does the bridging `Prop`-wrapper over a functional typechecker scale beyond `typeOf` to the full env-check chain (requires + entity-store validation)?
+3. What correctness claim applies to the generator? [7] gives a sound-and-complete derivation for inductive relations; [6] gives a support-based correctness for predicates. Whether the claim applicable here is distributional, support-based, or something weaker depends on the final form of `isWellTyped`'s rewriting.
+
+(All numbered references resolve in `README.md`.)

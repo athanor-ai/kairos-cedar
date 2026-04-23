@@ -1,0 +1,14 @@
+// Matches policy.cedar — three entity types (User, Role, Document)
+// and three actions (read, edit, publish).
+
+entity User in [Role];
+entity Role;
+entity Document {
+    owner: User,
+    tag?: String,
+};
+
+action read, edit, publish appliesTo {
+    principal: User,
+    resource: Document,
+};

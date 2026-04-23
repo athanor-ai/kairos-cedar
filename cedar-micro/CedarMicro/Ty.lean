@@ -1,10 +1,10 @@
 /-
-  CedarMicro.Ty — Palamedes-ready type language (flat, 2 nullary ctors).
+  CedarMicro.Ty. Palamedes-ready type language (flat, 2 nullary ctors).
 
   Line-for-line port of `palamedes-lean/Palamedes/Data/STLC/Ty.lean`
   (577 LOC), specialised to a flat Ty (bool + int, no recursive arms).
   The flatness collapses several sections of the STLC pattern into
-  triviality — we keep the parallel structure for readability and so
+  triviality. we keep the parallel structure for readability and so
   the pattern is obvious when we port Expr.
 
   Scaffolding exposed at the end of this module:
@@ -12,7 +12,7 @@
     Gen.caseTy             case-elim combinator over Ty
     Gen.CorrectGen.s_arbTy / s_caseTy   (subtype-refined versions)
     Gen.Total.total_arbTy / total_Ty_caseTy   (@[aesop safe (totality)])
-    Ty.as_or, Ty.deforest_eq   (in Ty.rec form — Palamedes's pattern)
+    Ty.as_or, Ty.deforest_eq   (in Ty.rec form. Palamedes's pattern)
 
   Once CedarMicro.Expr lands the same pattern, `generator_search`
   against `isWellTyped` has everything it needs.
@@ -230,7 +230,7 @@ def s_caseTy
 
 end CorrectGen
 
--- ── Totality — aesop-registered for generator_search ────────────────
+-- ── Totality. aesop-registered for generator_search ────────────────
 
 namespace Total
 
@@ -284,7 +284,7 @@ instance : ToString Ty where
 
 end PrettyPrint
 
--- ── Recursor-form as_or / deforest_eq — critical for Palamedes ──────
+-- ── Recursor-form as_or / deforest_eq. critical for Palamedes ──────
 
 theorem Ty.deforest_eq
     {b bb bi : β} :

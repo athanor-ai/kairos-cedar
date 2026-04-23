@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""preflight.py — verify everything is in place before you build images.
+"""preflight.py. verify everything is in place before you build images.
 
 Checks:
   1. docker daemon is running + reachable.
@@ -48,7 +48,7 @@ def check_docker() -> Result:
         return Result(
             ok=False, name="docker installed",
             detail="`docker` not on PATH",
-            remediation="Install Docker Engine or Desktop — https://docs.docker.com/get-docker/",
+            remediation="Install Docker Engine or Desktop. https://docs.docker.com/get-docker/",
         )
     try:
         proc = subprocess.run(
@@ -154,7 +154,7 @@ def main() -> int:
     had_warn = False
     for r in results:
         if r.ok:
-            print(f"  [ok]   {r.name}  —  {r.detail}")
+            print(f"  [ok]   {r.name} .  {r.detail}")
         else:
             tag = "warn" if r.warn_only else "FAIL"
             print(f"  [{tag}] {r.name}")

@@ -1,5 +1,5 @@
 /-
-  CedarMicro.Expr — the tiny expression grammar Palamedes generates.
+  CedarMicro.Expr. the tiny expression grammar Palamedes generates.
 
   Mirrors Palamedes/Data/STLC/Term.lean structure. Five constructors:
 
@@ -9,7 +9,7 @@
     ite     : Expr → Expr → Expr → Expr  ternary recursive
     and     : Expr → Expr → Expr         binary recursive
 
-  Three of these are flat, two are recursive — enough to exercise
+  Three of these are flat, two are recursive. enough to exercise
   Palamedes's catamorphism → anamorphism rewrite (the PLDI '26 core
   technique) without drowning the scaffolding port in recursive cases.
   If V1 closes on this, V2 scales to the full cedar-spec `Cedar.Spec.Expr`
@@ -49,7 +49,7 @@ inductive ExprF (α : Type) where
   | ite     : (c t f : α) → ExprF α
   | and     : (a b : α) → ExprF α
 
-/-- `ExprF_or` — normalise an ExprF case-match into a disjunction of
+/-- `ExprF_or`. normalise an ExprF case-match into a disjunction of
     the five constructor shapes. This is the Aesop-friendly form
     Palamedes rules pattern-match on for the case-split step. -/
 theorem ExprF_or
@@ -80,7 +80,7 @@ theorem ExprF_or
 
 
 
-/-- Fold — collapse an `Expr` into `α` by recursing on structure. One
+/-- Fold. collapse an `Expr` into `α` by recursing on structure. One
     arm per constructor; recursive arms fold children first then
     combine. -/
 def Expr.fold {α : Type}
@@ -120,7 +120,7 @@ def Expr.fold {α : Type}
 
 
 
-/-- `Expr.as_or` — the big disjunctive-existential normal form that
+/-- `Expr.as_or`. the big disjunctive-existential normal form that
     Palamedes's rules pattern-match for splitting into constructor
     cases during generator synthesis. -/
 theorem Expr.as_or {P : Expr → Prop} {e : Expr} :
@@ -132,7 +132,7 @@ theorem Expr.as_or {P : Expr → Prop} {e : Expr} :
     (∃ a b, P (.and a b) ∧ e = .and a b) := by
   cases e <;> aesop
 
-/-- `Expr.deforest_eq` — collapse Expr.fold equality into a
+/-- `Expr.deforest_eq`. collapse Expr.fold equality into a
     structural case analysis. This is the piece that lets the Aesop
     search compare generated-AST shapes against the target predicate
     without a combinatorial blowup. -/
