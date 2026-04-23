@@ -71,9 +71,14 @@ def wellTypedAt (Γ : List Ty) (τ : Ty) (e : Expr) : Bool :=
 -- ── Hand-coded type-directed generator ─────────────────────────────
 
 /-- Variables from `Γ` that have the requested type `τ`. Returned as
-    explicit de-Bruijn indices (positions in the list). -/
-def varsOfType (Γ : List Ty) (τ : Ty) : List Nat :=
-  (Γ.zipWith (fun τ' i => if τ' == τ then some i else none) (List.range Γ.length)).filterMap id
+    explicit de-Bruijn indices (positions in the list). Written as
+    a direct structural recursion to make the soundness proof in
+    `CedarMicro.Soundness` a short induction on `Γ`. -/
+def varsOfType : List Ty → Ty → List Nat
+  | [],        _ => []
+  | τ' :: rest, τ =>
+    let shifted := (varsOfType rest τ).map (· + 1)
+    if τ' = τ then 0 :: shifted else shifted
 
 /-- Base case: a leaf-only generator producing well-typed expressions
     at the requested type. No recursion; size-0 terms only. -/

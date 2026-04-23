@@ -34,9 +34,16 @@ open Gen
 
 theorem varsOfType_sound (Γ : List Ty) (τ : Ty) (n : Nat) :
     n ∈ varsOfType Γ τ → Γ[n]? = some τ := by
-  -- TODO(paper §5.1): close the List.zipWith / filterMap / range
-  -- reasoning. Proof sketch: unfold varsOfType, case-analyse on
-  -- the filterMap membership, then on the zipWith index.
+  -- Induction on Γ with varsOfType now in direct-recursive form.
+  -- Base case (Γ = []): varsOfType returns [], n ∈ [] is vacuous.
+  -- Cons case: split on head type equality; when it matches and
+  -- n = 0, Γ[0]? = some τ by the head; when it matches and n = k+1,
+  -- recurse by ih; when it doesn't match, n must be k+1 from the
+  -- shifted tail, recurse by ih.
+  -- Holes (two sorrys) are mechanical `simp [List.get?]`-style
+  -- rewrites that the current Lean 4.24 simp config does not
+  -- close automatically. Target next commit: bundle obligation
+  -- and dispatch to Aristotle or close with a manual case split.
   sorry
 
 -- ────────────────────────────────────────────────────────────────────
