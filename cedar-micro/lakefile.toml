@@ -1,0 +1,12 @@
+name = "cedarMicro"
+defaultTargets = ["CedarMicro"]
+
+# Palamedes pulls in Mathlib + Aesop + Plausible. Pinned to Lean 4.24.0 per
+# palamedes-lean's own lean-toolchain. Keeping this project on the same pin
+# so we can `import Palamedes.*` directly.
+[[require]]
+name = "palamedes"
+path = "../palamedes-lean"
+
+[[lean_lib]]
+name = "CedarMicro"
