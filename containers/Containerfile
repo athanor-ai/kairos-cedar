@@ -97,8 +97,16 @@ ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}" \
 RUN go version
 
 # ── Dafny + Z3 (SMT track) ───────────────────────────────────────────
-# Dafny ships Z3 in its bundle; no separate Z3 install needed.
-RUN npm install -g dafny@4.9.1 \
+# Dafny ships as a self-contained zip including its bundled Z3 (4.12.1).
+# We unpack to /opt/dafny and expose the single `dafny` launcher on PATH.
+# Skip the npm path — there is no official dafny npm package at 4.x.
+ENV DAFNY_VERSION=4.9.1
+RUN dnf install -y libicu \
+    && curl -fsSL "https://github.com/dafny-lang/dafny/releases/download/v${DAFNY_VERSION}/dafny-${DAFNY_VERSION}-x64-ubuntu-20.04.zip" \
+         -o /tmp/dafny.zip \
+    && unzip -q /tmp/dafny.zip -d /opt \
+    && ln -sf /opt/dafny/dafny /usr/local/bin/dafny \
+    && rm /tmp/dafny.zip \
     && dafny --version
 
 # ── Sanity prints ────────────────────────────────────────────────────
