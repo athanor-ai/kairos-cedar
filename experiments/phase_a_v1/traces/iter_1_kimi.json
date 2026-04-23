@@ -1,0 +1,16 @@
+{
+  "elapsed_sec": 83.61,
+  "finish_reason": "stop",
+  "model": "kimi-k2.6-1",
+  "prompt_path": "experiments/phase_a_v1/prompts/kimi_v1_initial.md",
+  "raw_output_head": "import Palamedes.Gen\nimport CedarMicro.Ty\nimport CedarMicro.Expr\n\nopen CedarMicro\n\ndef varIndices (\u0393 : List Ty) (\u03c4 : Ty) : List Nat :=\n  let rec loop (i : Nat) (rest : List Ty) (acc : List Nat) : List Nat :=\n    match rest with\n    | [] => acc.reverse\n    | t :: ts => loop (i + 1) ts (if t == \u03c4 then i :: acc else acc)\n  loop 0 \u0393 []\n\ndef pickFromList (default : \u03b1) (xs : List \u03b1) : Gen \u03b1 :=\n  match x",
+  "response_length_chars": 2209,
+  "tokens": {
+    "audio_prompt_tokens": 0,
+    "completion_tokens": 13677,
+    "prompt_tokens": 1053,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 13004,
+    "total_tokens": 14730
+  }
+}

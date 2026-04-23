@@ -1,0 +1,10 @@
+✖ [176/176] Building CedarMicro.GenLLM (1.0s)
+trace: .> LEAN_PATH=/work/cedar-micro/.lake/packages/Cli/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/Qq/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/proofwidgets/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/importGraph/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/batteries/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/mathlib/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/aesop/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/plausible/.lake/build/lib/lean:/work/palamedes-lean/.lake/build/lib/lean:/work/cedar-micro/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.24.0/bin/lean /work/cedar-micro/CedarMicro/GenLLM.lean -o /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.olean -i /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.ilean -c /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.c --setup /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.setup.json --json
+error: CedarMicro/GenLLM.lean:16:17: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:17:17: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:18:27: Unknown constant `Gen.pure`
+error: Lean exited with code 1
+Some required targets logged failures:
+- CedarMicro.GenLLM
+error: build failed
+

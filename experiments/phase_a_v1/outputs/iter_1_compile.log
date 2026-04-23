@@ -1,0 +1,30 @@
+✖ [176/176] Building CedarMicro.GenLLM (5.7s)
+trace: .> LEAN_PATH=/work/cedar-micro/.lake/packages/Cli/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/Qq/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/proofwidgets/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/importGraph/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/batteries/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/mathlib/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/aesop/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/plausible/.lake/build/lib/lean:/work/palamedes-lean/.lake/build/lib/lean:/work/cedar-micro/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.24.0/bin/lean /work/cedar-micro/CedarMicro/GenLLM.lean -o /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.olean -i /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.ilean -c /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.c --setup /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.setup.json --json
+error: CedarMicro/GenLLM.lean:16:10: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:17:11: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:14:4: fail to show termination for
+  pickFromList
+with errors
+failed to infer structural recursion:
+Not considering parameter α of pickFromList:
+  it is unchanged in the recursive calls
+Not considering parameter default of pickFromList:
+  it is unchanged in the recursive calls
+Cannot use parameter xs:
+  failed to eliminate recursive application
+    pickFromList default (List.take n xs)
+
+
+failed to prove termination, possible solutions:
+  - Use `have`-expressions to prove the remaining goals
+  - Use `termination_by` to specify a different well-founded relation
+  - Use `decreasing_by` to specify your own tactic for discharging this kind of goal
+α : Type
+xs x✝ : List α
+n : Nat := xs.length / 2
+⊢ sizeOf (List.take (xs.length / 2) xs) < sizeOf x✝
+error: Lean exited with code 1
+Some required targets logged failures:
+- CedarMicro.GenLLM
+error: build failed
+

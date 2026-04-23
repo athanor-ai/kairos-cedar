@@ -1,0 +1,12 @@
+{
+  "usage": {
+    "audio_prompt_tokens": 0,
+    "completion_tokens": 3982,
+    "prompt_tokens": 1424,
+    "prompt_tokens_details": null,
+    "reasoning_tokens": 3324,
+    "total_tokens": 5406
+  },
+  "elapsed_sec": 15.06,
+  "output_head": "import Palamedes.Gen\nimport CedarMicro.Ty\nimport CedarMicro.Expr\n\nopen CedarMicro\n\ndef varIndices (\u0393 : List Ty) (\u03c4 : Ty) : List Nat :=\n  let rec loop (i : Nat) (rest : List Ty) (acc : List Nat) : List Nat :=\n    match rest with\n    | [] => acc.reverse\n    | t :: ts => loop (i + 1) ts (if t == \u03c4 then"
+}

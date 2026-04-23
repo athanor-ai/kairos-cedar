@@ -14,3 +14,7 @@ name = "CedarMicro"
 [[lean_exe]]
 name = "cedar-micro-sample"
 root = "Main"
+
+[[lean_exe]]
+name = "cedar-micro-sample-llm"
+root = "MainLLM"

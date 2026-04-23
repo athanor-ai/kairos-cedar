@@ -1,0 +1,30 @@
+{
+  "model": "kimi-k2.6-1",
+  "max_iters": 5,
+  "iterations": [
+    {
+      "iteration": 1,
+      "source_chars": 1893,
+      "reasoning_tokens": 15415,
+      "completion_tokens": 16051,
+      "prompt_tokens": 1049,
+      "call_elapsed_sec": 77.08,
+      "compile_ok": false
+    },
+    {
+      "iteration": 2,
+      "source_chars": 1858,
+      "reasoning_tokens": 4461,
+      "completion_tokens": 5088,
+      "prompt_tokens": 2318,
+      "call_elapsed_sec": 23.86,
+      "compile_ok": true
+    }
+  ],
+  "converged": true,
+  "iterations_to_converge": 2,
+  "total_reasoning_tokens": 19876,
+  "total_completion_tokens": 21139,
+  "total_prompt_tokens": 3367,
+  "usd_estimate_5usd_per_million": 0.1225
+}

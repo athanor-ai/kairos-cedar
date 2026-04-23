@@ -1,0 +1,16 @@
+✖ [176/176] Building CedarMicro.GenLLM (975ms)
+trace: .> LEAN_PATH=/work/cedar-micro/.lake/packages/Cli/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/Qq/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/proofwidgets/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/importGraph/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/batteries/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/mathlib/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/aesop/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/plausible/.lake/build/lib/lean:/work/palamedes-lean/.lake/build/lib/lean:/work/cedar-micro/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.24.0/bin/lean /work/cedar-micro/CedarMicro/GenLLM.lean -o /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.olean -i /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.ilean -c /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.c --setup /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.setup.json --json
+warning: CedarMicro/GenLLM.lean:9:10: `List.get?` has been deprecated: Use `a[i]?` instead.
+error: CedarMicro/GenLLM.lean:16:10: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:17:52: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:17:66: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:20:12: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:21:15: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:22:7: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:25:12: Unknown constant `Gen.pure`
+error: CedarMicro/GenLLM.lean:26:5: Unknown constant `Gen.pure`
+error: Lean exited with code 1
+Some required targets logged failures:
+- CedarMicro.GenLLM
+error: build failed
+

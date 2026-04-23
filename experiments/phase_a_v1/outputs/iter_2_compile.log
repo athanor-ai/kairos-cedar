@@ -1,0 +1,42 @@
+✖ [176/176] Building CedarMicro.GenLLM (1.2s)
+trace: .> LEAN_PATH=/work/cedar-micro/.lake/packages/Cli/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/Qq/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/proofwidgets/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/importGraph/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/LeanSearchClient/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/batteries/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/mathlib/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/aesop/.lake/build/lib/lean:/work/cedar-micro/.lake/packages/plausible/.lake/build/lib/lean:/work/palamedes-lean/.lake/build/lib/lean:/work/cedar-micro/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.24.0/bin/lean /work/cedar-micro/CedarMicro/GenLLM.lean -o /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.olean -i /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM.ilean -c /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.c --setup /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM.setup.json --json
+error: CedarMicro/GenLLM.lean:25:8: Tactic `rewrite` failed: Did not find an occurrence of the pattern
+  (List.take ?m.78 ?m.79).length
+in the target expression
+  min (xs.length / 2) xs.length < ys.length + 1 + 1
+
+α : Type
+xs : List α
+x y : α
+ys : List α
+n : Nat := xs.length / 2
+⊢ min (xs.length / 2) xs.length < ys.length + 1 + 1
+error: CedarMicro/GenLLM.lean:38:54: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  0 ≤ a ≤ 1
+where
+ a := ↑xs.length
+error: CedarMicro/GenLLM.lean:40:4: omega could not prove the goal:
+a possible counterexample may satisfy the constraints
+  c ≥ 0
+  b ≥ 0
+  b - c ≥ 0
+  a ≥ 1
+  -1 ≤ a - b ≤ 0
+  a + b ≥ 2
+where
+ a := ↑xs.length / 2
+ b := ↑(xs.length - xs.length / 2)
+ c := ↑(x :: y :: ys).length
+warning: CedarMicro/GenLLM.lean:38:40: This simp argument is unused:
+  List.length
+
+Hint: Omit it from the simp argument list.
+  simp ̵[̵L̵i̵s̵t̵.̵l̵e̵n̵g̵t̵h̵]̵
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+error: Lean exited with code 1
+Some required targets logged failures:
+- CedarMicro.GenLLM
+error: build failed
+
