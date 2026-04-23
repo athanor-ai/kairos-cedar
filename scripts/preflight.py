@@ -174,10 +174,10 @@ def main() -> int:
     if had_warn and not args.strict:
         print("preflight: passed with warnings. Re-run with --strict if you want them gated.")
     else:
-        print("preflight: all green. Build images with:")
-        print("  docker compose -f containers/compose.yaml build spec rust-verus")
-        print("  # palamedes is optional + heavy (~9.5 GB, ~15 min); skip unless on the V3 track:")
-        print("  docker compose -f containers/compose.yaml build palamedes")
+        print("preflight: all green. Next steps:")
+        print("  docker pull ghcr.io/athanor-ai/kairos-cedar:latest     # prebuilt, ~12 GB")
+        print("  # OR if you prefer a local build (~25 min, Lean + Mathlib + Verus heavy):")
+        print("  docker compose -f containers/compose.yaml build")
     return 0
 
 

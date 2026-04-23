@@ -1,0 +1,119 @@
+# kairos-cedar — one image, everything, zero host setup.
+#
+# Philosophy: a user `git clone`s the repo, pulls this image, mounts the repo
+# root, and can run every toolchain we touch — Lean (both toolchains cedar-spec
+# + palamedes need), Rust + Verus, Go (for cedar-go), Dafny + Z3 (SMT track),
+# Cedar CLI (Rust reference). No host installs.
+#
+# Build:    docker build -f containers/Containerfile -t kairos-cedar:dev .
+# Publish:  docker tag kairos-cedar:dev ghcr.io/athanor-ai/kairos-cedar:2026.04.23 && docker push ...
+# Use:      docker run --rm -v "$PWD":/work -w /work kairos-cedar:dev bash
+#
+# ─────────────────────────────────────────────────────────────────────
+# Toolchain pins (verified 2026-04-23):
+#   Lean      v4.29.1 (default) + v4.24.0 (palamedes) via elan
+#   Rust      1.82.0 stable + 1.94.0 nightly via rustup
+#   Verus     0.2026.03.28 from GitHub release binary
+#   Go        1.24 from public golang distro apt
+#   Dafny     4.9.1 via npm (the official install path)
+#   Z3        4.12.1 bundled with Dafny
+#   Cedar     v4.3.1+ via `cargo install cedar-policy-cli`
+#   Python    3.12 via uv
+# ─────────────────────────────────────────────────────────────────────
+
+FROM docker.io/library/amazonlinux:2023.8.20250818.0
+
+# ── System deps ──────────────────────────────────────────────────────
+RUN dnf update -y && dnf install -y \
+      shadow-utils findutils which util-linux \
+      gcc gcc-c++ make binutils \
+      git curl-minimal tar gzip xz unzip ca-certificates \
+      python3.12 python3.12-pip \
+      nodejs npm \
+      iptables \
+    && dnf clean all \
+    && rm -rf /tmp/* /var/tmp/*
+
+# ── uv + python ──────────────────────────────────────────────────────
+ENV UV_VERSION=0.8.15 \
+    UV_INSTALL_DIR=/opt/uv \
+    UV_CACHE_DIR=/tmp/uv_cache \
+    UV_PYTHON_INSTALL_DIR=/opt/uv/python \
+    PATH="/opt/uv/:${PATH}"
+RUN curl -LsSf https://astral.sh/uv/${UV_VERSION}/install.sh | sh \
+    && uv python install 3.12
+
+# ── Rust stable (cedar-policy / cedar-policy-generators / Cedar CLI) ─
+ENV RUSTUP_HOME=/opt/rustup \
+    CARGO_HOME=/opt/cargo \
+    RUST_STABLE=1.82.0 \
+    RUST_NIGHTLY=1.94.0-x86_64-unknown-linux-gnu
+ENV PATH="/opt/cargo/bin:${PATH}"
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+      | sh -s -- -y --default-toolchain ${RUST_STABLE} --no-modify-path \
+    && rustc --version && cargo --version
+
+# ── Verus (pinned release binary) ────────────────────────────────────
+RUN curl -fsSL "https://github.com/verus-lang/verus/releases/download/release/0.2026.03.28.3390e9a/verus-0.2026.03.28.3390e9a-x86-linux.zip" \
+      -o /tmp/verus.zip \
+    && unzip /tmp/verus.zip -d /opt \
+    && ln -sf /opt/verus-x86-linux/verus /usr/local/bin/verus \
+    && chmod -R a+rX /opt/verus-x86-linux \
+    && chmod a+rx /usr/local/bin/verus \
+    && rm /tmp/verus.zip
+
+# ── Rust nightly (Verus toolchain) ───────────────────────────────────
+RUN rustup install ${RUST_NIGHTLY} \
+    && verus --version \
+    && rustup component remove rust-docs --toolchain ${RUST_STABLE}-x86_64-unknown-linux-gnu 2>/dev/null || true \
+    && rustup component remove rust-docs --toolchain ${RUST_NIGHTLY} 2>/dev/null || true \
+    && rm -rf /opt/rustup/toolchains/*/share/doc /opt/rustup/toolchains/*/share/man
+
+# ── Cedar CLI (Rust reference implementation) ────────────────────────
+RUN cargo install cedar-policy-cli \
+    && cp /opt/cargo/bin/cedar /usr/local/bin/cedar \
+    && cedar --version
+
+# ── Lean (two toolchains via elan) ───────────────────────────────────
+ENV ELAN_HOME=/opt/elan
+ENV PATH="${ELAN_HOME}/bin:${PATH}"
+RUN curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+      | sh -s -- --default-toolchain leanprover/lean4:v4.29.1 -y --no-modify-path \
+    && elan toolchain install leanprover/lean4:v4.24.0 \
+    && elan toolchain list \
+    && lean --version
+
+# ── Go (for cedar-go) ────────────────────────────────────────────────
+ENV GO_VERSION=1.24.5
+RUN curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" \
+      -o /tmp/go.tar.gz \
+    && tar -C /usr/local -xzf /tmp/go.tar.gz \
+    && rm /tmp/go.tar.gz
+ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}" \
+    GOPATH="/root/go"
+RUN go version
+
+# ── Dafny + Z3 (SMT track) ───────────────────────────────────────────
+# Dafny ships Z3 in its bundle; no separate Z3 install needed.
+RUN npm install -g dafny@4.9.1 \
+    && dafny --version
+
+# ── Sanity prints ────────────────────────────────────────────────────
+RUN echo "=== toolchain inventory ===" \
+    && echo "python: $(python3 --version)" \
+    && echo "uv: $(uv --version)" \
+    && echo "rust stable: $(rustc --version)" \
+    && echo "cargo: $(cargo --version)" \
+    && echo "rust nightly: $(rustup which --toolchain ${RUST_NIGHTLY} rustc 2>/dev/null | xargs -I{} {} --version || echo none)" \
+    && echo "verus: $(verus --version 2>&1 | head -2 | tail -1)" \
+    && echo "cedar: $(cedar --version)" \
+    && echo "lean (default): $(lean --version)" \
+    && elan toolchain list \
+    && echo "go: $(go version)" \
+    && echo "dafny: $(dafny --version)"
+
+WORKDIR /work
+
+# Default command: drop into bash so `docker run --rm -v $PWD:/work -it kairos-cedar`
+# lands you in the repo with every tool on PATH.
+CMD ["/bin/bash"]

@@ -1,25 +1,32 @@
 # Architecture
 
-## Why docker-first
+## Why one image
 
 Every toolchain in this repo has a version pin that disagrees with at least one other:
 
-| Container              | Toolchain                                | Why                                   |
-| ---------------------- | ---------------------------------------- | ------------------------------------- |
-| `cedar-spec:dev`       | Lean 4.29.1 + batteries                  | cedar-spec's `lean-toolchain` pin     |
-| `cedar-palamedes:dev`  | Lean 4.24.0 + Mathlib + Plausible + Aesop | palamedes-lean's `lean-toolchain` pin |
-| `cedar-rust-verus:dev` | Rust 1.82 stable + 1.94 nightly + Verus 0.2026.03.28 | Cedar builds on stable; Verus requires its pinned nightly |
-| `golang:1.24-bookworm` | Go 1.24                                  | cedar-go's `go.mod` minimum           |
+| Tool                 | Pin                                      | Why                                   |
+| -------------------- | ---------------------------------------- | ------------------------------------- |
+| Lean (cedar-spec)    | 4.29.1 + batteries                       | cedar-spec's `lean-toolchain`         |
+| Lean (palamedes)     | 4.24.0 + Mathlib + Aesop + Plausible     | palamedes-lean's `lean-toolchain`     |
+| Rust                 | 1.82 stable + 1.94 nightly               | Cedar on stable, Verus on nightly     |
+| Verus                | 0.2026.03.28 binary                      | matches the nightly above             |
+| Go                   | 1.24                                     | cedar-go's `go.mod` minimum           |
+| Dafny + Z3           | Dafny 4.9.1 (ships Z3)                   | symbolic-compilation diff track       |
+| Cedar CLI            | v4.3.1+ via `cargo install`              | Rust reference implementation         |
 
-You cannot build all of these on a single host without a combinatorial mess of PATH juggling, virtualenvs, and rustup overrides. Containerizing eliminates that. The thin `scripts/dc` wrapper keeps the dev UX similar to a native `lake`/`cargo`/`go` invocation:
+You cannot build all of these on a host without a combinatorial mess of PATH juggling, virtualenvs, and rustup overrides. Our single image (`containers/Containerfile`) installs all of them side-by-side — `elan` ships two Lean toolchains, `rustup` ships two Rust toolchains, everything else sits at `/usr/local/bin`. The `scripts/dc` wrapper keeps the dev UX similar to a native invocation:
 
 ```bash
-./scripts/dc spec lake build Cedar
-./scripts/dc rust-verus cargo build --release
-./scripts/dc go go test -run TestCorpus -count=1
+./scripts/dc lean --version            # default: 4.29.1
+./scripts/dc bash -c 'elan default leanprover/lean4:v4.24.0 && lean --version'  # swap
+./scripts/dc cargo --version
+./scripts/dc verus --version
+./scripts/dc go version
+./scripts/dc dafny --version
+./scripts/dc cedar --version
 ```
 
-This also means customers of anything downstream of this repo — including the closed-source kairos SDK vertical at Athanor AI — pull pinned images rather than reproducing build environments. `docker run --rm ghcr.io/athanor-ai/cedar-spec:<date>` is all you need.
+The monolith costs ~12 GB and ~25 min to build locally; we publish it to [`ghcr.io/athanor-ai/kairos-cedar`](https://github.com/athanor-ai/kairos-cedar/pkgs/container/kairos-cedar) so most users `docker pull` it once (~2 min on a reasonable connection) and never rebuild.
 
 ## Why a Lean bridge
 
