@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Thin wrapper: `./scripts/dc <service> <cmd...>` → `docker compose run --rm <service> <cmd...>`.
+# From cedar-diff-fleet/ root. Keeps all toolchain invocations containerized.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+exec docker compose -f containers/compose.yaml run --rm "$@"

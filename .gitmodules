@@ -1,0 +1,12 @@
+[submodule "cedar-spec"]
+	path = cedar-spec
+	url = https://github.com/cedar-policy/cedar-spec.git
+[submodule "palamedes-lean"]
+	path = palamedes-lean
+	url = https://github.com/hgoldstein95/palamedes-lean.git
+[submodule "cedar-go"]
+	path = cedar-go
+	url = https://github.com/cedar-policy/cedar-go.git
+[submodule "cedar-integration-tests"]
+	path = cedar-integration-tests
+	url = https://github.com/cedar-policy/cedar-integration-tests.git

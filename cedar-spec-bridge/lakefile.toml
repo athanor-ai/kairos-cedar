@@ -1,0 +1,9 @@
+name = "cedarBridge"
+defaultTargets = ["CedarBridge"]
+
+[[require]]
+name = "Cedar"
+path = "../cedar-spec/cedar-lean"
+
+[[lean_lib]]
+name = "CedarBridge"

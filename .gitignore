@@ -1,0 +1,32 @@
+# Lake build outputs
+.lake/
+*.olean
+*.ilean
+
+# Rust build outputs
+target/
+**/target/
+
+# Go build outputs
+**/*.test
+**/*.out
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor + OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Local runs / scratch
+runs/
+scratch/
+*.local
+
+# Docker build cache (if it ever leaks in)
+.docker/

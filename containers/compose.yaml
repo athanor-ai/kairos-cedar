@@ -1,0 +1,52 @@
+# Dev-mode convenience wrapper around `docker compose run --rm`.
+# Production consumers pull pinned tags directly via `docker run`.
+#
+# Assumes you have run:
+#   git submodule update --init --recursive
+# from the repo root so cedar-spec/, palamedes-lean/, cedar-go/, and
+# cedar-integration-tests/ are populated.
+services:
+  # Lean 4.29.1 + batteries — cedar-spec (type system, eval, symcc, proofs).
+  spec:
+    image: cedar-spec:dev
+    build:
+      context: ..
+      dockerfile: containers/spec.Containerfile
+    volumes:
+      - ..:/work
+    working_dir: /work/cedar-spec/cedar-lean
+    command: ["/bin/bash"]
+
+  # Lean 4.24.0 + Mathlib + Palamedes (prewarmed) — V3 generator-synthesis track.
+  # Heavy image (~9.5 GB) because Mathlib is compiled at image build time.
+  # Skip with --build-arg PREWARM=0 if you don't need the Palamedes track.
+  palamedes:
+    image: cedar-palamedes:dev
+    build:
+      context: ..
+      dockerfile: containers/palamedes.Containerfile
+    volumes:
+      - ..:/work
+    working_dir: /opt/palamedes-lean
+    command: ["/bin/bash"]
+
+  # Rust 1.82 stable + 1.94 nightly + Verus 0.2026.03.28 — cedar-policy
+  # ref impl, cedar-policy-generators (V1.5 fresh-corpus gen), optional
+  # Verus-annotated subsets.
+  rust-verus:
+    image: cedar-rust-verus:dev
+    build:
+      context: ..
+      dockerfile: containers/rust-verus.Containerfile
+    volumes:
+      - ..:/work
+    working_dir: /work
+    command: ["/bin/bash"]
+
+  # Go 1.24 for cedar-go. Uses the public golang image; nothing to build.
+  go:
+    image: docker.io/library/golang:1.24-bookworm
+    volumes:
+      - ..:/work
+    working_dir: /work/cedar-go
+    command: ["/bin/bash"]
