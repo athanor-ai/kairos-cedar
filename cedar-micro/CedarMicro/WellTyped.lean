@@ -59,11 +59,45 @@ def getType (e : Expr) (Γ : List Ty) : Option Ty :=
 def isWellTyped (Γ : List Ty) (e : Expr) : Prop :=
   ∃ (τ : Ty), getType e Γ = τ
 
-/-- Main V1 goal: Palamedes's Aesop tactic closes this. If Aesop
-    replies "made no progress", the scaffolding in Ty.lean / Expr.lean
-    needs more rules registered. -/
+-- TODO(V1): invoke generator_search once the full Palamedes scaffolding
+-- is in place. The blocker is NOT the predicate — it's the ~1400 LOC
+-- per-type scaffolding Palamedes's Aesop tactic needs. Specifically
+-- (per `Palamedes/Data/STLC/{Ty,Term}.lean`), we need for each
+-- recursive type τ:
+--
+--   namespace Gen
+--     def arbτ : Gen τ
+--     def caseτ : τ → ... → Gen α           (case-splitting combinator)
+--   end Gen
+--
+--   namespace CorrectGen
+--     def arbτ : CorrectGen (fun x => True)
+--     def caseτ : ...                        (lifted to CorrectGen)
+--   end CorrectGen
+--
+--   namespace Total
+--     @[simp, aesop safe (rule_sets := [totality])]
+--     theorem total_arbτ : total arbτ
+--     @[simp, aesop safe (rule_sets := [totality])]
+--     theorem total_τ_caseτ : ...
+--   end Total
+--
+-- plus `τ.rec`-shaped `as_or` / `deforest_eq` lemmas (our existing
+-- hand-rolled versions use `τ.fold` but STLC's use the recursor —
+-- Palamedes's pattern-match rules expect the recursor form).
+--
+-- Sample:
+--    #eval do
+--      let es ← replicateM 100 <| sample (genWellTyped [.int, .bool])
+--      IO.println s!"sampled {es.length} well-typed expressions"
+--
+-- Reference: Palamedes/Data/STLC/Term.lean, ~1400 LOC total across
+-- Ty + Term + Context. Port is tracked as ATH-512 subtask 1.
+
+/- example genWellTyped (goal shape for when scaffolding lands):
 attribute [local simp] Ty.as_or Ty.deforest_eq Expr.as_or Expr.deforest_eq in
 def genWellTyped (Γ : List Ty) : Gen Expr := by
   generator_search (fun e => isWellTyped Γ e)
+-/
 
 end CedarMicro

@@ -26,7 +26,8 @@ import Palamedes.CorrectGen
 import Palamedes.Total
 import Palamedes.Util
 
-section TypeDef
+namespace CedarMicro
+
 
 inductive Expr : Type where
   | litInt  : Int → Expr
@@ -36,9 +37,7 @@ inductive Expr : Type where
   | and     : Expr → Expr → Expr
   deriving Repr
 
-end TypeDef
 
-section BaseFunctor
 
 /-- Companion functor: recursive positions become `α`. The `ite` and
     `and` arms each pack one or more `α`s in place of the original
@@ -79,9 +78,7 @@ theorem ExprF_or
   | .ite _ _ _ => aesop
   | .and _ _   => aesop
 
-end BaseFunctor
 
-section RecursionSchemes
 
 /-- Fold — collapse an `Expr` into `α` by recursing on structure. One
     arm per constructor; recursive arms fold children first then
@@ -121,9 +118,7 @@ def Expr.fold {α : Type}
     fand (Expr.fold flitI flitB fvar fite fand a)
          (Expr.fold flitI flitB fvar fite fand b) := rfl
 
-end RecursionSchemes
 
-section Palamedes
 
 /-- `Expr.as_or` — the big disjunctive-existential normal form that
     Palamedes's rules pattern-match for splitting into constructor
@@ -156,3 +151,5 @@ theorem Expr.deforest_eq
                  (Expr.fold flitI flitB fvar fite fand b) = x ∧
              e = .and a b) := by
   cases e <;> aesop
+
+end CedarMicro

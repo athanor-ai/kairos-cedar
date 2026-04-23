@@ -25,7 +25,8 @@ import Palamedes.CorrectGen
 import Palamedes.Total
 import Palamedes.Util
 
-section TypeDef
+namespace CedarMicro
+
 
 /-- Cedar-micro types. For V1 we cover just Bool and Int — the Cedar
     subset that exercises the generator-synthesis path without
@@ -35,9 +36,7 @@ inductive Ty : Type where
   | int
   deriving DecidableEq, Repr
 
-end TypeDef
 
-section BaseFunctor
 
 /-- Companion functor. `Ty` has no recursive constructors (bool / int
     are both nullary), so `TyF α` is trivially a copy of `Ty`. We still
@@ -60,9 +59,7 @@ theorem TyF_or
   | .bool => simp
   | .int => simp
 
-end BaseFunctor
 
-section RecursionSchemes
 
 /-- Fold scheme — no recursion since Ty is flat, so this is just a
     dispatch table. Kept for symmetry with Palamedes's convention. -/
@@ -82,9 +79,7 @@ def Ty.accuM [Monad m] {α σ : Type}
   | .bool => f_bool i
   | .int  => f_int i
 
-end RecursionSchemes
 
-section Palamedes
 
 /-- `Ty.as_or` — expresses `P t` for `t : Ty` as a disjunction indexed
     by the two constructors. Palamedes's Aesop rules pattern-match on
@@ -100,3 +95,5 @@ theorem Ty.deforest_eq {α : Type} {zb zi x : α} {τ : Ty} :
     Ty.fold zb zi τ = x ↔
     (zb = x ∧ τ = .bool) ∨ (zi = x ∧ τ = .int) := by
   cases τ <;> simp
+
+end CedarMicro
