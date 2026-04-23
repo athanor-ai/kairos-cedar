@@ -92,7 +92,7 @@ def isWellTyped (Γ : List Ty) (e : Expr) : Prop :=
 --      IO.println s!"sampled {es.length} well-typed expressions"
 --
 -- Reference: Palamedes/Data/STLC/Term.lean, ~1400 LOC total across
--- Ty + Term + Context. Port is tracked as ATH-512 subtask 1.
+-- Ty + Term + Context. See docs/ROADMAP.md for phased plan.
 
 /- example genWellTyped (goal shape for when scaffolding lands):
 attribute [local simp] Ty.as_or Ty.deforest_eq Expr.as_or Expr.deforest_eq in

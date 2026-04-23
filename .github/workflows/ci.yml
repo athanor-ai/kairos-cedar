@@ -6,8 +6,21 @@ on:
   pull_request:
 
 jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: run unit + hygiene tests
+        run: python3 -m unittest discover -v tests
+
   preflight:
     runs-on: ubuntu-latest
+    needs: unit-tests
     steps:
       - uses: actions/checkout@v4
         with:
@@ -20,8 +33,7 @@ jobs:
       - name: preflight --strict (warn-only gates surfaced)
         run: python3 scripts/preflight.py --strict || true
 
-  # Image build is off the free-tier runner (monolith is ~12 GB; the 7 GB
-  # RAM cap on GitHub's hosted Linux runner chokes on the Lean+Mathlib
-  # prewarm step). We build + push from a self-hosted runner in a
-  # separate workflow that runs on release tags only. For PRs, the
-  # preflight job above is the backstop.
+  # Image build + integration tests run on a self-hosted runner on
+  # release tags (the monolith is ~12 GB and the GitHub free-tier 7 GB
+  # RAM chokes on the Mathlib prewarm + cedar-spec SymCC proofs step).
+  # For PRs, the unit-tests + preflight jobs above are the backstop.
