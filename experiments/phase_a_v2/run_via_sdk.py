@@ -49,10 +49,18 @@ from kairos.generator_synthesize import (  # noqa: E402
 )
 from kairos.trace import NoopTraceSink, SupabaseTraceSink  # noqa: E402
 
-# Direct Azure-hosted Kimi K2.6 caller. Bypasses litellm's azure_ai/
-# provider mapping which currently mis-routes kimi-k2.6-1 to the
-# anthropic provider (ATH-528 fixed MODEL_PRICES; provider routing is
-# separate and ATH-539-eligible).
+# Route litellm's `openai/` provider at the Azure-hosted Kimi K2.6
+# endpoint. Same pattern as `evaluate.py` uses for `openai/kimi-k2.5`
+# and `openai/mistral-large-3` (the Azure endpoints speak the
+# OpenAI-compatible schema litellm's openai provider understands).
+# This replaces the urllib shim that was in place while investigating
+# ATH-539; the closing disposition on that ticket is "not a bug, use
+# openai/kimi-k2.6-1 not azure_ai/kimi-k2.6-1".
+if os.environ.get("KIMI_K26_API_KEY") and os.environ.get("KIMI_K26_API_BASE"):
+    os.environ.setdefault("OPENAI_API_KEY", os.environ["KIMI_K26_API_KEY"])
+    os.environ.setdefault("OPENAI_API_BASE", os.environ["KIMI_K26_API_BASE"])
+
+
 import json as _json
 import urllib.request as _urlreq
 
@@ -61,11 +69,12 @@ def _kimi_direct_llm_call(
     prompt: str, model: str,
     *, max_tokens: int = 32000, timeout_sec: int = 300,
 ) -> tuple[str, int, int, float]:
+    """Fallback urllib shim, retained for debugging the Azure endpoint
+    path when litellm's openai provider misbehaves. Unused by default
+    in v2; callers can pass llm_call=_kimi_direct_llm_call to opt in."""
     timeout = timeout_sec
     system = ""
     user = prompt
-    """Match the kairos.generator_synthesize llm_call contract:
-    returns (text, tokens_in, tokens_out, cost_usd)."""
     url = f"{os.environ['KIMI_K26_API_BASE']}/chat/completions?api-version=2024-05-01-preview"
     messages = []
     if system:
@@ -199,12 +208,11 @@ def main() -> int:
     t = time.monotonic()
     result = generator_synthesize(
         bundle,
-        model=os.environ.get("KIMI_K26_LITELLM_NAME", "azure_ai/kimi-k2.6-1"),
+        model=os.environ.get("KIMI_K26_LITELLM_NAME", "openai/kimi-k2.6-1"),
         max_iters=4,
         target_rejection_rate=0.1,
         n_samples=10,
         trace_sink=sink,
-        llm_call=_kimi_direct_llm_call,  # bypass litellm routing gap
         # NB: default sample_terms asks the LLM for samples alongside the
         # generator, which is fine for the V2 smoke. Native Lean sampling
         # via `lean_native_sampler` above is wired in for V2.1.
