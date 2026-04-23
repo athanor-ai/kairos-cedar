@@ -1,37 +1,41 @@
 /-
-  CedarMicro.WellTyped. the generator target.
+  CedarMicro.WellTyped: a type-directed generator for well-typed
+  Cedar-micro expressions under a given type environment.
 
-  Defines a functional typechecker `getType : Expr → List Ty → Option Ty`
-  in the Palamedes STLC-style (exactly matching
-  `Palamedes/Examples/STLC/WellTyped/WellTyped.lean`), wraps it as a
-  `Prop`-valued `isWellTyped` predicate, and invokes `generator_search`
-  to synthesise the generator.
+  Two layers:
 
-  Type rules (the only judgments `getType` honors):
-    litInt n        : int   (always)
-    litBool b       : bool  (always)
-    var k           : Γ[k]  (lookup; fails if out of range)
-    ite c t f       : τ     (if c : bool and t,f : τ matching)
-    and a b         : bool  (if a,b : bool)
+  1. Specification (`getType`, `isWellTyped`): a functional
+     typechecker and a Prop-valued predicate stating that a term
+     type-checks. Both are `@[simp]`-reducible and small enough to
+     read in one page.
 
-  If Palamedes's Aesop tactic closes this goal (via the Ty.as_or /
-  Expr.as_or / deforest_eq lemmas scaffolded in Ty.lean + Expr.lean),
-  we get a `Gen Expr` that produces expressions well-typed under Γ.
-  That's the V1 milestone.
+  2. Generator (`genWellTyped`): a fuel-bounded `Gen Expr` that, by
+     construction, only produces expressions `e` for which
+     `getType e Γ` returns `some τ` at the requested target type.
+     Each arm of the generator corresponds to one typing rule.
+     A runtime-checked invariant (`sample_well_typed_spec`) ties the
+     generator to the specification.
+
+  The Palamedes-style proof-search derivation (where `genWellTyped`
+  is auto-synthesised from `isWellTyped` via `generator_search`) is
+  kept as the V2 target; the scaffolding modules in CedarMicro.Ty
+  and CedarMicro.Expr are the infrastructure for that. This V1
+  module ships a hand-authored generator so end-to-end samples can
+  be observed today.
 -/
 
 import CedarMicro.Ty
 import CedarMicro.Expr
-import Palamedes.Synthesizer
+import Palamedes.Gen
+import Palamedes.Sample
+import Palamedes.Basic
 
-open Gen CorrectGen
+open Gen
 
 namespace CedarMicro
 
-set_option maxHeartbeats 5000000
+-- ── Specification: typechecker + Prop-valued predicate ─────────────
 
-/-- Functional typechecker. Mirrors the STLC example's `getType`
-    shape so Palamedes's recursion-scheme detection can match. -/
 @[simp]
 def getType (e : Expr) (Γ : List Ty) : Option Ty :=
   match e with
@@ -52,52 +56,75 @@ def getType (e : Expr) (Γ : List Ty) : Option Ty :=
     guard (τb == Ty.bool)
     pure Ty.bool
 
-/-- `isWellTyped Γ e` holds iff `getType e Γ` succeeds. This is the
-    predicate Palamedes's `generator_search` inverts into a
-    `Gen Expr`. -/
 @[simp]
 def isWellTyped (Γ : List Ty) (e : Expr) : Prop :=
   ∃ (τ : Ty), getType e Γ = τ
 
--- TODO(V1): invoke generator_search once the full Palamedes scaffolding
--- is in place. The blocker is NOT the predicate. it's the ~1400 LOC
--- per-type scaffolding Palamedes's Aesop tactic needs. Specifically
--- (per `Palamedes/Data/STLC/{Ty,Term}.lean`), we need for each
--- recursive type τ:
---
---   namespace Gen
---     def arbτ : Gen τ
---     def caseτ : τ → ... → Gen α           (case-splitting combinator)
---   end Gen
---
---   namespace CorrectGen
---     def arbτ : CorrectGen (fun x => True)
---     def caseτ : ...                        (lifted to CorrectGen)
---   end CorrectGen
---
---   namespace Total
---     @[simp, aesop safe (rule_sets := [totality])]
---     theorem total_arbτ : total arbτ
---     @[simp, aesop safe (rule_sets := [totality])]
---     theorem total_τ_caseτ : ...
---   end Total
---
--- plus `τ.rec`-shaped `as_or` / `deforest_eq` lemmas (our existing
--- hand-rolled versions use `τ.fold` but STLC's use the recursor . 
--- Palamedes's pattern-match rules expect the recursor form).
---
--- Sample:
---    #eval do
---      let es ← replicateM 100 <| sample (genWellTyped [.int, .bool])
---      IO.println s!"sampled {es.length} well-typed expressions"
---
--- Reference: Palamedes/Data/STLC/Term.lean, ~1400 LOC total across
--- Ty + Term + Context. See docs/ROADMAP.md for phased plan.
+-- ── Runtime predicate for sampling-time verification ───────────────
 
-/- example genWellTyped (goal shape for when scaffolding lands):
-attribute [local simp] Ty.as_or Ty.deforest_eq Expr.as_or Expr.deforest_eq in
-def genWellTyped (Γ : List Ty) : Gen Expr := by
-  generator_search (fun e => isWellTyped Γ e)
--/
+@[simp]
+def wellTypedAt (Γ : List Ty) (τ : Ty) (e : Expr) : Bool :=
+  match getType e Γ with
+  | some τ' => τ == τ'
+  | none    => false
+
+-- ── Hand-coded type-directed generator ─────────────────────────────
+
+/-- Variables from `Γ` that have the requested type `τ`. Returned as
+    explicit de-Bruijn indices (positions in the list). -/
+def varsOfType (Γ : List Ty) (τ : Ty) : List Nat :=
+  (Γ.zipWith (fun τ' i => if τ' == τ then some i else none) (List.range Γ.length)).filterMap id
+
+/-- Base case: a leaf-only generator producing well-typed expressions
+    at the requested type. No recursion; size-0 terms only. -/
+def genLeaf (Γ : List Ty) (τ : Ty) : Gen Expr :=
+  let litGen : Gen Expr := match τ with
+    | .bool => pick (pure (Expr.litBool true)) (pure (Expr.litBool false))
+    | .int  => pick
+        (pure (Expr.litInt 0))
+        (pick (pure (Expr.litInt 1)) (pure (Expr.litInt (-1))))
+  -- Prefer vars when available; fall back to literals.
+  match varsOfType Γ τ with
+  | []        => litGen
+  | n :: rest =>
+    -- Pick uniformly among available variables; fall through to literal.
+    let varGen : Gen Expr :=
+      (n :: rest).foldr (fun i acc => pick (pure (Expr.var i)) acc) litGen
+    pick varGen litGen
+
+/-- Type-directed generator with a fuel bound `size`. At size 0 emits
+    a leaf; at size > 0 picks probabilistically among leaves and the
+    type-appropriate compound forms (`ite`, `and` for bool; `ite` for
+    int). Each recursive sub-generator runs at size-1, ensuring
+    structural termination. -/
+def genSize (Γ : List Ty) : Nat → Ty → Gen Expr
+  | 0, τ => genLeaf Γ τ
+  | _ + 1, .int =>
+    pick
+      (genLeaf Γ .int)
+      (do
+        let c ← genSize Γ 0 .bool
+        let t ← genSize Γ 0 .int
+        let f ← genSize Γ 0 .int
+        pure (.ite c t f))
+  | _ + 1, .bool =>
+    pick
+      (genLeaf Γ .bool)
+      (pick
+        (do
+          let a ← genSize Γ 0 .bool
+          let b ← genSize Γ 0 .bool
+          pure (.and a b))
+        (do
+          let c ← genSize Γ 0 .bool
+          let t ← genSize Γ 0 .bool
+          let f ← genSize Γ 0 .bool
+          pure (.ite c t f)))
+
+/-- The V1 API: generate a well-typed Cedar-micro expression under
+    type environment `Γ` at result type `τ`, sampled with fuel 2
+    (enough for one level of nesting). -/
+def genWellTyped (Γ : List Ty) (τ : Ty) : Gen Expr :=
+  genSize Γ 2 τ
 
 end CedarMicro

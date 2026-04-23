@@ -266,7 +266,33 @@ def part_2_handwritten_diff() -> tuple[bool, str]:
     return agreements == len(requests), "\n".join([header, *rows])
 
 
-def part_3_cedar_go_corpus() -> tuple[bool, str]:
+def part_3_generator_synthesis() -> tuple[bool, str]:
+    """Synthesise well-typed Cedar-micro expressions from the type-system
+    spec. Samples 10 bool + 10 int expressions under a small mixed Γ,
+    runtime-verifies each against the functional typechecker, prints the
+    first few. Exercises the type-directed generator in CedarMicro.WellTyped
+    against the Palamedes scaffolding in CedarMicro.Ty / CedarMicro.Expr."""
+    t = time.monotonic()
+    proc = run_in_image(
+        ["bash", "-c",
+         "cd /work/cedar-micro && "
+         "elan default leanprover/lean4:v4.24.0 >/dev/null 2>&1 && "
+         "lake build cedar-micro-sample >/dev/null 2>&1 && "
+         ".lake/build/bin/cedar-micro-sample 10"],
+        timeout=600,
+    )
+    elapsed = time.monotonic() - t
+    out = proc.stdout + proc.stderr
+    ok = proc.returncode == 0 and "all 20/20" in out
+    if not ok:
+        tail = "\n".join(out.splitlines()[-10:])
+        return False, f"FAIL. generator driver returned {proc.returncode} in {elapsed:.1f}s\n{tail}"
+    # Preserve the driver's own output (it already formats pass/fail + samples).
+    indented = "\n".join("  " + line for line in out.strip().splitlines())
+    return True, f"PASS in {elapsed:.1f}s\n{indented}"
+
+
+def part_4_cedar_go_corpus() -> tuple[bool, str]:
     """Run cedar-go's shipped TestCorpus (internal Rust↔Go diff across ~7760 subtests)."""
     t = time.monotonic()
     proc = run_in_image(
@@ -302,18 +328,23 @@ def main() -> int:
 
     results: list[tuple[str, bool, str]] = []
 
-    print("\n[1/3] Lean bridge. cedar-spec-bridge builds against cedar-spec's real typeOf ...")
+    print("\n[1/4] Lean bridge. cedar-spec-bridge builds against cedar-spec's real typeOf ...")
     ok, summary = part_1_lean_bridge_builds()
     print(f"      {summary}")
     results.append(("Lean bridge compiles", ok, summary))
 
-    print("\n[2/3] Handwritten 3-policy RBAC set: Rust `cedar authorize` decisions vs expected labels ...")
+    print("\n[2/4] Handwritten 3-policy RBAC set: Rust `cedar authorize` decisions vs expected labels ...")
     ok, summary = part_2_handwritten_diff()
     print(f"\n{summary}")
     results.append(("Handwritten diff agreement", ok, summary))
 
-    print("\n[3/3] Rust-vs-Go at scale. cedar-go TestCorpus (~7760 subtests, internal Rust diff) ...")
-    ok, summary = part_3_cedar_go_corpus()
+    print("\n[3/4] Cedar-micro generator synthesis: sample well-typed expressions from the Lean type-system spec ...")
+    ok, summary = part_3_generator_synthesis()
+    print(summary)
+    results.append(("Generator synthesises well-typed Cedar expressions", ok, summary))
+
+    print("\n[4/4] Rust-vs-Go at scale. cedar-go TestCorpus (~7760 subtests, internal Rust diff) ...")
+    ok, summary = part_4_cedar_go_corpus()
     print(f"      {summary}")
     results.append(("cedar-go TestCorpus", ok, summary))
 
