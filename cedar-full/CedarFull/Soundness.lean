@@ -141,6 +141,74 @@ theorem genLeaf_sound (env : TypeEnv) (τ : CedarType) (e : Expr)
   · exact litGen_sound env τ e hlit
 
 -- ────────────────────────────────────────────────────────────────────
+-- Step 3b: capability-independent typing for genLeaf outputs.
+--
+-- genLeaf env (.bool .anyBool) produces only bool literals
+-- (.lit (.bool true) or .lit (.bool false)), whose typeOf result
+-- does not depend on the input capability set.  This lets us discharge
+-- the `typeOf t (c ∪ c₁) env` goal that appears in typeOfIf's .tt branch
+-- by folding c₁ = [] (the empty output capabilities of a bool literal).
+-- ────────────────────────────────────────────────────────────────────
+
+/-- varsOfType env (.bool .anyBool) is always empty: no Cedar Var has bool type. -/
+private theorem varsOfType_boolAnyBool_empty (env : TypeEnv) :
+    varsOfType env (.bool .anyBool) = [] := by
+  simp only [varsOfType]
+  -- .bool .anyBool ≠ .entity _, .entity _, .entity _, .record _ for any env
+  have h1 : (.bool .anyBool : CedarType) ≠ .entity env.reqty.principal := by simp
+  have h2 : (.bool .anyBool : CedarType) ≠ .entity env.reqty.action.ty := by simp
+  have h3 : (.bool .anyBool : CedarType) ≠ .entity env.reqty.resource := by simp
+  have h4 : (.bool .anyBool : CedarType) ≠ .record env.reqty.context := by simp
+  simp [h1, h2, h3, h4]
+
+/-- Bool-literal membership in support (genLeaf env (.bool .anyBool)).
+    varsOfType never returns a bool-typed var (all four Cedar Var
+    constructors have entity or record type), so the only outputs are
+    the two bool lits. -/
+private theorem genLeaf_boolAnyBool_is_lit (env : TypeEnv) (c : Expr)
+    (h : Gen.support (genLeaf env (.bool .anyBool)) c) :
+    c = .lit (.bool true) ∨ c = .lit (.bool false) := by
+  simp only [genLeaf, Gen.support, Gen.pick, varGen, litGen,
+             Gen.ret, Pure.pure, List.mem_append,
+             List.mem_cons, List.mem_nil_iff, false_or, or_false,
+             varsOfType_boolAnyBool_empty, List.map_nil] at h
+  -- h is now: c = .lit (.bool true) ∨ c = .lit (.bool false)
+  rcases h with rfl | rfl
+  · exact Or.inl rfl
+  · exact Or.inr rfl
+
+/-- If `c` is a bool literal, `t` and `f` type-check under `env`, then
+    `.ite c t f` type-checks under `env`.  Used to close the `.entity .ite`
+    arm of `genSize_sound`. -/
+private theorem wellTypedAt_ite_of_boolLit (env : TypeEnv) (c t f : Expr)
+    (hclit : c = .lit (.bool true) ∨ c = .lit (.bool false))
+    (ht : wellTypedAt env t = true)
+    (hf : wellTypedAt env f = true) :
+    wellTypedAt env (.ite c t f) = true := by
+  -- Extract .ok witnesses from wellTypedAt hypotheses
+  simp only [wellTypedAt] at ht hf ⊢
+  -- wellTypedAt env t = true means typeOf t [] env = .ok _
+  have ⟨resTok_t, heqt⟩ : ∃ res, typeOf t [] env = .ok res := by
+    revert ht; cases h : typeOf t [] env <;> simp
+  have ⟨resTok_f, heqf⟩ : ∃ res, typeOf f [] env = .ok res := by
+    revert hf; cases h : typeOf f [] env <;> simp
+  -- Case-split on c being true-lit or false-lit
+  rcases hclit with rfl | rfl
+  · -- c = .lit (.bool true):
+    --   typeOf (.lit (.bool true)) [] env = .ok (TypedExpr.lit (.bool true) (.bool .tt), [])
+    --   typeOfIf dispatches on .bool .tt → uses then-branch only, no lub needed
+    -- Show [] ∪ ∅ = [] so typeOf t can be applied with heqt
+    have hcap : ([] : Capabilities) ∪ ∅ = [] := by simp [List.union_def]
+    simp only [Cedar.Validation.typeOf, Cedar.Validation.typeOfLit, Cedar.Validation.ok,
+               Function.comp_apply, Except.bind_ok, Cedar.Validation.typeOfIf,
+               TypedExpr.typeOf, hcap, heqt]
+  · -- c = .lit (.bool false):
+    --   typeOfIf dispatches on .bool .ff → uses else-branch only, no lub needed
+    simp only [Cedar.Validation.typeOf, Cedar.Validation.typeOfLit, Cedar.Validation.ok,
+               Function.comp_apply, Except.bind_ok, Cedar.Validation.typeOfIf,
+               TypedExpr.typeOf, heqf]
+
+-- ────────────────────────────────────────────────────────────────────
 -- Step 4: genSize soundness by induction on fuel.
 -- ────────────────────────────────────────────────────────────────────
 
@@ -204,8 +272,17 @@ theorem genSize_sound :
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env (.entity ety) e hleaf)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- TODO: typeOfIf inversion for entity type.
-        sorry
+        -- c comes from genSize env 0 (.bool .anyBool) = genLeaf env (.bool .anyBool)
+        -- which only produces .lit (.bool true) or .lit (.bool false).
+        -- Unfold fuel-0 genSize calls to genLeaf (definitionally equal).
+        have hc2 : Gen.support (genLeaf env (.bool .anyBool)) c := hc
+        have ht2 : Gen.support (genLeaf env (.entity ety)) t := ht
+        have hf2 : Gen.support (genLeaf env (.entity ety)) f := hf
+        have hclit := genLeaf_boolAnyBool_is_lit env c hc2
+        have ht'   := genLeaf_sound env (.entity ety) t ht2
+        have hf'   := genLeaf_sound env (.entity ety) f hf2
+        exact wellTypedAt_imp_isWellTyped env (.ite c t f)
+          (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
     -- ── .set (Phase B, future work) ────────────────────────────────────
     | set ty =>
       simp only [genSize] at hmem
