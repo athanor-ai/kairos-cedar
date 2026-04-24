@@ -241,8 +241,16 @@ theorem genSize_sound :
         -- TODO: typeOfOr inversion lemma.
         sorry
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- TODO: typeOfIf inversion lemma.
-        sorry
+        -- c comes from genSize env 0 (.bool .anyBool) = genLeaf env (.bool .anyBool)
+        -- which only produces .lit (.bool true) or .lit (.bool false).
+        have hc2 : Gen.support (genLeaf env (.bool .anyBool)) c := hc
+        have ht2 : Gen.support (genLeaf env (.bool bty)) t := ht
+        have hf2 : Gen.support (genLeaf env (.bool bty)) f := hf
+        have hclit := genLeaf_boolAnyBool_is_lit env c hc2
+        have ht'   := genLeaf_sound env (.bool bty) t ht2
+        have hf'   := genLeaf_sound env (.bool bty) f hf2
+        exact wellTypedAt_imp_isWellTyped env (.ite c t f)
+          (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
     -- ── .int ───────────────────────────────────────────────────────
     | int =>
       simp only [genSize] at hmem
