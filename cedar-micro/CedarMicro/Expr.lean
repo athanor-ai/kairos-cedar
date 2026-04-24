@@ -265,12 +265,16 @@ theorem Expr.support_unfold {α : Type} {f : α → Gen (ExprF α)} {x : α} :
       exists 1
       exists ExprF.var n
   case ite c t f ihc iht ihf =>
-    -- TODO(paper §5.2): ternary recursive case. Structurally parallels the
-    -- binary `.and` case below (see palamedes-lean STLC app case for
-    -- template) but with three sub-terms and three fuel-budget bindings.
-    -- Paused at a Nat-arithmetic rewrite (nc+nt+nf vs nf+(nc+nt)) that
-    -- `ring` does not dispatch in the current 4.24 toolchain; follow-up
-    -- will use omega + unfold_aux_monotonic composition.
+    -- TODO(paper §5.2): ternary recursive case. Forward direction
+    -- mirrors the `.and` arm one level deeper (3 binds instead of 2).
+    -- Backward direction needs to bump three sub-term fuel budgets to
+    -- a common N = nc+nt+nf via `Expr.unfold_aux_monotonic`. The
+    -- bookkeeping that closes for binary (one `rw [Nat.add_comm]`)
+    -- needs two rewrites here, and the Lean 4.24 toolchain in-container
+    -- lacks `ring`/`unfold_let`. Follow-up closes via three explicit
+    -- `Expr.unfold_aux_monotonic` applications with `omega`-produced
+    -- equalities, once an interactive session can step through the goal
+    -- rewrites.
     sorry
   case and a b iha ihb =>
     apply Iff.intro
