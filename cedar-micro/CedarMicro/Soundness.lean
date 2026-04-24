@@ -117,6 +117,48 @@ theorem genLeaf_sound (Γ : List Ty) (τ : Ty) (e : Expr) :
 -- Step 3: `genSize` soundness by induction on fuel.
 -- ────────────────────────────────────────────────────────────────────
 
+/-- Helper: if every component of an `.ite` type-checks at the
+    expected position, the whole `.ite` type-checks at the result
+    type. Used to discharge the `.ite` arm of `genSize_sound`. -/
+private theorem wellTypedAt_ite (Γ : List Ty) (τ : Ty) (c t f : Expr)
+    (hc : wellTypedAt Γ .bool c = true)
+    (ht : wellTypedAt Γ τ t = true)
+    (hf : wellTypedAt Γ τ f = true) :
+    wellTypedAt Γ τ (.ite c t f) = true := by
+  simp only [wellTypedAt] at hc ht hf ⊢
+  cases hgc : getType c Γ with
+  | none => simp [hgc] at hc
+  | some τc =>
+    cases hgt : getType t Γ with
+    | none => simp [hgt] at ht
+    | some τt =>
+      cases hgf : getType f Γ with
+      | none => simp [hgf] at hf
+      | some τf =>
+        simp [hgc, hgt, hgf] at hc ht hf
+        cases hc  -- τc = .bool
+        cases ht  -- τt = τ
+        cases hf  -- τf = τ
+        simp [getType, hgc, hgt, hgf]
+
+/-- Helper: both components of an `.and` at `.bool` yield a well-typed
+    `.and` at `.bool`. -/
+private theorem wellTypedAt_and (Γ : List Ty) (a b : Expr)
+    (ha : wellTypedAt Γ .bool a = true)
+    (hb : wellTypedAt Γ .bool b = true) :
+    wellTypedAt Γ .bool (.and a b) = true := by
+  simp only [wellTypedAt] at ha hb ⊢
+  cases hga : getType a Γ with
+  | none => simp [hga] at ha
+  | some τa =>
+    cases hgb : getType b Γ with
+    | none => simp [hgb] at hb
+    | some τb =>
+      simp [hga, hgb] at ha hb
+      cases ha
+      cases hb
+      simp [getType, hga, hgb]
+
 theorem genSize_sound :
     ∀ (Γ : List Ty) (n : Nat) (τ : Ty) (e : Expr),
       _root_.Gen.support (genSize Γ n τ) e → wellTypedAt Γ τ e = true := by
@@ -124,19 +166,38 @@ theorem genSize_sound :
   induction n with
   | zero =>
     intro τ e hmem
-    -- genSize Γ 0 τ = genLeaf Γ τ; reduce via genLeaf_sound.
     simp [genSize] at hmem
     exact genLeaf_sound Γ τ e hmem
-  | succ n ih =>
+  | succ n _ih =>
+    -- The succ arms only recurse at fuel 0 (genSize Γ 0 _ = genLeaf Γ _),
+    -- so the ih is not needed. Each arm is a `pick` of `genLeaf` with a
+    -- bind-chain producing a compound form. Dispatch via genLeaf_sound +
+    -- the wellTypedAt_ite / wellTypedAt_and helpers.
     intro τ e hmem
-    -- At fuel n+1, τ ∈ {bool, int}; each arm is a pick whose two
-    -- sides are (genLeaf Γ τ) or a bind producing a recursive form.
-    -- The recursive form's support lifts by Palamedes's
-    -- `support_bind`, and each inner call sits at fuel 0, which
-    -- falls under Step 2.
-    -- TODO(paper §5.1): discharge via support_pick + support_bind +
-    -- ih applied to each recursive call.
-    sorry
+    cases τ with
+    | int =>
+      simp only [genSize, Gen.Support.support_pick, Gen.Support.support_bind,
+                 Gen.Support.support_pure] at hmem
+      rcases hmem with hleaf | ⟨c, hc, t, ht, f, hf, rfl⟩
+      · exact genLeaf_sound Γ .int e hleaf
+      · have hc' := genLeaf_sound Γ .bool c (by simpa [genSize] using hc)
+        have ht' := genLeaf_sound Γ .int t (by simpa [genSize] using ht)
+        have hf' := genLeaf_sound Γ .int f (by simpa [genSize] using hf)
+        exact wellTypedAt_ite Γ .int c t f hc' ht' hf'
+    | bool =>
+      simp only [genSize, Gen.Support.support_pick, Gen.Support.support_bind,
+                 Gen.Support.support_pure] at hmem
+      rcases hmem with hleaf | hand | hite
+      · exact genLeaf_sound Γ .bool e hleaf
+      · obtain ⟨a, ha, b, hb, rfl⟩ := hand
+        have ha' := genLeaf_sound Γ .bool a (by simpa [genSize] using ha)
+        have hb' := genLeaf_sound Γ .bool b (by simpa [genSize] using hb)
+        exact wellTypedAt_and Γ a b ha' hb'
+      · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
+        have hc' := genLeaf_sound Γ .bool c (by simpa [genSize] using hc)
+        have ht' := genLeaf_sound Γ .bool t (by simpa [genSize] using ht)
+        have hf' := genLeaf_sound Γ .bool f (by simpa [genSize] using hf)
+        exact wellTypedAt_ite Γ .bool c t f hc' ht' hf'
 
 -- ────────────────────────────────────────────────────────────────────
 -- Step 4: the paper's main soundness theorem.
