@@ -1,0 +1,37 @@
+[exp 2 LM+palamedes] trace sink = SupabaseTraceSink
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (735d701b-b5d6-4180-a2e2-074ba60095b5, 80ad0d93-a608-404c-8e07-7ff3dfb4b71a, 80ad0d93-a608-404c-8e07-7ff3dfb4b71a, sdk_orchestration, generator_synthesi
+[palamedes sampler] error: lake build CedarMicro.GenLLM_V2 failed (exit=1)
+ar-micro/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.24.0/bin/lean /work/cedar-micro/CedarMicro/GenLLM_V2.lean -o /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM_V2.olean -i /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM_V2.ilean -c /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM_V2.c --setup /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM_V2.setup.json --json
+error: CedarMicro/GenLLM_V2.lean:1:0: unexpected token '`'; expected command
+error: Lean exited with code 1
+Some required targets logged failures:
+- CedarMicro.GenLLM_V2
+
+error: build failed
+
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (0473d347-eab7-4bf3-a731-301b5d6ebb68, 80ad0d93-a608-404c-8e07-7ff3dfb4b71a, 80ad0d93-a608-404c-8e07-7ff3dfb4b71a, sdk_orchestration, generator_synthesi
+[palamedes sampler] error: lake build CedarMicro.GenLLM_V2 failed (exit=1)
+ar-micro/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.24.0/bin/lean /work/cedar-micro/CedarMicro/GenLLM_V2.lean -o /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM_V2.olean -i /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM_V2.ilean -c /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM_V2.c --setup /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM_V2.setup.json --json
+error: CedarMicro/GenLLM_V2.lean:1:0: unexpected token '`'; expected command
+error: Lean exited with code 1
+Some required targets logged failures:
+- CedarMicro.GenLLM_V2
+
+error: build failed
+
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (86bce906-1410-4365-b156-8055674a34b0, 80ad0d93-a608-404c-8e07-7ff3dfb4b71a, 80ad0d93-a608-404c-8e07-7ff3dfb4b71a, sdk_orchestration, generator_synthesi
+[palamedes sampler] error: lake build CedarMicro.GenLLM_V2 failed (exit=1)
+ar-micro/.lake/build/lib/lean /opt/elan/toolchains/leanprover--lean4---v4.24.0/bin/lean /work/cedar-micro/CedarMicro/GenLLM_V2.lean -o /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM_V2.olean -i /work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM_V2.ilean -c /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM_V2.c --setup /work/cedar-micro/.lake/build/ir/CedarMicro/GenLLM_V2.setup.json --json
+error: CedarMicro/GenLLM_V2.lean:1:0: unexpected token '`'; expected command
+error: Lean exited with code 1
+Some required targets logged failures:
+- CedarMicro.GenLLM_V2
+
+error: build failed
+
+[exp 2] session_id=80ad0d93-a608-404c-8e07-7ff3dfb4b71a
+[exp 2] iterations=3
+[exp 2] converged=False
+[exp 2] final_rejection_rate=1.0
+[exp 2] elapsed_sec=57.0
+[exp 2] total_cost_usd=0.0263

@@ -1,0 +1,10 @@
+[exp 2 LM+palamedes] trace sink = SupabaseTraceSink
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (63d2acc7-fc70-45f9-baef-d8278233e996, def7c6ce-2521-4568-ad72-ff4a540278fd, def7c6ce-2521-4568-ad72-ff4a540278fd, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (75df9636-7281-4ffc-968f-0101fab9ea50, def7c6ce-2521-4568-ad72-ff4a540278fd, def7c6ce-2521-4568-ad72-ff4a540278fd, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (80d77ce8-19c3-42be-b0d8-08ecf3355c47, def7c6ce-2521-4568-ad72-ff4a540278fd, def7c6ce-2521-4568-ad72-ff4a540278fd, sdk_orchestration, generator_synthesi
+[exp 2] session_id=def7c6ce-2521-4568-ad72-ff4a540278fd
+[exp 2] iterations=3
+[exp 2] converged=False
+[exp 2] final_rejection_rate=1.0
+[exp 2] elapsed_sec=77.3
+[exp 2] total_cost_usd=0.0270

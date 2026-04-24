@@ -1,0 +1,31 @@
+[exp 2 LM+palamedes] trace sink = SupabaseTraceSink
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (9f0a2e04-3f12-40bb-be25-3b9bc08820fd, 28147402-34e1-4a18-b977-0a5a172c049c, 28147402-34e1-4a18-b977-0a5a172c049c, sdk_orchestration, generator_synthesi
+[palamedes sampler] error: lake env lean --run _KairosSample.lean failed (exit=1)
+_KairosSample.lean:5:22: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+_KairosSample.lean:5:116: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+_KairosSample.lean:5:53: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.genWellTyped`
+_KairosSample.lean:5:22: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+
+
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (a8a113ca-8e97-493c-9469-7487fb706f69, 28147402-34e1-4a18-b977-0a5a172c049c, 28147402-34e1-4a18-b977-0a5a172c049c, sdk_orchestration, generator_synthesi
+[palamedes sampler] error: lake env lean --run _KairosSample.lean failed (exit=1)
+_KairosSample.lean:5:22: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+_KairosSample.lean:5:116: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+_KairosSample.lean:5:53: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.genWellTyped`
+_KairosSample.lean:5:22: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+
+
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (7823d62e-0d0d-4b18-990e-0fd52f034ac0, 28147402-34e1-4a18-b977-0a5a172c049c, 28147402-34e1-4a18-b977-0a5a172c049c, sdk_orchestration, generator_synthesi
+[palamedes sampler] error: lake env lean --run _KairosSample.lean failed (exit=1)
+_KairosSample.lean:5:22: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+_KairosSample.lean:5:116: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+_KairosSample.lean:5:53: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.genWellTyped`
+_KairosSample.lean:5:22: error(lean.unknownIdentifier): Unknown identifier `CedarMicro.Expr`
+
+
+[exp 2] session_id=28147402-34e1-4a18-b977-0a5a172c049c
+[exp 2] iterations=3
+[exp 2] converged=False
+[exp 2] final_rejection_rate=1.0
+[exp 2] elapsed_sec=80.4
+[exp 2] total_cost_usd=0.0280

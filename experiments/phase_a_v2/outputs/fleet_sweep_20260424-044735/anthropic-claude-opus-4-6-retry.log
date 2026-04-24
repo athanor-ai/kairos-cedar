@@ -1,0 +1,46 @@
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (c31609c3-de1e-429c-9b8c-f0c090271108, 2284b6ea-604a-4dd2-b756-6b821240a1ae, 2284b6ea-604a-4dd2-b756-6b821240a1ae, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (70474726-8a3c-412b-8806-dddd143e9820, 2284b6ea-604a-4dd2-b756-6b821240a1ae, 2284b6ea-604a-4dd2-b756-6b821240a1ae, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (f667dcb1-1cb4-4bce-91d6-1ffdcd78a179, 2284b6ea-604a-4dd2-b756-6b821240a1ae, 2284b6ea-604a-4dd2-b756-6b821240a1ae, sdk_orchestration, generator_synthesi
+[exp 2 LM+palamedes] trace sink = SupabaseTraceSink
+[exp 2 LM+palamedes] model = anthropic/claude-opus-4-6
+[exp 2] model=anthropic/claude-opus-4-6
+[exp 2] session_id=2284b6ea-604a-4dd2-b756-6b821240a1ae
+[exp 2] iterations=3
+[exp 2] converged=False
+[exp 2] final_rejection_rate=None
+[exp 2] elapsed_sec=81.5
+[exp 2] total_cost_usd=0.0808
+[exp 2] iter=0 sampled=0 rejected=0 rate=None cost=$0.0290
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:10:14: error(lean.unknownIdentifier): Unknown constant `Gen.bool`
+_KairosSample.lean:13:14: error(lean.unknownIdentifier): Unknown constant `Gen.range`
+_KairosSample.lean:17:15: error(lean.unknownIdentifier): Unknown constant `Gen.oneOf`
+_KairosSample.lean:24:14: error(lean.unknownIdentifier): Unknown constant `Gen.oneOf`
+
+
+[exp 2] iter=1 sampled=0 rejected=0 rate=None cost=$0.0240
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:6:2: error(lean.unknownIdentifier): Unknown constant `Gen.oneOf`
+
+
+[exp 2] iter=2 sampled=0 rejected=0 rate=None cost=$0.0278
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:11:18: error: Ambiguous term
+  Ty
+Possible interpretations:
+  _root_.Ty : Type
+  
+  CedarMicro.Ty : Type
+_KairosSample.lean:44:17: error(lean.unknownIdentifier): Unknown identifier `chooseNat`
+_KairosSample.lean:46:13: error(lean.unknownIdentifier): Unknown identifier `chooseNat`
+_KairosSample.lean:50:53: error: Ambiguous term
+  genWellTyped
+Possible interpretations:
+  _root_.genWellTyped [Ty.int, Ty.bool, Ty.int] Ty.bool : Gen Expr
+  
+  CedarMicro.genWellTyped [Ty.int, Ty.bool, Ty.int] Ty.bool : Gen Expr
+
+

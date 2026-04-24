@@ -1,0 +1,39 @@
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (97ad04d2-6c77-4503-895d-4f632b728109, e227949b-09ba-4e17-b61d-be1cfb65e061, e227949b-09ba-4e17-b61d-be1cfb65e061, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (d73e9b21-d399-4e2c-bc2c-cfdd8d9473d3, e227949b-09ba-4e17-b61d-be1cfb65e061, e227949b-09ba-4e17-b61d-be1cfb65e061, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (1a519bdd-0f4a-41a3-af92-23b048923719, e227949b-09ba-4e17-b61d-be1cfb65e061, e227949b-09ba-4e17-b61d-be1cfb65e061, sdk_orchestration, generator_synthesi
+[exp 2 LM+palamedes] trace sink = SupabaseTraceSink
+[exp 2 LM+palamedes] model = anthropic/claude-sonnet-4-6
+[exp 2] model=anthropic/claude-sonnet-4-6
+[exp 2] session_id=e227949b-09ba-4e17-b61d-be1cfb65e061
+[exp 2] iterations=3
+[exp 2] converged=False
+[exp 2] final_rejection_rate=None
+[exp 2] elapsed_sec=74.2
+[exp 2] total_cost_usd=0.0246
+[exp 2] iter=0 sampled=0 rejected=0 rate=None cost=$0.0121
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:7:4: error(lean.unknownIdentifier): Unknown constant `Gen.map`
+_KairosSample.lean:12:6: error(lean.unknownIdentifier): Unknown constant `Gen.oneOf`
+_KairosSample.lean:22:25: error: Application type mismatch: The argument
+  ℕ
+has type
+  Type
+of sort `Type 1` but is expected to have type
+  ℕ
+of sort `Type` in the application
+  @Gen.choose ℕ
+
+
+[exp 2] iter=1 sampled=0 rejected=0 rate=None cost=$0.0069
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:6:15: error(lean.unknownIdentifier): Unknown constant `Gen.chooseNat`
+
+
+[exp 2] iter=2 sampled=0 rejected=0 rate=None cost=$0.0056
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:6:10: error(lean.unknownIdentifier): Unknown constant `Gen.bool`
+
+

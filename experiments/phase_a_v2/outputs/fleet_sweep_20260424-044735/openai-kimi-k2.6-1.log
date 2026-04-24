@@ -1,0 +1,57 @@
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (0fb74a69-39c1-4135-8078-e996270ac542, 9ffaf0c1-ae39-46d2-ac29-88fd0d159988, 9ffaf0c1-ae39-46d2-ac29-88fd0d159988, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (0eb4f754-7796-4f4d-9a87-2f09228f2773, 9ffaf0c1-ae39-46d2-ac29-88fd0d159988, 9ffaf0c1-ae39-46d2-ac29-88fd0d159988, sdk_orchestration, generator_synthesi
+SupabaseTraceSink._post_upsert(table=sdk_agent_events) HTTP 400 — journalling for replay: {"code":"23514","details":"Failing row contains (84e2078c-d499-4532-91ef-950bc6bc8f91, 9ffaf0c1-ae39-46d2-ac29-88fd0d159988, 9ffaf0c1-ae39-46d2-ac29-88fd0d159988, sdk_orchestration, generator_synthesi
+[exp 2 LM+palamedes] trace sink = SupabaseTraceSink
+[exp 2 LM+palamedes] model = openai/kimi-k2.6-1
+[exp 2] model=openai/kimi-k2.6-1
+[exp 2] session_id=9ffaf0c1-ae39-46d2-ac29-88fd0d159988
+[exp 2] iterations=3
+[exp 2] converged=False
+[exp 2] final_rejection_rate=None
+[exp 2] elapsed_sec=337.3
+[exp 2] total_cost_usd=0.0076
+[exp 2] iter=0 sampled=0 rejected=0 rate=None cost=$0.0000
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:11:14: error(lean.unknownIdentifier): Unknown identifier `choose`
+_KairosSample.lean:12:12: error: Invalid field notation: Type is not of the form `C ...` where C is a constant
+  Expr
+has type
+  Type
+_KairosSample.lean:14:14: error(lean.unknownIdentifier): Unknown identifier `choose`
+_KairosSample.lean:6:2: error(lean.unknownIdentifier): Unknown identifier `sized`
+_KairosSample.lean:17:19: error: Invalid field notation: Type is not of the form `C ...` where C is a constant
+  Expr
+has type
+  Type
+_KairosSample.lean:18:19: error: Invalid field notation: Type is not of the form `C ...` where C is a constant
+  Expr
+has type
+  Type
+_KairosSample.lean:19:50: error: Invalid field notation: Type is not of the form `C ...` where C is a constant
+  Expr
+has type
+  Type
+_KairosSample.lean:20:50: error: Invalid field notation: Type is not of the form `C ...` where C is a constant
+  Expr
+has type
+  Type
+_KairosSample.lean:21:61: error: Invalid field notation: Type is not of the form `C ...` where C is a constant
+  Expr
+has type
+  Type
+
+
+[exp 2] iter=1 sampled=0 rejected=0 rate=None cost=$0.0000
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:6:2: error(lean.unknownIdentifier): Unknown identifier `oneOf`
+
+
+[exp 2] iter=2 sampled=0 rejected=0 rate=None cost=$0.0076
+  sample_terms_error: lake env lean --run _KairosSample.lean failed (exit=1)
+  sample_terms_stdout_tail[-1200]:
+_KairosSample.lean:6:15: error(lean.unknownIdentifier): Unknown constant `Gen.chooseNat`
+_KairosSample.lean:11:12: error(lean.unknownIdentifier): Unknown constant `Gen.chooseNat`
+
+
