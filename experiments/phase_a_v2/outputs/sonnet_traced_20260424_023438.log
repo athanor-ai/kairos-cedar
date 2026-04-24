@@ -1,0 +1,6 @@
+[sonnet traced] trace sink = SupabaseTraceSink
+[sonnet traced] iterations=3
+[sonnet traced] converged=False
+[sonnet traced] final_rejection_rate=1.0
+[sonnet traced] elapsed_sec=30.6
+[sonnet traced] total_cost_usd=0.0249

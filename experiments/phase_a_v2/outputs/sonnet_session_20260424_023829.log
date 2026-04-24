@@ -1,0 +1,11 @@
+[sonnet traced] trace sink = SupabaseTraceSink
+Traceback (most recent call last):
+  File "/home/azureuser/agents/platform/kairos-cedar/experiments/phase_a_v2/run_sonnet_traced.py", line 86, in <module>
+    sys.exit(main())
+  File "/home/azureuser/agents/platform/kairos-cedar/experiments/phase_a_v2/run_sonnet_traced.py", line 60, in main
+    with kairos_session(
+  File "/usr/lib/python3.10/contextlib.py", line 281, in helper
+    return _GeneratorContextManager(func, args, kwds)
+  File "/usr/lib/python3.10/contextlib.py", line 103, in __init__
+    self.gen = func(*args, **kwds)
+TypeError: session() got an unexpected keyword argument 'task'
