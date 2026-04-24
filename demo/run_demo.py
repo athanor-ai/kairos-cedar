@@ -66,6 +66,9 @@ def run_in_image(cmd: list[str], *, workdir: str = "/work", timeout: int = 600) 
 
 def part_1_lean_bridge_builds() -> tuple[bool, str]:
     """lake build the cedar-spec-bridge project; expect green."""
+    print("      What this proves: our Lean wrapper `isWellTyped` compiles against")
+    print("      cedar-policy's upstream mechanised typechecker. If this builds,")
+    print("      the formal bridge is intact and tracks cedar-spec HEAD.")
     t = time.monotonic()
     proc = run_in_image(
         ["bash", "-c", "cd /work/cedar-spec-bridge && lake update -q && lake build"],
@@ -78,7 +81,19 @@ def part_1_lean_bridge_builds() -> tuple[bool, str]:
         tail = "\n".join(out.splitlines()[-12:])
         return False, f"FAIL. lake build returned {proc.returncode} in {elapsed:.1f}s\n{tail}"
     jobs_line = next((l for l in out.splitlines() if "Build completed successfully" in l), "")
-    return True, f"PASS. {jobs_line.strip()} in {elapsed:.1f}s"
+    # Surface the predicate definition so the viewer sees what compiled.
+    bridge_src = REPO_ROOT / "cedar-spec-bridge" / "CedarBridge" / "Predicates.lean"
+    bridge_snippet = ""
+    if bridge_src.exists():
+        lines = bridge_src.read_text().splitlines()
+        for i, line in enumerate(lines):
+            if "isWellTyped" in line and "def" in line:
+                bridge_snippet = "\n      " + "\n      ".join(lines[i:i + 3]).strip()
+                break
+    return True, (
+        f"PASS. {jobs_line.strip()} in {elapsed:.1f}s\n"
+        f"      The predicate that just compiled:{bridge_snippet}"
+    )
 
 
 def _run_rust_authorize(policy: Path, schema: Path, entities: Path, request: dict[str, Any]) -> str:
@@ -231,6 +246,14 @@ def part_2_handwritten_diff() -> tuple[bool, str]:
     each decision matches the expected label. Concise readable policies,
     deterministic, fast. The Rust-vs-Go differential signal lives in Part 3
     (which drives ~7760 corpus subtests against both implementations)."""
+    print("      What this proves: the production Rust evaluator decides each")
+    print("      of 6 realistic authorisation questions exactly as a human reader")
+    print("      of the policy would expect. Policies live in demo/fixtures/.")
+    # Surface the policy set so the viewer sees what's being evaluated.
+    policy_text = (FIXTURES / "policy.cedar").read_text()
+    print("      Policy set under test:")
+    for line in policy_text.splitlines():
+        print(f"        {line}")
     t = time.monotonic()
     requests = [
         json.loads(line)
@@ -284,6 +307,13 @@ def part_3_generator_synthesis() -> tuple[bool, str]:
     runtime-verifies each against the functional typechecker, prints the
     first few. Exercises the type-directed generator in CedarMicro.WellTyped
     against the Palamedes scaffolding in CedarMicro.Ty / CedarMicro.Expr."""
+    print("      What this proves: a random generator derived from the Lean type")
+    print("      system produces only semantically well-typed Cedar expressions")
+    print("      by construction. No byte-level noise, no retry. Soundness is a")
+    print("      machine-checked theorem (cedar-micro/CedarMicro/Soundness.lean).")
+    print("      Typing context Γ = [int, bool, int], so var indices 0 and 2 are")
+    print("      int-typed and var index 1 is bool-typed. Each sample is then")
+    print("      re-verified at runtime via the functional typechecker `getType`.")
     t = time.monotonic()
     # First-run cold cache: lake build of cedar-micro + Palamedes can
     # take 3-5 minutes on a fresh checkout (toolchain download +
@@ -311,9 +341,14 @@ def part_3_generator_synthesis() -> tuple[bool, str]:
 
 def part_4_cedar_go_corpus() -> tuple[bool, str]:
     """Run cedar-go's shipped TestCorpus (internal Rust↔Go diff across ~7760 subtests)."""
+    print("      What this proves: on the corpus cedar-go ships for its own CI,")
+    print("      every one of ~7760 subtests gets the same decision from both")
+    print("      the Rust reference (cedar-policy 4.3.1) and cedar-go (v1 HEAD).")
+    print("      This is the existing agreement baseline — anything our")
+    print("      type-directed generator finds beyond this is new.")
     t = time.monotonic()
     proc = run_in_image(
-        ["bash", "-c", "cd /work/cedar-go && go test -run TestCorpus -count=1 2>&1 | tail -4"],
+        ["bash", "-c", "cd /work/cedar-go && go test -run TestCorpus -count=1 -v 2>&1 | tail -20"],
         timeout=300,
     )
     elapsed = time.monotonic() - t
@@ -321,7 +356,17 @@ def part_4_cedar_go_corpus() -> tuple[bool, str]:
     if not ok:
         return False, f"FAIL. go test TestCorpus exit {proc.returncode} in {elapsed:.1f}s"
     ok_line = next((l for l in proc.stdout.splitlines() if l.startswith("ok")), "")
-    return True, f"PASS. {ok_line.strip()} in {elapsed:.1f}s"
+    # Count per-subtest PASS lines for a customer-visible number.
+    subtest_pass = sum(
+        1 for line in proc.stdout.splitlines()
+        if line.strip().startswith("--- PASS:")
+    )
+    detail = (
+        f"      Rust vs. Go subtests: {subtest_pass} PASS / 0 FAIL"
+        if subtest_pass > 0
+        else "      (per-subtest counts not captured; final `ok` line verified)"
+    )
+    return True, f"PASS. {ok_line.strip()} in {elapsed:.1f}s\n{detail}"
 
 
 def part_5_type_directed_diff() -> tuple[bool, str]:
@@ -334,6 +379,11 @@ def part_5_type_directed_diff() -> tuple[bool, str]:
     0.015 s/tuple. The demo runs at N=20 (under 5 s on a warm cache) so
     the reader can verify the pipeline end-to-end without the long run.
     """
+    print("      What this proves: the type-directed generator draws 20 random")
+    print("      (Policy, Schema, Request) tuples. Every one typechecks by")
+    print("      construction, every one reaches both evaluators, and both")
+    print("      implementations agree on every decision. This is the §8 pipeline")
+    print("      that reports 1.000 yield + 0 disagreements at N=10000.")
     t = time.monotonic()
     proc = subprocess.run(
         [
@@ -360,15 +410,44 @@ def part_5_type_directed_diff() -> tuple[bool, str]:
             "N sampled", "Valid-sample rate", "Agreement rate", "Disagreement count"
         ))
     ]
+    # Surface the first 3 sampled policies so the viewer sees what got diffed.
+    sampled = []
+    for line in out.splitlines():
+        if line.count("\t") >= 4 and ("permit" in line or "forbid" in line):
+            parts = line.split("\t", 4)
+            if len(parts) == 5:
+                sampled.append(parts[4].strip())
+        if len(sampled) == 3:
+            break
+    tail = [
+        "      Three policies this run sampled + diffed:"
+    ] + [f"        {i + 1}. {s}" for i, s in enumerate(sampled)] if sampled else []
     indented = "\n".join("  " + line.strip() for line in summary_lines)
-    return True, f"PASS in {elapsed:.1f}s\n{indented}"
+    return True, f"PASS in {elapsed:.1f}s\n{indented}\n" + "\n".join(tail)
 
 
 def main() -> int:
     print("=" * 72)
-    print(f"  kairos-cedar end-to-end demo")
+    print("  kairos-cedar end-to-end demo")
     print(f"  image: {IMAGE}")
     print("=" * 72)
+    print("""
+  This demo exercises five independent signals on a single container image.
+  No LLM calls, no paid APIs, no network after the pull. Deterministic.
+
+    1. Lean bridge compiles against cedar-policy's mechanised typechecker.
+    2. Rust `cedar authorize` decides 6 readable requests as expected.
+    3. A type-directed Lean generator produces only well-typed Cedar
+       expressions by construction (machine-checked soundness theorem).
+    4. The Rust reference and the Go reimplementation agree on ~7760
+       shipped corpus subtests.
+    5. 20 policies sampled from the type-directed generator are decided
+       identically by cedar-policy and cedar-go.
+
+  Together: formal bridge + production evaluators + typed-input generator
+  + differential agreement — the four pieces a Cedar deployment would
+  want before trusting a policy engine in production.
+""")
 
     # Ensure the image is present. Offline users will already have it;
     # first-time users hit this pull and then the demo is ~30 s.
@@ -415,9 +494,22 @@ def main() -> int:
     print("=" * 72)
     for name, ok, _ in results:
         print(f"  [{'PASS' if ok else 'FAIL'}]  {name}")
+    all_pass = all(ok for _, ok, _ in results)
     print()
+    if all_pass:
+        print("  Net signal:")
+        print("    - Formal bridge to cedar-policy's upstream Lean type system:  ALIVE")
+        print("    - Rust reference on the handwritten RBAC set:                  AGREES")
+        print("    - Type-directed generator soundness (machine-checked):         HOLDS")
+        print("    - Rust vs. Go on ~7760 shipped subtests:                       AGREE")
+        print("    - Rust vs. Go on 20 sampled type-directed policies:            AGREE")
+        print()
+        print("  Next step for a deeper look:")
+        print("    python3 experiments/phase_c_diff/run_diff.py --n 1000")
+        print("    (runs the same pipeline at N=1000 in ~15 s)")
+        print()
 
-    return 0 if all(ok for _, ok, _ in results) else 1
+    return 0 if all_pass else 1
 
 
 if __name__ == "__main__":
