@@ -19,6 +19,7 @@ toolchain call into the kairos-cedar container.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -28,8 +29,17 @@ import time
 from pathlib import Path
 from typing import Any
 
+import kairos
+import kairos.trace as ktrace
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 IMAGE = os.environ.get("KAIROS_CEDAR_IMAGE", "ghcr.io/athanor-ai/kairos-cedar:latest")
+
+
+def _sha12(b: bytes | str) -> str:
+    if isinstance(b, str):
+        b = b.encode("utf-8")
+    return hashlib.sha256(b).hexdigest()[:12]
 
 # ── Fixed schema / entities ──────────────────────────────────────────────
 #
@@ -437,8 +447,27 @@ def main() -> int:
         help="Total timeout for Go harness batch run (seconds)"
     )
     parser.add_argument("--skip-rust", action="store_true", help="Skip Rust authorize (faster)")
+    parser.add_argument("--no-session", action="store_true",
+                        help="Skip kairos.session wrapping (local-only, no Tahoe trace)")
     args = parser.parse_args()
 
+    sink = ktrace.default_sink_from_env() if not args.no_session else None
+    task_id = f"ath-529-cedar-full-n{args.n}-diff"
+    session_cm = kairos.session(
+        task_id=task_id,
+        trace_sink=sink,
+        vertical="auth",
+        run_type="sdk_orchestration",
+        run_subtype="differential_test",
+        name_for_display=f"Cedar full-spec diff-run N={args.n}",
+    )
+    with session_cm as sess:
+        sid = getattr(sess, "session_id", None) or getattr(sess, "task_id", task_id)
+        print(f"[diff] session_id={sid} sink={type(sink).__name__}")
+        return _run_diff(args, sess, sink)
+
+
+def _run_diff(args, sess, sink) -> int:
     n = args.n
     print("=" * 72)
     print(f"  kairos-cedar §8 diff runner  N={n}")
@@ -537,6 +566,58 @@ def main() -> int:
 
     agreement_rate = agreements / compared if compared > 0 else float("nan")
     cost_per_tuple = total_elapsed / total if total > 0 else 0.0
+
+    # Emit one differential_test_tuple event per compared pair (qa PR #174,
+    # registry shape ('*', 'differential_test_tuple')). Per-tuple wall-clock
+    # is amortised from the batch totals (rust = elapsed_rust / N,
+    # go = elapsed_go / N) since the runners batch invocations; per-call
+    # timing is camera-ready follow-up.
+    rust_per = (elapsed_rust if not args.skip_rust else 0.0) / max(1, total)
+    go_per = elapsed_go_run / max(1, total)
+    schema_hash = _sha12(FIXED_SCHEMA_TEXT)
+    sid = getattr(sess, "session_id", None) or task_id
+    if sink is not None:
+        for t in tuples:
+            idx = t["idx"]
+            rd = rust_decisions.get(idx, "missing")
+            gd = go_decisions.get(idx, "missing")
+            if rd == "skipped" or rd == "missing" or gd == "missing":
+                continue
+            request_blob = json.dumps({
+                "principal": t["principal"],
+                "action": t["action"],
+                "resource": t["resource"],
+            }, sort_keys=True)
+            try:
+                sink.emit({
+                    "session_id": sid,
+                    "event_type": "differential_test_tuple",
+                    "run_type": "sdk_orchestration",
+                    "run_subtype": "differential_test",
+                    "body": {
+                        "sample_id": str(idx),
+                        "impl_a_name": "cedar-policy",
+                        "impl_a_verdict": rd,
+                        "impl_a_elapsed_sec": rust_per,
+                        "impl_b_name": "cedar-go",
+                        "impl_b_verdict": gd,
+                        "impl_b_elapsed_sec": go_per,
+                        "diff_found": (rd != gd
+                                       and not rd.startswith("ERROR")
+                                       and not gd.startswith("ERROR")),
+                        "input_hashes": {
+                            "policy": _sha12(t["policy"]),
+                            "schema": schema_hash,
+                            "request": _sha12(request_blob),
+                        },
+                        "diff_details": (
+                            f"rust={rd} go={gd} principal={t['principal']} "
+                            f"action={t['action']} resource={t['resource']}"
+                        ) if rd != gd else None,
+                    },
+                })
+            except Exception as e:
+                print(f"      WARN: emit failed for idx={idx}: {e}")
 
     print("\n" + "=" * 72)
     print("  §8 EVALUATION SUMMARY")
