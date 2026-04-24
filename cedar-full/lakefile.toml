@@ -8,8 +8,8 @@ defaultTargets = ["CedarFull"]
 # pins Lean 4.29.1 (cedar-spec's pin). Palamedes's full
 # generator_search scaffolding pins Lean 4.24.0 and is kept in
 # cedar-micro; porting it forward to 4.29.1 is Phase C and tracked
-# separately (see ATH-537, ATH-538 for toolchain + Mathlib pre-
-# requisites). cedar-full uses the Soundness.lean pattern from
+# separately as a future-work item (toolchain + Mathlib
+# prerequisites). cedar-full uses the Soundness.lean pattern from
 # cedar-micro directly: a hand-authored fuel-bounded generator
 # plus a machine-checked soundness theorem against the bridge
 # predicates.

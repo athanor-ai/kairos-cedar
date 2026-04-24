@@ -1,10 +1,10 @@
-# Phase-A v2 fleet sweep — 2026-04-24 04:47Z
+# Phase-A v2 fleet sweep, 2026-04-24 04:47Z
 
 LM-proposer + Palamedes-runtime-sampling experiment ("Exp 2") on
-CedarMicro, three frontier-class proposers under identical SDK loop
-(`generator_synthesize` with `sample_terms=` adapter wrapping
-`kairos.lean.sample_generator`). Produces the paper §6.3
-"Failure Modes of the LM-Proposer Variant" data.
+CedarMicro, three frontier-class proposers under the same workbench
+proposer loop, with `sample_terms` wrapping the workbench's
+runtime-sampling driver. Produces the paper §6.3 "Failure Modes of
+the LM-Proposer Variant" data.
 
 ## Runs
 
@@ -21,7 +21,7 @@ in-distribution comparison.)
 ## Failure mode (cross-proposer)
 
 Each proposer's LLM-emitted Lean source fails `lake env lean --run`
-with `Unknown constant Gen.<X>` errors — the proposer hallucinates
+with `Unknown constant Gen.<X>` errors. The proposer hallucinates
 QuickCheck-shaped combinator names that do not exist in
 `Palamedes.Gen`. Verbatim tokens observed across the 9 iterations
 total: `Gen.map`, `Gen.oneOf`, `Gen.chooseNat`, `Gen.bool`,
@@ -45,5 +45,5 @@ bash experiments/phase_a_v2/run_fleet_sweep.sh
 
 Outputs land in a fresh `outputs/fleet_sweep_<ts>/` directory with
 one `.log` per model. Each log's `[exp 2] iter=<n>` blocks include
-the SDK's `sample_terms_stdout_tail` field (ATH-563 plumbing) which
-carries the verbatim Lean compiler diagnostic for each iteration.
+the per-iteration `sample_terms_stdout_tail` field which carries
+the verbatim Lean compiler diagnostic for each iteration.

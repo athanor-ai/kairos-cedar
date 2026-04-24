@@ -6,12 +6,12 @@
   relations. The functional predicate `isWellTyped` (∃ over
   `getType`) does not expose intro rules for Aesop to case-split,
   so `generator_search` cannot fire against it (observation
-  2026-04-24; see ATH-549).
+  2026-04-24; see a follow-up issue).
 
   `HasType Γ τ e` is the inductive shadow of `getType`. It has one
   intro rule per Expr constructor. The biconditional with
   `isWellTyped` is sorry-stubbed in this first pass; closure is
-  ATH-549 follow-up work that needs proper case analysis on the
+  follow-up work that needs proper case analysis on the
   Option-bind + guard structure of `getType`.
 -/
 
@@ -40,10 +40,10 @@ inductive HasType : List Ty → Ty → Expr → Prop where
 /-- Equivalence: isWellTyped is ∃ over getType; HasType is the
     inductive shadow. They quantify over the same set.
 
-    ATH-549 follow-up: closure needs case analysis on the
+    follow-up: closure needs case analysis on the
     Option-bind + guard structure of `getType`, which Lean 4.24's
     simp config inside the workbench container does not fold
-    automatically (verified 2026-04-24 in the .and arm — after
+    automatically (verified 2026-04-24 in the .and arm, after
     `simp only [getType, iha, ihb]` the goal still shows the
     explicit `do … τa ← … τb ← …` chain). Left as `sorry` so the
     inductive itself can be imported + targeted by
