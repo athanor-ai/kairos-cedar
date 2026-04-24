@@ -209,6 +209,86 @@ private theorem wellTypedAt_ite_of_boolLit (env : TypeEnv) (c t f : Expr)
                TypedExpr.typeOf, heqf]
 
 -- ────────────────────────────────────────────────────────────────────
+-- Step 3c: integer-literal characterisation of genLeaf env .int
+-- ────────────────────────────────────────────────────────────────────
+
+/-- varsOfType env .int is always empty: no Cedar Var has int type. -/
+private theorem varsOfType_int_empty (env : TypeEnv) :
+    varsOfType env .int = [] := by
+  simp only [varsOfType]
+  have h1 : (CedarType.int : CedarType) ≠ .entity env.reqty.principal := by simp
+  have h2 : (CedarType.int : CedarType) ≠ .entity env.reqty.action.ty := by simp
+  have h3 : (CedarType.int : CedarType) ≠ .entity env.reqty.resource := by simp
+  have h4 : (CedarType.int : CedarType) ≠ .record env.reqty.context := by simp
+  simp [h1, h2, h3, h4]
+
+/-- genLeaf env .int only produces .lit (.int 0). -/
+private theorem genLeaf_int_is_intLit (env : TypeEnv) (e : Expr)
+    (h : Gen.support (genLeaf env .int) e) :
+    e = .lit (.int 0) := by
+  simp only [genLeaf, Gen.support, Gen.pick, varGen, litGen,
+             Gen.ret, Pure.pure, List.mem_append,
+             List.mem_singleton, List.mem_nil_iff, false_or,
+             varsOfType_int_empty, List.map_nil] at h
+  exact h
+
+/-- typeOf (.lit (.int 0)) [] env returns a typed expr with typeOf = .int. -/
+private theorem typeOf_intLit_is_int (env : TypeEnv) :
+    ∃ te, typeOf (.lit (.int 0)) [] env = .ok (te, []) ∧ te.typeOf = .int := by
+  simp only [Cedar.Validation.typeOf, Cedar.Validation.typeOfLit, Cedar.Validation.ok,
+             Function.comp_apply]
+  exact ⟨TypedExpr.lit (.int 0) .int, rfl, rfl⟩
+
+/-- Given `a` is an int literal (in support of genLeaf env .int) and
+    `b` is an int literal, `.binaryApp .add a b` type-checks as .int. -/
+private theorem wellTypedAt_binaryApp_add_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .add a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  -- typeOf (.lit (.int 0)) [] env = .ok (TypedExpr.lit (.int 0) .int, [])
+  -- so typeOfBinaryApp .add with both .int types gives .ok .int
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
+/-- Given `a` is an int literal (in support of genLeaf env .int),
+    `.unaryApp .neg a` type-checks as .int. -/
+private theorem wellTypedAt_unaryApp_neg_of_intLit (env : TypeEnv) (a : Expr)
+    (ha : Gen.support (genLeaf env .int) a) :
+    wellTypedAt env (.unaryApp .neg a) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  subst heqa
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfUnaryApp, TypedExpr.typeOf]
+
+-- ────────────────────────────────────────────────────────────────────
+-- Step 3d: bool-literal helpers for .and and .or
+-- ────────────────────────────────────────────────────────────────────
+
+/-- Given `a` and `b` are bool literals, `.and a b` type-checks. -/
+private theorem wellTypedAt_and_of_boolLits (env : TypeEnv) (a b : Expr)
+    (ha : a = .lit (.bool true) ∨ a = .lit (.bool false))
+    (hb : b = .lit (.bool true) ∨ b = .lit (.bool false)) :
+    wellTypedAt env (.and a b) = true := by
+  rcases ha with rfl | rfl <;> rcases hb with rfl | rfl <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, Cedar.Validation.typeOfAnd, List.union_def,
+          TypedExpr.typeOf]
+
+/-- Given `a` and `b` are bool literals, `.or a b` type-checks. -/
+private theorem wellTypedAt_or_of_boolLits (env : TypeEnv) (a b : Expr)
+    (ha : a = .lit (.bool true) ∨ a = .lit (.bool false))
+    (hb : b = .lit (.bool true) ∨ b = .lit (.bool false)) :
+    wellTypedAt env (.or a b) = true := by
+  rcases ha with rfl | rfl <;> rcases hb with rfl | rfl <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, Cedar.Validation.typeOfOr, TypedExpr.typeOf]
+
+-- ────────────────────────────────────────────────────────────────────
 -- Step 4: genSize soundness by induction on fuel.
 -- ────────────────────────────────────────────────────────────────────
 
@@ -232,14 +312,17 @@ theorem genSize_sound :
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env (.bool bty) e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hand
-        -- Sub-expressions a, b come from genLeaf (genSize env 0 = genLeaf).
-        -- Closing this arm requires: wellTypedAt a → typeOf a = .ok (_, anyBool),
-        -- wellTypedAt b → typeOf b = .ok (_, anyBool), then typeOfAnd inversion.
-        -- TODO: ship cedar-spec typeOfAnd inversion lemma.
-        sorry
+        -- a, b come from genLeaf env (.bool .anyBool) = bool literals only.
+        have halit := genLeaf_boolAnyBool_is_lit env a ha
+        have hblit := genLeaf_boolAnyBool_is_lit env b hb
+        exact wellTypedAt_imp_isWellTyped env (.and a b)
+          (wellTypedAt_and_of_boolLits env a b halit hblit)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hor
-        -- TODO: typeOfOr inversion lemma.
-        sorry
+        -- a, b come from genLeaf env (.bool .anyBool) = bool literals only.
+        have halit := genLeaf_boolAnyBool_is_lit env a ha
+        have hblit := genLeaf_boolAnyBool_is_lit env b hb
+        exact wellTypedAt_imp_isWellTyped env (.or a b)
+          (wellTypedAt_or_of_boolLits env a b halit hblit)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
         -- c comes from genSize env 0 (.bool .anyBool) = genLeaf env (.bool .anyBool)
         -- which only produces .lit (.bool true) or .lit (.bool false).
@@ -259,14 +342,23 @@ theorem genSize_sound :
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env .int e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hadd
-        -- TODO: typeOfBinaryApp .add inversion lemma.
-        sorry
+        -- a, b come from genLeaf env .int = .lit (.int 0) only.
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .add a b)
+          (wellTypedAt_binaryApp_add_of_intLits env a b ha hb)
       · obtain ⟨a, ha, rfl⟩ := hneg
-        -- TODO: typeOfUnaryApp .neg inversion lemma.
-        sorry
+        -- a comes from genLeaf env .int = .lit (.int 0) only.
+        exact wellTypedAt_imp_isWellTyped env (.unaryApp .neg a)
+          (wellTypedAt_unaryApp_neg_of_intLit env a ha)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- TODO: typeOfIf inversion lemma for int.
-        sorry
+        -- c comes from genLeaf env (.bool .anyBool) = bool literals only.
+        have hc2 : Gen.support (genLeaf env (.bool .anyBool)) c := hc
+        have ht2 : Gen.support (genLeaf env .int) t := ht
+        have hf2 : Gen.support (genLeaf env .int) f := hf
+        have hclit := genLeaf_boolAnyBool_is_lit env c hc2
+        have ht'   := genLeaf_sound env .int t ht2
+        have hf'   := genLeaf_sound env .int f hf2
+        exact wellTypedAt_imp_isWellTyped env (.ite c t f)
+          (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
     -- ── .string ────────────────────────────────────────────────────
     | string =>
       simp only [genSize] at hmem
