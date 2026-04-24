@@ -265,9 +265,61 @@ theorem Expr.support_unfold {α : Type} {f : α → Gen (ExprF α)} {x : α} :
       exists 1
       exists ExprF.var n
   case ite c t f ihc iht ihf =>
+    -- TODO(paper §5.2): ternary recursive case. Structurally parallels the
+    -- binary `.and` case below (see palamedes-lean STLC app case for
+    -- template) but with three sub-terms and three fuel-budget bindings.
+    -- Paused at a Nat-arithmetic rewrite (nc+nt+nf vs nf+(nc+nt)) that
+    -- `ring` does not dispatch in the current 4.24 toolchain; follow-up
+    -- will use omega + unfold_aux_monotonic composition.
     sorry
   case and a b iha ihb =>
-    sorry
+    apply Iff.intro
+    · intro h
+      simp_all [Expr.unfold]
+      replace ⟨n, h⟩ := h
+      cases n <;> simp_all [Expr.unfold_aux]
+      case succ n =>
+        replace ⟨vf, hvf, h⟩ := h
+        cases vf <;> simp_all
+        case ite xc xt xf =>
+          replace ⟨oc, hc, ot, ht, of_, hf, h⟩ := h
+          cases oc <;> simp_all
+          cases ot <;> simp_all
+          cases of_ <;> simp_all
+        case and xa xb =>
+          replace ⟨ov₁, hv₁, ov₂, hv₂, h⟩ := h
+          cases ov₁ <;> simp_all
+          case some va =>
+            cases ov₂ <;> simp_all
+            case some vb =>
+              exists xa, xb
+              apply And.intro hvf
+              replace iha := @iha xa
+              replace ihb := @ihb xb
+              rw [Iff.comm] at iha ihb
+              rw [iha, ihb]
+              apply And.intro <;> exists n
+    · intro ⟨xa, xb, hab, ha, hb⟩
+      replace iha := @iha xa
+      rw [Iff.comm] at iha
+      rw [iha] at ha
+      simp [Expr.unfold] at ha |-
+      replace ⟨hma, na, ha⟩ := ha
+      replace ihb := @ihb xb
+      rw [Iff.comm] at ihb
+      rw [ihb] at hb
+      simp [Expr.unfold] at hb
+      replace ⟨hmb, nb, hb⟩ := hb
+      intros
+      simp_all
+      exists na + nb + 1
+      exists ExprF.and xa xb
+      simp_all
+      exists some a
+      simp_all [Expr.unfold_aux_monotonic]
+      exists some b
+      rw [Nat.add_comm]
+      simp_all [Expr.unfold_aux_monotonic]
 
 theorem Expr.support_unfold_congr
     {α : Type} {f f' : α → Gen (ExprF α)} {b : α}

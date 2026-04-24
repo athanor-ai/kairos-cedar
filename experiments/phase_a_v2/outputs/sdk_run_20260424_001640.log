@@ -1,7 +1,9 @@
-{
+[phase A v2] trace sink = NoopTraceSink
+[phase A v2] {
   "iterations": 4,
   "converged": false,
   "final_rejection_rate": 1.0,
   "elapsed_sec": 880.74,
   "total_tokens": 100059
 }
+[phase A v2] generator source: outputs/sdk_generator_source.lean

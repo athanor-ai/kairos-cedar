@@ -1,0 +1,23 @@
+[phase A v2] trace sink = NoopTraceSink
+Traceback (most recent call last):
+  File "/home/azureuser/agents/platform/kairos-cedar/experiments/phase_a_v2/run_via_sdk.py", line 244, in <module>
+    sys.exit(main())
+  File "/home/azureuser/agents/platform/kairos-cedar/experiments/phase_a_v2/run_via_sdk.py", line 210, in main
+    result = generator_synthesize(
+  File "/home/azureuser/agents/qa/athanor-sdk/src/kairos/generator_synthesize.py", line 444, in generator_synthesize
+    text, tok_in, tok_out, cost = resolved_llm(
+  File "/home/azureuser/agents/qa/athanor-sdk/src/kairos/generator_synthesize.py", line 266, in _default_llm_call
+    resp = litellm.completion(**kwargs)
+  File "/home/azureuser/.local/lib/python3.10/site-packages/litellm/utils.py", line 1748, in wrapper
+    raise e
+  File "/home/azureuser/.local/lib/python3.10/site-packages/litellm/utils.py", line 1569, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/home/azureuser/.local/lib/python3.10/site-packages/litellm/main.py", line 4305, in completion
+    raise exception_type(
+  File "/home/azureuser/.local/lib/python3.10/site-packages/litellm/main.py", line 2765, in completion
+    response = anthropic_chat_completions.completion(
+  File "/home/azureuser/.local/lib/python3.10/site-packages/litellm/llms/anthropic/chat/handler.py", line 327, in completion
+    headers = AnthropicConfig().validate_environment(
+  File "/home/azureuser/.local/lib/python3.10/site-packages/litellm/llms/anthropic/common_utils.py", line 403, in validate_environment
+    raise litellm.AuthenticationError(
+litellm.exceptions.AuthenticationError: litellm.AuthenticationError: Missing Anthropic API Key - A call is being made to anthropic but no key is set either in the environment variables or via params. Please set `ANTHROPIC_API_KEY` in your environment vars
