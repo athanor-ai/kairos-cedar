@@ -81,6 +81,15 @@ def palamedes_sample_terms_adapter(
         if r.stdout_tail:
             print(r.stdout_tail[-600:])
         return []
+    if not r.terms:
+        # Pre-ATH-563 diagnostic: the SDK event payload records
+        # sampled_count=0 silently. Surface the stdout tail so we can
+        # tell "Palamedes emitted 0 samples" apart from "lake build
+        # succeeded but sampleN returned empty" apart from "render_expr
+        # failed".
+        print("[palamedes sampler] empty result — no error but 0 terms")
+        if r.stdout_tail:
+            print(r.stdout_tail[-800:])
     return r.terms
 
 
