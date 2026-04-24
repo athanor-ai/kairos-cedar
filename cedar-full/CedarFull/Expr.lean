@@ -10,7 +10,7 @@
     • Ternary-recursive (1): ite
 
   N-ary constructors (set / record / call) are Phase B scope — noted
-  with TODO comments pointing at ATH-534.
+  with TODO comments pointing at ATH-543.
 
   Mirrors the structure of cedar-micro/CedarMicro/WellTyped.lean:
     • A minimal self-contained Gen type backed by List (Palamedes pins
@@ -176,7 +176,7 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
           let f ← genSize env 0 (.entity ety)
           pure (.ite c t f))
   | _ + 1, τ =>
-    -- set / record / ext: Phase B (ATH-534). Fall back to leaf.
+    -- set / record / ext: Phase B (ATH-543). Fall back to leaf.
     genLeaf env τ
 
 -- ── genWellTyped ────────────────────────────────────────────────────

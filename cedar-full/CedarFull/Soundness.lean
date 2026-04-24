@@ -17,7 +17,7 @@
     Step 4. `genSize_sound`: induction on fuel. At fuel 0 reduces to
             Step 3. At fuel n+1, leaf arms close via Step 3. Compound
             arms (and/or/ite/unaryApp/binaryApp) are sorry-stubbed
-            pending typeOf inversion lemmas (ATH-534).
+            pending typeOf inversion lemmas (ATH-543).
     Step 5. `genWellTyped_sound`: Step 4 specialised to fuel = 3.
 
   V1 sorry inventory (7 total, all in compound arms of genSize_sound):
@@ -157,13 +157,13 @@ theorem genSize_sound :
         -- Sub-expressions a, b come from genLeaf (genSize env 0 = genLeaf).
         -- Closing this arm requires: wellTypedAt a → typeOf a = .ok (_, anyBool),
         -- wellTypedAt b → typeOf b = .ok (_, anyBool), then typeOfAnd inversion.
-        -- TODO ATH-534: ship cedar-spec typeOfAnd inversion lemma.
+        -- TODO ATH-543: ship cedar-spec typeOfAnd inversion lemma.
         sorry
       · obtain ⟨a, ha, b, hb, rfl⟩ := hor
-        -- TODO ATH-534: typeOfOr inversion lemma.
+        -- TODO ATH-543: typeOfOr inversion lemma.
         sorry
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- TODO ATH-534: typeOfIf inversion lemma.
+        -- TODO ATH-543: typeOfIf inversion lemma.
         sorry
     -- ── .int ───────────────────────────────────────────────────────
     | int =>
@@ -173,13 +173,13 @@ theorem genSize_sound :
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env .int e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hadd
-        -- TODO ATH-534: typeOfBinaryApp .add inversion lemma.
+        -- TODO ATH-543: typeOfBinaryApp .add inversion lemma.
         sorry
       · obtain ⟨a, ha, rfl⟩ := hneg
-        -- TODO ATH-534: typeOfUnaryApp .neg inversion lemma.
+        -- TODO ATH-543: typeOfUnaryApp .neg inversion lemma.
         sorry
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- TODO ATH-534: typeOfIf inversion lemma for int.
+        -- TODO ATH-543: typeOfIf inversion lemma for int.
         sorry
     -- ── .string ────────────────────────────────────────────────────
     | string =>
@@ -194,19 +194,19 @@ theorem genSize_sound :
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env (.entity ety) e hleaf)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- TODO ATH-534: typeOfIf inversion for entity type.
+        -- TODO ATH-543: typeOfIf inversion for entity type.
         sorry
-    -- ── .set (Phase B, ATH-534) ────────────────────────────────────
+    -- ── .set (Phase B, ATH-543) ────────────────────────────────────
     | set ty =>
       simp only [genSize] at hmem
       exact wellTypedAt_imp_isWellTyped env e
         (genLeaf_sound env (.set ty) e hmem)
-    -- ── .record (Phase B, ATH-534) ─────────────────────────────────
+    -- ── .record (Phase B, ATH-543) ─────────────────────────────────
     | record rty =>
       simp only [genSize] at hmem
       exact wellTypedAt_imp_isWellTyped env e
         (genLeaf_sound env (.record rty) e hmem)
-    -- ── .ext (Phase B, ATH-534) ────────────────────────────────────
+    -- ── .ext (Phase B, ATH-543) ────────────────────────────────────
     | ext xty =>
       simp only [genSize] at hmem
       exact wellTypedAt_imp_isWellTyped env e
