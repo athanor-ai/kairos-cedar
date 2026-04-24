@@ -41,14 +41,13 @@ inductive HasType : List Ty → Ty → Expr → Prop where
     inductive shadow. They quantify over the same set.
 
     ATH-549 follow-up: closure needs case analysis on the
-    Option-bind + guard structure of `getType`. The forward
-    direction (getType → HasType) is straightforward induction
-    on `e`; the backward (HasType → getType) is straight
-    induction on the derivation. Both hit Option-bind
-    simp-rewrites that the current Lean 4.24 simp config does
-    not fold automatically. Left as `sorry` so the inductive
-    itself can be imported + targeted by `generator_search`
-    even before the biconditional closes. -/
+    Option-bind + guard structure of `getType`, which Lean 4.24's
+    simp config inside the workbench container does not fold
+    automatically (verified 2026-04-24 in the .and arm — after
+    `simp only [getType, iha, ihb]` the goal still shows the
+    explicit `do … τa ← … τb ← …` chain). Left as `sorry` so the
+    inductive itself can be imported + targeted by
+    `generator_search` even before the biconditional closes. -/
 theorem isWellTyped_iff_hasType (Γ : List Ty) (e : Expr) :
     isWellTyped Γ e ↔ ∃ τ, HasType Γ τ e := by
   sorry
