@@ -112,6 +112,12 @@ def main() -> int:
     )
 
     model = os.environ.get("EXP2_MODEL", "anthropic/claude-sonnet-4-6")
+    # Kimi via LiteLLM requires OPENAI_API_KEY + OPENAI_API_BASE to
+    # point at the Azure Kimi endpoint rather than the default Azure
+    # athanor endpoint. Mirrors run_via_sdk.py's pattern.
+    if model.startswith("openai/kimi") and os.environ.get("KIMI_K26_API_KEY"):
+        os.environ["OPENAI_API_KEY"] = os.environ["KIMI_K26_API_KEY"]
+        os.environ["OPENAI_API_BASE"] = os.environ["KIMI_K26_API_BASE"]
     print(f"[exp 2 LM+palamedes] model = {model}")
 
     t = time.monotonic()
