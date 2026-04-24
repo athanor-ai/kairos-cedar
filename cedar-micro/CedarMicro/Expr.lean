@@ -265,19 +265,63 @@ theorem Expr.support_unfold {α : Type} {f : α → Gen (ExprF α)} {x : α} :
       exists 1
       exists ExprF.var n
   case ite c t f ihc iht ihf =>
-    -- TODO(paper §5.2): ternary recursive case. The forward direction
-    -- has been attempted (see git log); it unpacks three
-    -- Gen.support_bind levels via `replace ⟨o, h, ...⟩` patterns and
-    -- case-splits each Option for the impossible sub-arm discharges.
-    -- The backward direction needs three `Expr.unfold_aux_monotonic`
-    -- applications to bump each sub-term's fuel to a common
-    -- N = nc + nt + nf, discharged via `omega`-produced Nat
-    -- equalities. Lean 4.24 in the monolith container reports
-    -- cascading "Application type mismatch" on the `some c` /
-    -- `some t` / `some f` witnesses at the outer existentials,
-    -- suggesting the ih rewrite direction is inverted somewhere in
-    -- the unpacking. Close in an interactive session.
-    sorry
+    apply Iff.intro
+    · intro h
+      simp_all [Expr.unfold]
+      replace ⟨n, h⟩ := h
+      cases n <;> simp_all [Expr.unfold_aux]
+      case succ n =>
+        replace ⟨vf, hvf, h⟩ := h
+        cases vf <;> simp_all
+        case ite xc xt xf =>
+          replace ⟨oc, hc, ot, ht, of_, hf, h⟩ := h
+          cases oc <;> simp_all
+          case some vc =>
+            cases ot <;> simp_all
+            case some vt =>
+              cases of_ <;> simp_all
+              case some vf =>
+                exists xc, xt, xf
+                apply And.intro hvf
+                replace ihc := @ihc xc
+                replace iht := @iht xt
+                replace ihf := @ihf xf
+                rw [Iff.comm] at ihc iht ihf
+                rw [ihc, iht, ihf]
+                refine ⟨?_, ?_, ?_⟩ <;> exists n
+        case and xa xb =>
+          replace ⟨ov₁, hv₁, ov₂, hv₂, h⟩ := h
+          cases ov₁ <;> simp_all
+          cases ov₂ <;> simp_all
+    · intro ⟨xc, xt, xf, habc, hc_s, ht_s, hf_s⟩
+      replace ihc := @ihc xc
+      rw [Iff.comm] at ihc
+      rw [ihc] at hc_s
+      simp [Expr.unfold] at hc_s |-
+      replace ⟨hmc, nc, hc_s⟩ := hc_s
+      replace iht := @iht xt
+      rw [Iff.comm] at iht
+      rw [iht] at ht_s
+      simp [Expr.unfold] at ht_s
+      replace ⟨hmt, nt, ht_s⟩ := ht_s
+      replace ihf := @ihf xf
+      rw [Iff.comm] at ihf
+      rw [ihf] at hf_s
+      simp [Expr.unfold] at hf_s
+      replace ⟨hmf, nf, hf_s⟩ := hf_s
+      intros
+      simp_all
+      exists nc + nt + nf + 1
+      exists ExprF.ite xc xt xf
+      simp_all
+      exists some c
+      simp_all [Expr.unfold_aux_monotonic]
+      exists some t
+      rw [show nc + nt + nf = nt + (nc + nf) from by omega]
+      simp_all [Expr.unfold_aux_monotonic]
+      exists some f
+      rw [show nt + (nc + nf) = nf + (nc + nt) from by omega]
+      simp_all [Expr.unfold_aux_monotonic]
   case and a b iha ihb =>
     apply Iff.intro
     · intro h
