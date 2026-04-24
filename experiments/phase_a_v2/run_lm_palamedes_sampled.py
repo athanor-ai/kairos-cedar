@@ -13,8 +13,10 @@ should measure.
 
 Target: CedarMicro, Sonnet proposer, 3 iters × 5 per-iter samples.
 All tracing auto-on via ATH-550 (ATHANOR_SYNC_TOKEN-gated + session
-auto-wrap). Note run_subtype="generator_synthesis" rejected by DB
-until ATH-562 ships — journalled events replay via kairos trace replay.
+auto-wrap). ATH-563 lands SampleTermsResult on the return path so the
+iteration trace carries sampler error + stdout_tail when sampleN draws
+0 terms. Note run_subtype="generator_synthesis" rejected by DB until
+ATH-562 ships — journalled events replay via kairos trace replay.
 """
 from __future__ import annotations
 
@@ -33,7 +35,7 @@ for c in SDK_SRC_CANDIDATES:
         break
 
 from kairos.generator_synthesize import (  # noqa: E402
-    SpecBundle, generator_synthesize,
+    SampleTermsResult, SpecBundle, generator_synthesize,
 )
 from kairos.prove import session as kairos_session  # noqa: E402
 from kairos.trace import NoopTraceSink, SupabaseTraceSink  # noqa: E402
@@ -46,7 +48,7 @@ CEDAR_MICRO = REPO_ROOT / "cedar-micro"
 
 def palamedes_sample_terms_adapter(
     generator_source: str, _response_text: str, n_samples: int,
-) -> list[str]:
+) -> SampleTermsResult:
     """Drop-in for the SDK's sample_terms kwarg. Inlines the LLM's
     generator source into the Kairos sample driver via the ATH-561
     ``prelude=`` kwarg, then draws n_samples terms via Palamedes.sampleN
@@ -58,6 +60,10 @@ def palamedes_sample_terms_adapter(
     sits between the imports and ``def main`` in the generated driver,
     so unqualified ``genWellTyped`` resolves regardless of whether the
     LLM wrapped it in ``namespace CedarMicro`` or left it top-level.
+
+    Returns a :class:`SampleTermsResult` (ATH-563) so the SDK's
+    iteration-summary payload carries the underlying error + stdout
+    tail on zero-sample outcomes, feeding platform /solve-runs.
     """
     r = sample_generator(
         workspace=str(CEDAR_MICRO),
@@ -76,21 +82,11 @@ def palamedes_sample_terms_adapter(
         docker_image="ghcr.io/athanor-ai/kairos-cedar:latest",
         timeout_sec=300,
     )
-    if r.error:
-        print(f"[palamedes sampler] error: {r.error}")
-        if r.stdout_tail:
-            print(r.stdout_tail[-600:])
-        return []
-    if not r.terms:
-        # Pre-ATH-563 diagnostic: the SDK event payload records
-        # sampled_count=0 silently. Surface the stdout tail so we can
-        # tell "Palamedes emitted 0 samples" apart from "lake build
-        # succeeded but sampleN returned empty" apart from "render_expr
-        # failed".
-        print("[palamedes sampler] empty result — no error but 0 terms")
-        if r.stdout_tail:
-            print(r.stdout_tail[-800:])
-    return r.terms
+    return SampleTermsResult(
+        terms=r.terms,
+        error=r.error or "",
+        stdout_tail=r.stdout_tail or "",
+    )
 
 
 def main() -> int:
