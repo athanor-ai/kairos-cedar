@@ -111,16 +111,19 @@ def main() -> int:
         example_term="Expr.litBool true",
     )
 
+    model = os.environ.get("EXP2_MODEL", "anthropic/claude-sonnet-4-6")
+    print(f"[exp 2 LM+palamedes] model = {model}")
+
     t = time.monotonic()
     with kairos_session(
-        "cedar-micro-phase-a-lm-palamedes-sampled",
+        f"cedar-micro-phase-a-lm-palamedes-sampled-{model.split('/')[-1]}",
         trace_sink=sink,
         vertical="auth",
         run_subtype="generator_synthesis",
     ) as sess:
         result = generator_synthesize(
             bundle,
-            model="anthropic/claude-sonnet-4-6",
+            model=model,
             max_iters=3,
             target_rejection_rate=0.1,
             n_samples=5,
@@ -130,6 +133,7 @@ def main() -> int:
         )
     elapsed = time.monotonic() - t
 
+    print(f"[exp 2] model={model}")
     print(f"[exp 2] session_id={sess.session_id}")
     print(f"[exp 2] iterations={len(result.iterations)}")
     print(f"[exp 2] converged={result.converged}")
@@ -137,6 +141,16 @@ def main() -> int:
     print(f"[exp 2] elapsed_sec={elapsed:.1f}")
     cost = sum(it.cost_usd or 0.0 for it in result.iterations)
     print(f"[exp 2] total_cost_usd={cost:.4f}")
+    # Per-iteration diagnostic dump (ATH-563) — verbose for fleet runs.
+    for it in result.iterations:
+        print(f"[exp 2] iter={it.iteration} sampled={it.sampled_count} "
+              f"rejected={it.rejected_count} rate={it.rejection_rate} "
+              f"cost=${it.cost_usd:.4f}")
+        if it.sample_terms_error:
+            print(f"  sample_terms_error: {it.sample_terms_error}")
+        if it.sample_terms_stdout_tail:
+            tail = it.sample_terms_stdout_tail[-1200:]
+            print(f"  sample_terms_stdout_tail[-1200]:\n{tail}")
     return 0 if result.converged else 1
 
 
