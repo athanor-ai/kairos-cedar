@@ -108,6 +108,9 @@ def lean_native_sampler(
     dst.write_text(generator_source + "\n")
 
     # Tiny sample driver that imports GenLLM_V2 and prints N samples.
+    # Emit each sample as a Lean term-constructor expression so the SDK's
+    # `predicate_verify` can parse it back as `CedarMicro.Expr` without
+    # a pretty-printer round-trip.
     driver = CEDAR_MICRO / "SampleDriver.lean"
     driver.write_text(f"""
 import CedarMicro.GenLLM_V2
@@ -116,24 +119,33 @@ import Palamedes.Sample
 
 open CedarMicro
 
-def exprStr : CedarMicro.Expr → String
-  | .litInt n  => s!"{{n}}"
-  | .litBool b => if b then "true" else "false"
-  | .var n     => s!"v{{n}}"
-  | .ite c t f => s!"(if {{exprStr c}} then {{exprStr t}} else {{exprStr f}})"
-  | .and a b   => s!"({{exprStr a}} && {{exprStr b}})"
+def exprCtor : CedarMicro.Expr → String
+  | .litInt n  =>
+    if n < 0 then s!"CedarMicro.Expr.litInt ({{n}})"
+    else s!"CedarMicro.Expr.litInt {{n}}"
+  | .litBool b => s!"CedarMicro.Expr.litBool {{b}}"
+  | .var n     => s!"CedarMicro.Expr.var {{n}}"
+  | .ite c t f =>
+    s!"(CedarMicro.Expr.ite ({{exprCtor c}}) ({{exprCtor t}}) ({{exprCtor f}}))"
+  | .and a b   =>
+    s!"(CedarMicro.Expr.and ({{exprCtor a}}) ({{exprCtor b}}))"
 
 def main : IO Unit := do
   let Γ : List CedarMicro.Ty := [.int, .bool, .int]
   let samples ← sampleN {n_samples} (_root_.genWellTyped Γ .bool)
-  for e in samples do IO.println (exprStr e)
+  for e in samples do IO.println (exprCtor e)
   let samples2 ← sampleN {n_samples} (_root_.genWellTyped Γ .int)
-  for e in samples2 do IO.println (exprStr e)
+  for e in samples2 do IO.println (exprCtor e)
 """)
 
-    # Compile + run the driver inside the monolith image.
+    # Compile + run the driver inside the monolith image. We must
+    # `lake build` GenLLM_V2 before invoking SampleDriver because the
+    # driver's `import CedarMicro.GenLLM_V2` needs the .olean on disk;
+    # `lake env lean --run` does not discover and compile dependencies
+    # on the fly, it only resolves them against existing build output.
     cmd = (
         "elan default leanprover/lean4:v4.24.0 >/dev/null 2>&1 && "
+        "lake build CedarMicro.GenLLM_V2 >/dev/null 2>&1 && "
         "lake env lean --run SampleDriver.lean 2>&1"
     )
     proc = subprocess.run(
