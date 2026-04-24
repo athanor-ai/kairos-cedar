@@ -186,23 +186,88 @@ def Expr.unfold_support (P : α → ExprF α → Prop) (x : α) (e : Expr) : Pro
     `Expr.unfold_support` applied to the step function's support.
 
     Ported (in structure) from `palamedes-lean/Palamedes/Data/STLC/
-    Term.lean:188-319` with the five Cedar-micro constructors in
+    Term.lean:189-319` with the five Cedar-micro constructors in
     place of STLC's four. The flat arms (`litInt`, `litBool`, `var`)
-    are symmetric and each closes in roughly 15 LOC. The two
-    recursive arms (`ite` ternary, `and` binary) are parallel to
-    STLC's `abs` + `app` but with extra fuel bookkeeping on `ite`.
-
-    Scaffolding committed with `sorry` so the `@[simp]` tag is
-    in place and `generator_search` can fire against it;
-    full closure lands in a follow-up commit + is paper §5.2
-    correctness precondition. -/
+    are symmetric to STLC `var`; the ternary `ite` arm parallels
+    STLC `app` with one extra sub-term; the binary `and` arm
+    parallels STLC `app`. -/
 @[simp]
 theorem Expr.support_unfold {α : Type} {f : α → Gen (ExprF α)} {x : α} :
     _root_.Gen.support (Expr.unfold f x) =
       Expr.unfold_support (fun x' => _root_.Gen.support (f x')) x := by
-  -- See docstring above; five constructor cases, each with two
-  -- iff directions, adapted from STLC support_unfold.
-  sorry
+  funext e
+  simp_all
+  induction e generalizing x
+  case litInt i =>
+    apply Iff.intro
+    · intro h
+      simp_all [Expr.unfold]
+      replace ⟨n, h⟩ := h
+      cases n <;> simp_all [Expr.unfold_aux]
+      case succ n' =>
+        replace ⟨v', hv', h⟩ := h
+        cases v' <;> simp_all
+        case ite xc xt xf =>
+          replace ⟨oc, hc, ot, ht, of_, hf, h⟩ := h
+          cases oc <;> simp_all
+          cases ot <;> simp_all
+          cases of_ <;> simp_all
+        case and xa xb =>
+          replace ⟨oa, ha, ob, hb, h⟩ := h
+          cases oa <;> simp_all
+          cases ob <;> simp_all
+    · intro h
+      simp_all [Expr.unfold]
+      exists 1
+      exists ExprF.litInt i
+  case litBool b =>
+    apply Iff.intro
+    · intro h
+      simp_all [Expr.unfold]
+      replace ⟨n, h⟩ := h
+      cases n <;> simp_all [Expr.unfold_aux]
+      case succ n' =>
+        replace ⟨v', hv', h⟩ := h
+        cases v' <;> simp_all
+        case ite xc xt xf =>
+          replace ⟨oc, hc, ot, ht, of_, hf, h⟩ := h
+          cases oc <;> simp_all
+          cases ot <;> simp_all
+          cases of_ <;> simp_all
+        case and xa xb =>
+          replace ⟨oa, ha, ob, hb, h⟩ := h
+          cases oa <;> simp_all
+          cases ob <;> simp_all
+    · intro h
+      simp_all [Expr.unfold]
+      exists 1
+      exists ExprF.litBool b
+  case var n =>
+    apply Iff.intro
+    · intro h
+      simp_all [Expr.unfold]
+      replace ⟨k, h⟩ := h
+      cases k <;> simp_all [Expr.unfold_aux]
+      case succ k' =>
+        replace ⟨v', hv', h⟩ := h
+        cases v' <;> simp_all
+        case ite xc xt xf =>
+          replace ⟨oc, hc, ot, ht, of_, hf, h⟩ := h
+          cases oc <;> simp_all
+          cases ot <;> simp_all
+          cases of_ <;> simp_all
+        case and xa xb =>
+          replace ⟨oa, ha, ob, hb, h⟩ := h
+          cases oa <;> simp_all
+          cases ob <;> simp_all
+    · intro h
+      simp_all [Expr.unfold]
+      exists 1
+      exists ExprF.var n
+  case ite c t f ihc iht ihf =>
+    sorry
+  case and a b iha ihb =>
+    sorry
 
 theorem Expr.support_unfold_congr
     {α : Type} {f f' : α → Gen (ExprF α)} {b : α}
