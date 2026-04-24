@@ -1,0 +1,21 @@
+Sampling 10000 well-typed Cedar-micro expressions
+   context Γ = [int, bool, int]
+
+   bool samples well-typed: 10000/10000 PASS
+   int  samples well-typed: 10000/10000 PASS
+
+First 5 bool samples:
+    (if v1 then true else false)
+    v1
+    (false && v1)
+    (v1 && false)
+    (if v1 then false else false)
+
+First 5 int samples:
+    (if false then -1 else 1)
+    (if v1 then 0 else 0)
+    (if v1 then v0 else v0)
+    (if v1 then -1 else v0)
+    (if true then 0 else 1)
+
+Result: all 20000/20000 generated expressions satisfy isWellTyped Γ.
