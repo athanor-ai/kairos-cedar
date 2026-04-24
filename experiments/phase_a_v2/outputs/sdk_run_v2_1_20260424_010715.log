@@ -1,0 +1,3 @@
+[phase A v2] trace sink = NoopTraceSink
+[phase A v2] lean_native_sampler failed: SampleDriver.lean:2:0: error: object file '/work/cedar-micro/.lake/build/lib/lean/CedarMicro/GenLLM_V2.olean' of module CedarMicro.GenLLM_V2 does not exist
+
