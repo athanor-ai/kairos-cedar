@@ -1,25 +1,37 @@
 """kairos-cedar end-to-end demo. Deterministic, no LLM, under 60 seconds.
 
-Three artefacts, suitable for a reader familiar with Cedar and with
+Five artefacts, suitable for a reader familiar with Cedar and with
 property-based testing of mechanised type systems:
 
   Part 1. Lean bridge builds.
     Proves CedarBridge.isWellTyped compiles against cedar-spec's real
-    `Cedar.Validation.typeOf`. "We can mechanize Cedar's type system
-    and target Palamedes against it." Demonstrates the formal side.
+    `Cedar.Validation.typeOf`. Demonstrates the formal side.
 
   Part 2. Rust-vs-Go differential spot check.
     Six handwritten requests against a 3-policy RBAC set. Runs through
-    cedar CLI (Rust reference) + cedar-go (via a tiny go-test binary).
-    Asserts per-request agreement + matches the expected-decision
-    label in requests.jsonl. Demonstrates the methodology side on
-    policies a reviewer can read in 30 s.
+    cedar CLI (Rust reference) + cedar-go. Asserts per-request
+    agreement and matches the expected-decision label in
+    requests.jsonl. Reads in 30 s.
 
-  Part 3. Rust-vs-Go at scale (optional, adds ~15 s).
-    Invokes `go test -run TestCorpus -count=1` inside cedar-go;
-    aggregates pass count. cedar-go ships its corpus-test harness
+  Part 3. Generator synthesis.
+    Samples 10 bool + 10 int CedarMicro expressions from the
+    type-directed generator and runtime-verifies each against
+    `getType`. The shipped soundness theorem makes the 20/20 yield
+    structural rather than empirical.
+
+  Part 4. Rust-vs-Go at scale.
+    Invokes `go test -run TestCorpus -count=1` inside cedar-go and
+    aggregates pass count. cedar-go ships its corpus-test driver
     which internally cross-checks against the Rust reference via
     test/cedar-validation-tool. ~7760 subtests at v1.6.0.
+
+  Part 5. Type-directed differential pipeline.
+    Samples 20 (Policy, Schema, Request) tuples from
+    CedarFull.PolicyGen, evaluates each against cedar-policy and
+    cedar-go, and reports the valid-input yield + agreement rate.
+    The same driver run at N=10000 in experiments/phase_c_diff/
+    populates Table 4 of the paper (1.000 yield, 0 disagreements,
+    0.015 s/tuple).
 
 Zero network after the image pull. Zero API calls. Deterministic.
 Print a single-page summary at the end.
@@ -312,6 +324,46 @@ def part_4_cedar_go_corpus() -> tuple[bool, str]:
     return True, f"PASS. {ok_line.strip()} in {elapsed:.1f}s"
 
 
+def part_5_type_directed_diff() -> tuple[bool, str]:
+    """Run the §8 type-directed differential pipeline at a small N.
+
+    Samples N tuples from CedarFull.PolicyGen, evaluates each against
+    cedar-policy (Rust 4.3.1) and cedar-go (HEAD), and reports the
+    valid-input yield + agreement rate. The shipped run at N=10000 in
+    experiments/phase_c_diff/ records 1.000 yield, 0 disagreements,
+    0.015 s/tuple. The demo runs at N=20 (under 5 s on a warm cache) so
+    the reader can verify the pipeline end-to-end without the long run.
+    """
+    t = time.monotonic()
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "experiments" / "phase_c_diff" / "run_diff.py"),
+            "--n", "20",
+            "--no-session",
+        ],
+        capture_output=True, text=True, timeout=600,
+    )
+    elapsed = time.monotonic() - t
+    out = proc.stdout + "\n" + proc.stderr
+    ok = (
+        proc.returncode == 0
+        and "Agreement rate" in out
+        and "Valid-sample rate" in out
+    )
+    if not ok:
+        tail = "\n".join(out.splitlines()[-12:])
+        return False, f"FAIL. diff runner exit {proc.returncode} in {elapsed:.1f}s\n{tail}"
+    summary_lines = [
+        line for line in out.splitlines()
+        if any(k in line for k in (
+            "N sampled", "Valid-sample rate", "Agreement rate", "Disagreement count"
+        ))
+    ]
+    indented = "\n".join("  " + line.strip() for line in summary_lines)
+    return True, f"PASS in {elapsed:.1f}s\n{indented}"
+
+
 def main() -> int:
     print("=" * 72)
     print(f"  kairos-cedar end-to-end demo")
@@ -333,25 +385,30 @@ def main() -> int:
 
     results: list[tuple[str, bool, str]] = []
 
-    print("\n[1/4] Lean bridge. cedar-spec-bridge builds against cedar-spec's real typeOf ...")
+    print("\n[1/5] Lean bridge. cedar-spec-bridge builds against cedar-spec's real typeOf ...")
     ok, summary = part_1_lean_bridge_builds()
     print(f"      {summary}")
     results.append(("Lean bridge compiles", ok, summary))
 
-    print("\n[2/4] Handwritten 3-policy RBAC set: Rust `cedar authorize` decisions vs expected labels ...")
+    print("\n[2/5] Handwritten 3-policy RBAC set: Rust `cedar authorize` decisions vs expected labels ...")
     ok, summary = part_2_handwritten_diff()
     print(f"\n{summary}")
     results.append(("Handwritten diff agreement", ok, summary))
 
-    print("\n[3/4] Cedar-micro generator synthesis: sample well-typed expressions from the Lean type-system spec ...")
+    print("\n[3/5] Cedar-micro generator synthesis: sample well-typed expressions from the Lean type-system spec ...")
     ok, summary = part_3_generator_synthesis()
     print(summary)
     results.append(("Generator synthesises well-typed Cedar expressions", ok, summary))
 
-    print("\n[4/4] Rust-vs-Go at scale. cedar-go TestCorpus (~7760 subtests, internal Rust diff) ...")
+    print("\n[4/5] Rust-vs-Go at scale. cedar-go TestCorpus (~7760 subtests, internal Rust diff) ...")
     ok, summary = part_4_cedar_go_corpus()
     print(f"      {summary}")
     results.append(("cedar-go TestCorpus", ok, summary))
+
+    print("\n[5/5] Type-directed differential pipeline. CedarFull.PolicyGen sampler vs cedar-policy + cedar-go (N=20) ...")
+    ok, summary = part_5_type_directed_diff()
+    print(summary)
+    results.append(("Type-directed differential pipeline", ok, summary))
 
     print("\n" + "=" * 72)
     print("  SUMMARY")

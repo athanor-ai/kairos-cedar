@@ -56,12 +56,13 @@ docker pull ghcr.io/athanor-ai/kairos-cedar:latest
 
 The first command clones all submodules. Preflight verifies the Docker daemon, Compose v2, submodule checkout, disk space, and host architecture. The image pull is approximately 9 GB. The bridge build compiles the mechanised Cedar specification from [cedar-spec](https://github.com/cedar-policy/cedar-spec) together with the `Prop`-wrapper defined in `cedar-spec-bridge/CedarBridge/Predicates.lean`. The final command runs the Go reimplementation's shipped corpus-test suite, which internally cross-checks each decision against the Rust reference via the bundled `cedar-validation-tool` harness.
 
-## Current status (V0)
+## Current status (V1)
 
 - Container image published and public.
-- `cedar-spec-bridge` compiles against upstream `cedar-spec`; `isWellTyped env e := ∃ te c, typeOf e [] env = .ok (te, c)` is verified as the target shape for generator synthesis.
-- `cedar-micro` contains a flat Cedar-shape type system (bool, int) with the Palamedes scaffolding of [2] ported from the STLC example distributed with Palamedes.
-- `cedar-micro/CedarMicro/Expr.lean` has the five-constructor expression grammar (`litInt`, `litBool`, `var`, `ite`, `and`) without the recursive-case scaffolding. Completing this scaffolding is the open work item before `generator_search` can be invoked.
+- `cedar-spec-bridge` compiles against upstream `cedar-spec`. `isWellTyped env e := ∃ te c, typeOf e [] env = .ok (te, c)` is verified as the target shape for generator synthesis.
+- `cedar-micro` contains a flat Cedar-shape type system (bool, int) with the Palamedes scaffolding of [2] ported from the STLC example distributed with Palamedes. The hand-authored `genWellTyped` and the soundness theorem `cedar-micro/CedarMicro/Soundness.lean` are sorry-free; `cedar-micro/CedarMicro/HasType.lean` ships the inductive shadow plus the `isWellTyped ↔ HasType` biconditional.
+- `cedar-full` ports the scaffolding to the full upstream `Cedar.Spec.Expr` (12 constructors). `cedar-full/CedarFull/Soundness.lean` covers all 7 compound arms of `genSize_sound` (sorry-free). A driver-style policy + schema + request generator lives in `cedar-full/CedarFull/PolicyGen.lean` (8 policy shapes, 27 request combinations).
+- A differential runner against `cedar-policy` (Rust 4.3.1) and `cedar-go` (HEAD) lives at `experiments/phase_c_diff/run_diff.py`. The shipped run at $N = 10{,}000$ records `1.000` valid-rate, `0` disagreements, and $0.015$ s/tuple.
 - See `docs/ROADMAP.md` for the phased plan through V3.
 
 ## References

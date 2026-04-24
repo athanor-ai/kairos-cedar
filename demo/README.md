@@ -1,6 +1,6 @@
 # kairos-cedar end-to-end demo
 
-A deterministic, reproducible smoke of the kairos-cedar workbench. No LLM calls, no paid APIs, no network after the image pull. Total runtime is approximately 35 seconds once the image is cached locally.
+A deterministic, reproducible smoke of the kairos-cedar workbench. No LLM calls, no paid APIs, no network after the image pull. Total runtime is approximately 40 seconds once the image is cached locally.
 
 ## What it runs
 
@@ -12,7 +12,9 @@ A deterministic, reproducible smoke of the kairos-cedar workbench. No LLM calls,
 
 4. **Shipped corpus at scale.** `go test -run TestCorpus -count=1` inside cedar-go, which internally cross-checks each decision against the Rust reference via the bundled `test/cedar-validation-tool` harness on approximately 7760 subtests drawn from [cedar-integration-tests](https://github.com/cedar-policy/cedar-integration-tests). ~11 s.
 
-Combined, the demo produces four independent signals: (1) the Lean mechanised type-checker is reachable from our workbench, (2) the Rust reference gives the expected decisions on a readable policy set, (3) a Lean type-directed generator produces well-typed Cedar-micro expressions, and (4) the Rust reference and the Go reimplementation agree on 7760 diverse test cases.
+5. **Type-directed differential pipeline.** Twenty (Policy, Schema, Request) tuples are sampled from `cedar-full/CedarFull/PolicyGen.lean` (driven by the `measure-diff` Lean binary) and evaluated against `cedar-policy` (Rust 4.3.1) and `cedar-go` (HEAD) via `experiments/phase_c_diff/run_diff.py`. The driver reports valid-input yield + agreement rate. The same driver, run at $N = 10{,}000$, populates Table 4 of the paper (1.000 yield, 0 disagreements, 0.015 s/tuple). ~5 s for the demo's $N = 20$ run on a warm cache.
+
+Combined, the demo produces five independent signals: (1) the Lean mechanised type-checker is reachable from our workbench, (2) the Rust reference gives the expected decisions on a readable policy set, (3) a Lean type-directed generator produces well-typed Cedar-micro expressions, (4) the Rust reference and the Go reimplementation agree on 7760 diverse test cases, and (5) the §8 differential pipeline runs end-to-end on inputs sampled from the policy generator.
 
 ## How to run
 
