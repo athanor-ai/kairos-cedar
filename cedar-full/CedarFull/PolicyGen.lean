@@ -3,16 +3,20 @@
 
   Paper §8 setup: each run draws N tuples from the generator. This module
   provides `genTuple : Gen (Cedar.Spec.Schema × Cedar.Spec.Request × Cedar.Spec.Policy)`
-  using a fixed 3-entity-type / 3-action schema (User, Document, Photo; view, edit, admin).
+  using a fixed schema (User, Group, Document, Photo; view, edit, admin).
 
-  Design rationale for N=1000 first pass:
+  Design rationale for N=10000 pass:
     • Schema is fixed (a single hardcoded Schema value); schema diversity is future work.
     • Request varies over 9 (principal × action × resource) combinations.
-    • Policy varies over 8 hand-picked shapes (permit-any, forbid-any,
-      permit-if-principal-eq, permit-if-resource-eq, forbid-if-resource-eq,
-      permit-for-action, forbid-for-action, permit-with-condition).
-      Total support size: 9 × 8 = 72 distinct (request, policy) pairs.
-      At N=1000 we sample with replacement across this 72-element pool.
+    • Policy varies over 25 shapes covering:
+        – bare permit/forbid (any scope),
+        – principal/resource/action equality in scope,
+        – principal/resource is-type in scope,
+        – principal/resource in-group in scope,
+        – when/unless condition blocks using equality, in, is, has, getAttr on
+          principal, action, resource, and context.
+      Total support size: 9 × 25 = 225 distinct (request, policy) pairs.
+      At N=10000 we sample with replacement across this 225-element pool.
 
   All generators produce values in the Gen monad (List-backed, defined in
   CedarFull.Expr). No sorry, no admit, no native_decide.
@@ -44,6 +48,7 @@ def mkUID (tyName : String) (eid : String) : EntityUID :=
 --
 -- Schema:
 --   entity User;
+--   entity Group;
 --   entity Document;
 --   entity Photo;
 --
@@ -51,10 +56,13 @@ def mkUID (tyName : String) (eid : String) : EntityUID :=
 --   action edit appliesTo { principal: User, resource: [Document, Photo] };
 --   action admin appliesTo { principal: User, resource: [Document, Photo] };
 
-/-- The fixed entity schema: User, Document, Photo with no attributes or ancestors. -/
+/-- The fixed entity schema: User, Group, Document, Photo.
+    Group is added to support `principal in Group::"admins"` conditions.
+    Context carries a boolean attribute "approved" for has/getAttr shapes. -/
 def fixedEntitySchema : EntitySchema :=
   Map.make
     [ (mkEty "User",     EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
+    , (mkEty "Group",    EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
     , (mkEty "Document", EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
     , (mkEty "Photo",    EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
     ]
@@ -116,9 +124,8 @@ def genRequest (_ : Schema) : Gen Request :=
 
 -- ── genPolicy ───────────────────────────────────────────────────────
 --
--- 8 hand-picked policy shapes, each a Cedar.Spec.Policy.
--- The condition body is either a literal (for flat shapes) or uses
--- genWellTyped (for the condition-with-expr shape).
+-- 25 policy shapes (8 scope-only originals + 17 new: is/in-group/actionInAny scopes + when/unless conditions).
+-- Shape 25 uses genWellTyped for an arbitrary well-typed condition.
 
 /-- The default TypeEnv derived from fixedSchema for use with genWellTyped.
     RequestType: principal=User, action=Action::"view", resource=Document, context=∅ -/
@@ -208,8 +215,194 @@ private def policyWithWhenCond (condExpr : Expr) : Policy :=
   , condition      := [{ kind := .when, body := condExpr }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 8 shapes; the last uses genWellTyped for its condition. -/
+-- ── New shapes 9–25 ───────────────────────────────────────────────────────────────────
+
+-- Shape 9: principal is User (is-type in scope)
+private def permitPrincipalIsUser : Policy :=
+  { id             := "permit-principal-is-user"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := []
+  }
+
+-- Shape 10: resource is Document (is-type in scope)
+private def permitResourceIsDocument : Policy :=
+  { id             := "permit-resource-is-document"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope (.is (mkEty "Document"))
+  , condition      := []
+  }
+
+-- Shape 11: resource is Photo (is-type in scope)
+private def forbidResourceIsPhoto : Policy :=
+  { id             := "forbid-resource-is-photo"
+  , effect         := .forbid
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope (.is (mkEty "Photo"))
+  , condition      := []
+  }
+
+-- Shape 12: principal in Group::"admins" (in-group scope)
+private def permitPrincipalInAdmins : Policy :=
+  { id             := "permit-principal-in-admins"
+  , effect         := .permit
+  , principalScope := .principalScope (.mem (mkUID "Group" "admins"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := []
+  }
+
+-- Shape 13: principal in Group::"viewers" (in-group scope)
+private def forbidPrincipalInViewers : Policy :=
+  { id             := "forbid-principal-in-viewers"
+  , effect         := .forbid
+  , principalScope := .principalScope (.mem (mkUID "Group" "viewers"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := []
+  }
+
+-- Shape 14: resource in Document::"folder1" (in scope for resource)
+private def permitResourceInFolder : Policy :=
+  { id             := "permit-resource-in-folder"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope (.mem (mkUID "Document" "folder1"))
+  , condition      := []
+  }
+
+-- Shape 15: action in [view, edit] (actionInAny scope)
+private def permitActionInViewEdit : Policy :=
+  { id             := "permit-action-in-view-edit"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionInAny [mkUID "Action" "view", mkUID "Action" "edit"]
+  , resourceScope  := .resourceScope .any
+  , condition      := []
+  }
+
+-- Shape 16: when { principal == User::"alice" } (equality on principal in condition)
+private def permitWhenPrincipalEqAlice : Policy :=
+  { id             := "permit-when-principal-eq-alice"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq (.var .principal) (.lit (.entityUID (mkUID "User" "alice"))) }]
+  }
+
+-- Shape 17: when { action == Action::"view" } (equality on action in condition)
+private def permitWhenActionEqView : Policy :=
+  { id             := "permit-when-action-eq-view"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq (.var .action) (.lit (.entityUID (mkUID "Action" "view"))) }]
+  }
+
+-- Shape 18: when { resource == Document::"doc1" } (equality on resource in condition)
+private def forbidWhenResourceEqDoc1 : Policy :=
+  { id             := "forbid-when-resource-eq-doc1"
+  , effect         := .forbid
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq (.var .resource) (.lit (.entityUID (mkUID "Document" "doc1"))) }]
+  }
+
+-- Shape 19: when { principal in Group::"admins" } (in operator on principal in condition)
+private def permitWhenPrincipalInAdmins : Policy :=
+  { id             := "permit-when-principal-in-admins"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .mem (.var .principal) (.lit (.entityUID (mkUID "Group" "admins"))) }]
+  }
+
+-- Shape 20: when { resource is Document } (is type-guard on resource in condition)
+private def permitWhenResourceIsDocument : Policy :=
+  { id             := "permit-when-resource-is-document"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .unaryApp (.is (mkEty "Document")) (.var .resource) }]
+  }
+
+-- Shape 21: when { principal is User } (is type-guard on principal in condition)
+private def permitWhenPrincipalIsUser : Policy :=
+  { id             := "permit-when-principal-is-user"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .unaryApp (.is (mkEty "User")) (.var .principal) }]
+  }
+
+-- Shape 22: when { context has "approved" } (has operator on context)
+private def permitWhenContextHasApproved : Policy :=
+  { id             := "permit-when-context-has-approved"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .hasAttr (.var .context) "approved" }]
+  }
+
+-- Shape 23: unless { resource == Document::"doc2" } (unless + equality)
+private def forbidUnlessResourceEqDoc2 : Policy :=
+  { id             := "forbid-unless-resource-eq-doc2"
+  , effect         := .forbid
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .unless
+                        , body := .binaryApp .eq (.var .resource) (.lit (.entityUID (mkUID "Document" "doc2"))) }]
+  }
+
+-- Shape 24: unless { principal in Group::"viewers" } (unless + in)
+private def permitUnlessPrincipalInViewers : Policy :=
+  { id             := "permit-unless-principal-in-viewers"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .unless
+                        , body := .binaryApp .mem (.var .principal) (.lit (.entityUID (mkUID "Group" "viewers"))) }]
+  }
+
+-- Shape 25: unless { resource is Photo } (unless + is type-guard)
+private def permitUnlessResourceIsPhoto : Policy :=
+  { id             := "permit-unless-resource-is-photo"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .unless
+                        , body := .unaryApp (.is (mkEty "Photo")) (.var .resource) }]
+  }
+
+/-- Generate a Cedar.Spec.Policy. 25 shapes covering scope variants (eq/is/in/actionInAny)
+    and condition variants (when/unless with eq, in, is, has on principal/action/resource/context).
+    The final shape uses genWellTyped for an arbitrary well-typed boolean condition.
+    Shapes are chained with Gen.pick for uniform sampling over the 25-element support. -/
 def genPolicy (_ : Schema) : Gen Policy :=
+  -- Scope-only shapes (1–15)
   Gen.pick (pure permitAny)
   (Gen.pick (pure forbidAny)
   (Gen.pick (pure permitIfPrincipalEqAlice)
@@ -217,9 +410,27 @@ def genPolicy (_ : Schema) : Gen Policy :=
   (Gen.pick (pure forbidIfResourceEqDoc1)
   (Gen.pick (pure permitForActionView)
   (Gen.pick (pure forbidForActionAdmin)
-            -- 8th shape: permit(any, any, any) when {<well-typed bool expr>}
+  (Gen.pick (pure permitPrincipalIsUser)
+  (Gen.pick (pure permitResourceIsDocument)
+  (Gen.pick (pure forbidResourceIsPhoto)
+  (Gen.pick (pure permitPrincipalInAdmins)
+  (Gen.pick (pure forbidPrincipalInViewers)
+  (Gen.pick (pure permitResourceInFolder)
+  (Gen.pick (pure permitActionInViewEdit)
+  -- Condition shapes (16–25)
+  (Gen.pick (pure permitWhenPrincipalEqAlice)
+  (Gen.pick (pure permitWhenActionEqView)
+  (Gen.pick (pure forbidWhenResourceEqDoc1)
+  (Gen.pick (pure permitWhenPrincipalInAdmins)
+  (Gen.pick (pure permitWhenResourceIsDocument)
+  (Gen.pick (pure permitWhenPrincipalIsUser)
+  (Gen.pick (pure permitWhenContextHasApproved)
+  (Gen.pick (pure forbidUnlessResourceEqDoc2)
+  (Gen.pick (pure permitUnlessPrincipalInViewers)
+  (Gen.pick (pure permitUnlessResourceIsPhoto)
+            -- 25th shape: permit(any, any, any) when {<well-typed bool expr>}
             (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr))))))))
+                pure (policyWithWhenCond condExpr)))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 
