@@ -1,0 +1,8 @@
+entity User;
+entity Document;
+entity Photo;
+
+action view, edit, admin appliesTo {
+    principal: User,
+    resource: [Document, Photo],
+};

@@ -20,3 +20,7 @@ path = "../cedar-spec-bridge"
 
 [[lean_lib]]
 name = "CedarFull"
+
+[[lean_exe]]
+name = "measure-diff"
+root = "MeasureDiff"

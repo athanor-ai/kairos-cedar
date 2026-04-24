@@ -26,14 +26,20 @@ Outputs:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
+
+import kairos
+import kairos.trace as ktrace
+from kairos.observe import observe as kairos_observe
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parent.parent
@@ -134,14 +140,17 @@ def _build_policy(cm_expr: str) -> str:
     )
 
 
-def _rust_authorize(policy: str, request_ctx: dict) -> str:
+_SCRATCH_LOCK = threading.Lock()
+
+
+def _rust_authorize(policy: str, request_ctx: dict, worker_id: int = 0) -> str:
     """Run cedar authorize and return 'Allow' | 'Deny' | 'ERROR'.
 
-    Temp files are written inside REPO_ROOT so they appear under /work/
-    inside the container (REPO_ROOT is the only mount the image sees).
+    Per-worker scratch dir so parallel invocations don't clobber each
+    other. Temp files are written inside REPO_ROOT so they appear
+    under /work/ inside the container.
     """
-    # Scratch dir inside the repo (visible to the container as /work/...).
-    scratch = OUT_DIR / "scratch"
+    scratch = OUT_DIR / f"scratch-{worker_id}"
     scratch.mkdir(exist_ok=True)
     policy_path = scratch / "p.cedar"
     schema_path = scratch / "s.cedarschema"
@@ -158,7 +167,7 @@ def _rust_authorize(policy: str, request_ctx: dict) -> str:
         "context": request_ctx,
     }))
 
-    scratch_in_image = "/work/experiments/phase_c_cm_diff/outputs/scratch"
+    scratch_in_image = f"/work/experiments/phase_c_cm_diff/outputs/scratch-{worker_id}"
     proc = run_in_image(
         ["bash", "-c",
          f'cedar authorize '
@@ -176,50 +185,110 @@ def _rust_authorize(policy: str, request_ctx: dict) -> str:
     return "ERROR"
 
 
+def _eval_one(job: dict) -> dict:
+    """Worker: evaluate one (sample_idx, probe, expr) job. Called in
+    a thread pool; each thread pins to a unique worker_id so scratch
+    dirs don't collide."""
+    worker_id = threading.get_ident() % 64
+    decision = _rust_authorize(job["policy"], job["probe_ctx"], worker_id=worker_id)
+    return {
+        "idx": job["idx"],
+        "probe": job["probe_label"],
+        "expr": job["expr"],
+        "decision_rust": decision,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--n", type=int, default=100)
+    parser.add_argument("--workers", type=int, default=16,
+                        help="parallel cedar-cli invocations (each = 1 docker container)")
+    parser.add_argument("--no-session", action="store_true",
+                        help="skip kairos.session wrapping (local-only, no Tahoe trace)")
     args = parser.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     disagree_dir = OUT_DIR / "disagree_corpus"
     disagree_dir.mkdir(parents=True, exist_ok=True)
 
+    # SDK dogfood per qa's capability map (2026-04-24 17:38Z): wrap the
+    # whole run in kairos.session so a parent solve_runs row opens +
+    # closes, every observed LLM/Lean call joins the same session, and
+    # /solve-runs + /cost dashboards populate. ATH-524/544/548.
+    sink = ktrace.default_sink_from_env() if not args.no_session else None
+    task_id = f"ath-529-cedar-n{args.n}-diff"
+    session_cm = kairos.session(
+        task_id=task_id,
+        trace_sink=sink,
+        vertical="auth",  # Cedar policies = authorization vertical
+        run_type="sdk_orchestration",
+        run_subtype="autoformalize",
+        name_for_display=f"Cedar diff-run N={args.n}",
+    )
+
+    with session_cm as sess:
+        session_id = getattr(sess, "session_id", None) or getattr(sess, "task_id", task_id)
+        print(f"[cm-diff] session_id={session_id} sink={type(sink).__name__}")
+
+        with kairos_observe(
+            session_id=session_id,
+            sink=sink,
+            run_type="sdk_orchestration",
+            run_subtype="autoformalize",
+        ):
+            return _run_diff(args)
+
+
+def _run_diff(args) -> int:
     print(f"[cm-diff] sampling {args.n} CedarMicro bool exprs via MeasureAll.lean ...")
     t0 = time.monotonic()
     exprs = sample_cm_bool_exprs(args.n)
     t_sample = time.monotonic() - t0
     print(f"[cm-diff]   got {len(exprs)} samples in {t_sample:.1f}s")
 
+    # Build per-call job list up front.
+    jobs = []
+    for idx, cm_expr in enumerate(exprs):
+        policy = _build_policy(cm_expr)
+        for probe in PROBE_REQUESTS:
+            jobs.append({
+                "idx": idx,
+                "probe_label": probe["label"],
+                "probe_ctx": probe["context"],
+                "expr": cm_expr,
+                "policy": policy,
+            })
+
+    print(f"[cm-diff] dispatching {len(jobs)} evaluator calls across {args.workers} workers ...")
+    t_eval_start = time.monotonic()
+    results: list[dict] = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+        for i, r in enumerate(pool.map(_eval_one, jobs)):
+            results.append(r)
+            if (i + 1) % 200 == 0:
+                elapsed = time.monotonic() - t_eval_start
+                rate = (i + 1) / elapsed
+                remaining = (len(jobs) - i - 1) / rate
+                print(f"[cm-diff]   {i+1}/{len(jobs)} ({rate:.1f} calls/s, "
+                      f"~{remaining:.0f}s remaining)")
+    t_eval = time.monotonic() - t_eval_start
+
+    # Write per-sample TSV + count aggregates.
     samples_tsv = OUT_DIR / "samples.tsv"
     with samples_tsv.open("w") as sf:
         sf.write("idx\tprobe\texpr\tdecision_rust\tdecision_go\tagree\n")
-
         n_valid = 0
-        n_disagree = 0
         n_rust_err = 0
-        t_eval_start = time.monotonic()
-
-        for idx, cm_expr in enumerate(exprs):
-            policy = _build_policy(cm_expr)
-            for probe in PROBE_REQUESTS:
-                decision_rust = _rust_authorize(policy, probe["context"])
-                # TODO (follow-up): wire cedar-go evaluator. For now
-                # treat the Rust decision as the only signal; `agree`
-                # is None in this probe pass.
-                decision_go = "N/A"
-                agree = "N/A"
-                if decision_rust != "ERROR":
-                    n_valid += 1
-                else:
-                    n_rust_err += 1
-                sf.write(
-                    f"{idx}\t{probe['label']}\t"
-                    f"{cm_expr}\t{decision_rust}\t{decision_go}\t{agree}\n"
-                )
-                sf.flush()
-
-        t_eval = time.monotonic() - t_eval_start
+        for r in results:
+            if r["decision_rust"] != "ERROR":
+                n_valid += 1
+            else:
+                n_rust_err += 1
+            sf.write(
+                f"{r['idx']}\t{r['probe']}\t{r['expr']}\t"
+                f"{r['decision_rust']}\tN/A\tN/A\n"
+            )
 
     summary = {
         "n_samples": len(exprs),
