@@ -273,13 +273,18 @@ def part_3_generator_synthesis() -> tuple[bool, str]:
     first few. Exercises the type-directed generator in CedarMicro.WellTyped
     against the Palamedes scaffolding in CedarMicro.Ty / CedarMicro.Expr."""
     t = time.monotonic()
+    # First-run cold cache: lake build of cedar-micro + Palamedes can
+    # take 3-5 minutes on a fresh checkout (toolchain download +
+    # dependency build). Warm cache (re-runs in the same checkout) is
+    # under 20 s. Set 1500 s to survive the cold path on slow
+    # connections; the README documents the expected first-run wall.
     proc = run_in_image(
         ["bash", "-c",
          "cd /work/cedar-micro && "
          "elan default leanprover/lean4:v4.24.0 >/dev/null 2>&1 && "
          "lake build cedar-micro-sample >/dev/null 2>&1 && "
          ".lake/build/bin/cedar-micro-sample 10"],
-        timeout=600,
+        timeout=1500,
     )
     elapsed = time.monotonic() - t
     out = proc.stdout + proc.stderr

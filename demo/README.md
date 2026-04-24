@@ -23,7 +23,9 @@ docker pull ghcr.io/athanor-ai/kairos-cedar:latest
 python3 demo/run_demo.py
 ```
 
-The image is approximately 9 GB; pulling it from a cold cache takes 1-2 minutes on a reasonable connection. The demo itself runs in 20-40 seconds once the image is local.
+The image is approximately 9 GB; pulling it from a cold cache takes 1-2 minutes on a reasonable connection.
+
+The demo itself runs in 20-40 seconds with a warm `.lake/` cache. The first run on a fresh checkout takes 3-5 minutes because part (3) builds the `cedar-micro` Lake project and its `palamedes-lean` dependency from source (toolchain download + dependency compile). Subsequent runs reuse the cache and complete in well under a minute.
 
 ## Expected output
 
