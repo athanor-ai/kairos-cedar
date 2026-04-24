@@ -25,6 +25,16 @@
     • .int:  add-arm, neg-arm, ite-arm           (3 sorrys)
     • .entity: ite-arm                           (1 sorry)
   All flat/leaf arms are closed without sorry.
+
+  Closing the compound arms requires more than a drop-in inversion
+  lemma. The current `genSize_sound` statement threads
+  `wellTypedAt env e = true` (exists some type), but cedar-spec's
+  `typeOfAnd` / `typeOfOr` / `typeOfIf` / `typeOfBinaryApp` dispatch
+  on the *specific* type of each sub-expression. The inversion
+  needs a target-type-indexed predicate like
+  `wellTypedAtTy env τ e` (true iff `typeOf e [] env = .ok (te, _)`
+  with `te.typeOf = τ`). Genuinely a refactor + per-arm lemma,
+  not a seven-line fix. ATH-543 tracks this refactor end-to-end.
 -/
 
 import CedarFull.Expr
