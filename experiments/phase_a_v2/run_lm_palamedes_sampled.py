@@ -4,14 +4,17 @@ samples from it at runtime; acceptance oracle verifies each sample.
 Pre-ATH-546 the SDK's default sample_terms asked the LLM to
 self-sample. Sonnet/Kimi both failed at 100% rejection across
 CedarMicro + cedar-full. Post-ATH-546 (+ ATH-557 for multi-project
-Lake mount) we can wire sample_terms= to kairos.lean.sample_generator,
-which drives the LM's compiled Gen source through Palamedes.sampleN
-inside the workbench container. That's the pipeline variant the
-paper's Table 1 col 2 should measure.
+Lake mount, + ATH-560 fence strip, + ATH-561 prelude= kwarg) we wire
+sample_terms= to kairos.lean.sample_generator with prelude=<LLM source>,
+which inlines the LM's compiled Gen source directly into the driver
+and draws samples through Palamedes.sampleN inside the workbench
+container. That's the pipeline variant the paper's Table 1 col 2
+should measure.
 
 Target: CedarMicro, Sonnet proposer, 3 iters × 5 per-iter samples.
 All tracing auto-on via ATH-550 (ATHANOR_SYNC_TOKEN-gated + session
-auto-wrap).
+auto-wrap). Note run_subtype="generator_synthesis" rejected by DB
+until ATH-562 ships — journalled events replay via kairos trace replay.
 """
 from __future__ import annotations
 
@@ -44,43 +47,41 @@ CEDAR_MICRO = REPO_ROOT / "cedar-micro"
 def palamedes_sample_terms_adapter(
     generator_source: str, _response_text: str, n_samples: int,
 ) -> list[str]:
-    """Drop-in for the SDK's sample_terms kwarg. Writes the LLM's
-    generator source into cedar-micro/CedarMicro/GenLLM_V2.lean,
-    then calls kairos.lean.sample_generator to draw n_samples
-    terms via Palamedes.sampleN inside the workbench container.
-    Returns the rendered term strings.
+    """Drop-in for the SDK's sample_terms kwarg. Inlines the LLM's
+    generator source into the Kairos sample driver via the ATH-561
+    ``prelude=`` kwarg, then draws n_samples terms via Palamedes.sampleN
+    inside the workbench container.
 
-    Rollback: removes the scratch module on exit.
+    Markdown fence stripping is handled upstream by the SDK's
+    ``_extract_generator_source`` (ATH-560) — this adapter passes the
+    source through verbatim. No scratch module is written; the prelude
+    sits between the imports and ``def main`` in the generated driver,
+    so unqualified ``genWellTyped`` resolves regardless of whether the
+    LLM wrapped it in ``namespace CedarMicro`` or left it top-level.
     """
-    scratch = CEDAR_MICRO / "CedarMicro" / "GenLLM_V2.lean"
-    scratch.write_text(generator_source + "\n")
-    try:
-        r = sample_generator(
-            workspace=str(CEDAR_MICRO),
-            workspace_root=str(REPO_ROOT),
-            module="CedarMicro.GenLLM_V2",
-            term_type="CedarMicro.Expr",
-            generator_expr=(
-                f"sampleN {n_samples} "
-                "(CedarMicro.genWellTyped [.int, .bool, .int] .bool)"
-            ),
-            n=n_samples,
-            render_expr="(fun e => reprStr e)",
-            extra_imports=["Palamedes.Sample"],
-            docker_image="ghcr.io/athanor-ai/kairos-cedar:latest",
-            timeout_sec=300,
-        )
-        if r.error:
-            print(f"[palamedes sampler] error: {r.error}")
-            if r.stdout_tail:
-                print(r.stdout_tail[-600:])
-            return []
-        return r.terms
-    finally:
-        try:
-            scratch.unlink()
-        except FileNotFoundError:
-            pass
+    r = sample_generator(
+        workspace=str(CEDAR_MICRO),
+        workspace_root=str(REPO_ROOT),
+        module="CedarMicro",
+        term_type="CedarMicro.Expr",
+        generator_expr=(
+            f"sampleN {n_samples} "
+            "(genWellTyped [CedarMicro.Ty.int, CedarMicro.Ty.bool, "
+            "CedarMicro.Ty.int] CedarMicro.Ty.bool)"
+        ),
+        n=n_samples,
+        render_expr="(fun e => reprStr e)",
+        extra_imports=["Palamedes.Sample"],
+        prelude=generator_source,
+        docker_image="ghcr.io/athanor-ai/kairos-cedar:latest",
+        timeout_sec=300,
+    )
+    if r.error:
+        print(f"[palamedes sampler] error: {r.error}")
+        if r.stdout_tail:
+            print(r.stdout_tail[-600:])
+        return []
+    return r.terms
 
 
 def main() -> int:
