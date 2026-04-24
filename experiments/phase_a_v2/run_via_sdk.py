@@ -53,54 +53,38 @@ from kairos.trace import NoopTraceSink, SupabaseTraceSink  # noqa: E402
 # endpoint. Same pattern as `evaluate.py` uses for `openai/kimi-k2.5`
 # and `openai/mistral-large-3` (the Azure endpoints speak the
 # OpenAI-compatible schema litellm's openai provider understands).
-# This replaces the urllib shim that was in place while investigating
-# ATH-539; the closing disposition on that ticket is "not a bug, use
-# openai/kimi-k2.6-1 not azure_ai/kimi-k2.6-1".
+# Use unconditional assignment: the fleet bashrc pre-populates
+# OPENAI_API_BASE at the K2.5 endpoint, and `setdefault` would keep
+# pointing at the wrong host for K2.6 (apmartin-2613-resource, not
+# athanor).
 if os.environ.get("KIMI_K26_API_KEY") and os.environ.get("KIMI_K26_API_BASE"):
-    os.environ.setdefault("OPENAI_API_KEY", os.environ["KIMI_K26_API_KEY"])
-    os.environ.setdefault("OPENAI_API_BASE", os.environ["KIMI_K26_API_BASE"])
+    os.environ["OPENAI_API_KEY"] = os.environ["KIMI_K26_API_KEY"]
+    os.environ["OPENAI_API_BASE"] = os.environ["KIMI_K26_API_BASE"]
 
 
-import json as _json
-import urllib.request as _urlreq
-
-
-def _kimi_direct_llm_call(
+def _kimi_locked_llm_call(
     prompt: str, model: str,
     *, max_tokens: int = 32000, timeout_sec: int = 300,
 ) -> tuple[str, int, int, float]:
-    """Fallback urllib shim, retained for debugging the Azure endpoint
-    path when litellm's openai provider misbehaves. Unused by default
-    in v2; callers can pass llm_call=_kimi_direct_llm_call to opt in."""
-    timeout = timeout_sec
-    system = ""
-    user = prompt
-    url = f"{os.environ['KIMI_K26_API_BASE']}/chat/completions?api-version=2024-05-01-preview"
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": user})
-    body = {
-        "model": os.environ.get("KIMI_K26_MODEL", "kimi-k2.6-1"),
-        "messages": messages,
-        # Kimi 2.6 is a reasoning model; needs lots of budget.
-        "max_tokens": max(max_tokens, 32000),
-        "temperature": 0.1,
-    }
-    req = _urlreq.Request(
-        url,
-        data=_json.dumps(body).encode(),
-        headers={"api-key": os.environ["KIMI_K26_API_KEY"],
-                 "Content-Type": "application/json"},
-        method="POST",
+    """Call Kimi K2.6 via litellm regardless of the model string the
+    SDK requests. The SDK escalates to ``anthropic/claude-sonnet-4-6``
+    on the final iteration; for Phase A v2 we want the full iteration
+    budget to sit on a single proposer so the paper's pipeline numbers
+    are not contaminated by cross-model mixing. This shim pins K2.6.
+    """
+    import litellm
+    resp = litellm.completion(
+        model="openai/kimi-k2.6-1",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max(max_tokens, 32000),
+        temperature=0.1,
+        timeout=timeout_sec,
     )
-    with _urlreq.urlopen(req, timeout=timeout) as resp:
-        payload = _json.loads(resp.read().decode())
-    msg = payload["choices"][0]["message"]
-    text = msg.get("content") or ""
-    usage = payload.get("usage", {})
-    tokens_in = int(usage.get("prompt_tokens", 0) or 0)
-    tokens_out = int(usage.get("completion_tokens", 0) or 0)
+    msg = resp.choices[0].message
+    text = (msg.content or "") or (getattr(msg, "reasoning_content", None) or "")
+    usage = getattr(resp, "usage", None)
+    tokens_in = int(getattr(usage, "prompt_tokens", 0) or 0)
+    tokens_out = int(getattr(usage, "completion_tokens", 0) or 0)
     # Kimi K2.6 price per ATH-528 entry: $1 / $3 per million.
     cost_usd = (tokens_in * 1.0 + tokens_out * 3.0) / 1_000_000
     return text, tokens_in, tokens_out, cost_usd
@@ -213,6 +197,10 @@ def main() -> int:
         target_rejection_rate=0.1,
         n_samples=10,
         trace_sink=sink,
+        # Pin K2.6 across all iterations; the SDK would otherwise
+        # escalate to claude-sonnet-4-6 on the final iteration and
+        # mix proposers in the paper's §5 Table 1 numbers.
+        llm_call=_kimi_locked_llm_call,
         # NB: default sample_terms asks the LLM for samples alongside the
         # generator, which is fine for the V2 smoke. Native Lean sampling
         # via `lean_native_sampler` above is wired in for V2.1.

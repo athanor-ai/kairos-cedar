@@ -34,29 +34,84 @@ open Gen
 
 theorem varsOfType_sound (Γ : List Ty) (τ : Ty) (n : Nat) :
     n ∈ varsOfType Γ τ → Γ[n]? = some τ := by
-  -- Induction on Γ with varsOfType now in direct-recursive form.
-  -- Base case (Γ = []): varsOfType returns [], n ∈ [] is vacuous.
-  -- Cons case: split on head type equality; when it matches and
-  -- n = 0, Γ[0]? = some τ by the head; when it matches and n = k+1,
-  -- recurse by ih; when it doesn't match, n must be k+1 from the
-  -- shifted tail, recurse by ih.
-  -- Holes (two sorrys) are mechanical `simp [List.get?]`-style
-  -- rewrites that the current Lean 4.24 simp config does not
-  -- close automatically. Target next commit: bundle obligation
-  -- and dispatch to Aristotle or close with a manual case split.
-  sorry
+  induction Γ generalizing n with
+  | nil => intro h; simp [varsOfType] at h
+  | cons τ' rest ih =>
+    intro h
+    unfold varsOfType at h
+    simp only at h
+    split_ifs at h with hτ
+    · simp only [List.mem_cons, List.mem_map] at h
+      rcases h with h0 | ⟨m, hm, hn⟩
+      · subst h0; subst hτ; rfl
+      · subst hn
+        simp [List.getElem?_cons_succ]
+        exact ih m hm
+    · simp only [List.mem_map] at h
+      obtain ⟨m, hm, hn⟩ := h
+      subst hn
+      simp [List.getElem?_cons_succ]
+      exact ih m hm
 
 -- ────────────────────────────────────────────────────────────────────
 -- Step 2: `genLeaf` produces only well-typed expressions.
 -- ────────────────────────────────────────────────────────────────────
 
+/-- Helper: the support of a `foldr (pick (pure .var i)) fallback` is
+    the union of the var-indexed singletons with the fallback's support. -/
+private theorem support_varGen_foldr (xs : List Nat) (g : Gen Expr) (e : Expr) :
+    _root_.Gen.support (xs.foldr (fun i acc => Gen.pick (pure (Expr.var i)) acc) g) e ↔
+      (∃ i ∈ xs, e = Expr.var i) ∨ _root_.Gen.support g e := by
+  induction xs with
+  | nil => simp
+  | cons i xs ih =>
+    simp only [List.foldr_cons, Gen.Support.support_pick,
+               Gen.Support.support_pure, ih, List.mem_cons]
+    constructor
+    · rintro (rfl | ⟨j, hj, hje⟩ | hg)
+      · exact Or.inl ⟨i, Or.inl rfl, rfl⟩
+      · exact Or.inl ⟨j, Or.inr hj, hje⟩
+      · exact Or.inr hg
+    · rintro (⟨j, hj, hje⟩ | hg)
+      · rcases hj with rfl | hj
+        · exact Or.inl hje
+        · exact Or.inr (Or.inl ⟨j, hj, hje⟩)
+      · exact Or.inr (Or.inr hg)
+
+/-- Helper (bool case): every element of `litGen .bool` is a bool literal. -/
+private theorem litGen_bool_sound (Γ : List Ty) (e : Expr)
+    (h : _root_.Gen.support (litGen .bool) e) : wellTypedAt Γ .bool e = true := by
+  simp only [litGen, Gen.Support.support_pick, Gen.Support.support_pure] at h
+  rcases h with rfl | rfl <;> rfl
+
+/-- Helper (int case): every element of `litGen .int` is an int literal. -/
+private theorem litGen_int_sound (Γ : List Ty) (e : Expr)
+    (h : _root_.Gen.support (litGen .int) e) : wellTypedAt Γ .int e = true := by
+  simp only [litGen, Gen.Support.support_pick, Gen.Support.support_pure] at h
+  rcases h with rfl | rfl | rfl <;> rfl
+
+/-- Every element of `litGen τ` type-checks at τ (both type cases). -/
+private theorem litGen_sound (Γ : List Ty) (τ : Ty) (e : Expr)
+    (h : _root_.Gen.support (litGen τ) e) : wellTypedAt Γ τ e = true := by
+  cases τ
+  · exact litGen_bool_sound Γ e h
+  · exact litGen_int_sound Γ e h
+
 theorem genLeaf_sound (Γ : List Ty) (τ : Ty) (e : Expr) :
     _root_.Gen.support (genLeaf Γ τ) e → wellTypedAt Γ τ e = true := by
-  -- TODO(paper §5.1): unfold genLeaf, case-split on varsOfType Γ τ,
-  -- case-split on τ for the literal branch. Each atomic arm is
-  -- a `pure` whose support is a singleton that trivially
-  -- type-checks; the var branch uses varsOfType_sound.
-  sorry
+  intro h
+  unfold genLeaf at h
+  split at h
+  case _ hvars =>
+    exact litGen_sound Γ τ e h
+  case _ n rest hvars =>
+    simp only [Gen.Support.support_pick, support_varGen_foldr] at h
+    rcases h with (⟨i, hi, rfl⟩ | hlit) | hlit
+    · have hmem : i ∈ varsOfType Γ τ := by rw [hvars]; exact hi
+      have hty := varsOfType_sound Γ τ i hmem
+      simp [wellTypedAt, hty]
+    · exact litGen_sound Γ τ e hlit
+    · exact litGen_sound Γ τ e hlit
 
 -- ────────────────────────────────────────────────────────────────────
 -- Step 3: `genSize` soundness by induction on fuel.

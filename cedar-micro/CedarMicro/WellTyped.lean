@@ -80,22 +80,26 @@ def varsOfType : List Ty → Ty → List Nat
     let shifted := (varsOfType rest τ).map (· + 1)
     if τ' = τ then 0 :: shifted else shifted
 
+/-- Literal-only sub-generator at a given target type. Factored out of
+    `genLeaf` so the soundness proof's motive inference does not have to
+    reason across a `let`-bound `match τ`. -/
+def litGen : Ty → Gen Expr
+  | .bool => pick (pure (Expr.litBool true)) (pure (Expr.litBool false))
+  | .int  => pick
+      (pure (Expr.litInt 0))
+      (pick (pure (Expr.litInt 1)) (pure (Expr.litInt (-1))))
+
 /-- Base case: a leaf-only generator producing well-typed expressions
     at the requested type. No recursion; size-0 terms only. -/
 def genLeaf (Γ : List Ty) (τ : Ty) : Gen Expr :=
-  let litGen : Gen Expr := match τ with
-    | .bool => pick (pure (Expr.litBool true)) (pure (Expr.litBool false))
-    | .int  => pick
-        (pure (Expr.litInt 0))
-        (pick (pure (Expr.litInt 1)) (pure (Expr.litInt (-1))))
   -- Prefer vars when available; fall back to literals.
   match varsOfType Γ τ with
-  | []        => litGen
+  | []        => litGen τ
   | n :: rest =>
     -- Pick uniformly among available variables; fall through to literal.
     let varGen : Gen Expr :=
-      (n :: rest).foldr (fun i acc => pick (pure (Expr.var i)) acc) litGen
-    pick varGen litGen
+      (n :: rest).foldr (fun i acc => pick (pure (Expr.var i)) acc) (litGen τ)
+    pick varGen (litGen τ)
 
 /-- Type-directed generator with a fuel bound `size`. At size 0 emits
     a leaf; at size > 0 picks probabilistically among leaves and the
