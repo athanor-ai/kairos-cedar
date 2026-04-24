@@ -265,16 +265,18 @@ theorem Expr.support_unfold {α : Type} {f : α → Gen (ExprF α)} {x : α} :
       exists 1
       exists ExprF.var n
   case ite c t f ihc iht ihf =>
-    -- TODO(paper §5.2): ternary recursive case. Forward direction
-    -- mirrors the `.and` arm one level deeper (3 binds instead of 2).
-    -- Backward direction needs to bump three sub-term fuel budgets to
-    -- a common N = nc+nt+nf via `Expr.unfold_aux_monotonic`. The
-    -- bookkeeping that closes for binary (one `rw [Nat.add_comm]`)
-    -- needs two rewrites here, and the Lean 4.24 toolchain in-container
-    -- lacks `ring`/`unfold_let`. Follow-up closes via three explicit
-    -- `Expr.unfold_aux_monotonic` applications with `omega`-produced
-    -- equalities, once an interactive session can step through the goal
-    -- rewrites.
+    -- TODO(paper §5.2): ternary recursive case. The forward direction
+    -- has been attempted (see git log); it unpacks three
+    -- Gen.support_bind levels via `replace ⟨o, h, ...⟩` patterns and
+    -- case-splits each Option for the impossible sub-arm discharges.
+    -- The backward direction needs three `Expr.unfold_aux_monotonic`
+    -- applications to bump each sub-term's fuel to a common
+    -- N = nc + nt + nf, discharged via `omega`-produced Nat
+    -- equalities. Lean 4.24 in the monolith container reports
+    -- cascading "Application type mismatch" on the `some c` /
+    -- `some t` / `some f` witnesses at the outer existentials,
+    -- suggesting the ih rewrite direction is inverted somewhere in
+    -- the unpacking. Close in an interactive session.
     sorry
   case and a b iha ihb =>
     apply Iff.intro
