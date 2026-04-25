@@ -619,7 +619,84 @@ private def permitWhenIpV6EqSelf : Policy :=
                                     extIpV6LocalhostLit extIpV6LocalhostLit }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 38 shapes (was 36 before ATH-603 sub-3):
+-- ── Novelty sweep (Aidan 2026-04-25): shapes 39-42 ───────────────────
+-- Four constructor classes that the 38-shape grammar does not yet
+-- exercise. Each is one-line + a sorry-stubbed wellTypedAt lemma per
+-- the existing ATH-WIDEN-PROOF pattern. Diff harness re-runs at
+-- N=10k against the wider 42-shape grammar; soundness lemmas live in
+-- CedarFull.Soundness.
+
+-- Shape 39: when { principal in [] }
+-- Empty-set membership. The 38-shape grammar covers .mem against
+-- 1-element and 3-element sets (shapes 28, 35); the empty set is a
+-- distinct evaluator path: cedar-policy and cedar-go must agree that
+-- `principal in []` evaluates to false unconditionally.
+private def permitWhenPrincipalInEmptySet : Policy :=
+  { id             := "permit-when-principal-in-empty-set"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .mem (.var .principal) (.set []) }]
+  }
+
+-- Shape 40: when { {approved: true, denied: false} has approved }
+-- Multi-key record literal. The 38-shape grammar covers 0-key
+-- (shape 29) and 1-key (shape 30) records; the 2-key case exercises
+-- typeOfRecord's multi-attribute LUB and the .hasAttr evaluator's
+-- record-key lookup on a record with siblings.
+private def recordTwoKeyLit : Expr :=
+  .record [ ("approved", .lit (.bool true))
+          , ("denied",   .lit (.bool false))
+          ]
+
+private def permitWhenTwoKeyRecordHas : Policy :=
+  { id             := "permit-when-two-key-record-has"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .hasAttr recordTwoKeyLit "approved" }]
+  }
+
+-- Shape 41: when { !(principal == User::"alice") }
+-- Boolean negation on an equality. The 38-shape grammar uses
+-- .unaryApp .is (shapes 8-10, 18-20, 25); .not is the second unary
+-- operator and exercises the boolean-inversion evaluator branch.
+private def permitWhenNotPrincipalEqAlice : Policy :=
+  { id             := "permit-when-not-principal-eq-alice"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .unaryApp .not
+                                    (.binaryApp .eq
+                                      (.var .principal)
+                                      (.lit (.entityUID (mkUID "User" "alice")))) }]
+  }
+
+-- Shape 42: when { (1 + 1) == 2 }
+-- Integer arithmetic in a when body. .add on int literals is a
+-- distinct evaluator path that exercises both typecheckers'
+-- arithmetic branches and integer-overflow handling.
+private def permitWhenIntArithEqTwo : Policy :=
+  { id             := "permit-when-int-arith-eq-two"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq
+                                    (.binaryApp .add
+                                      (.lit (.int 1))
+                                      (.lit (.int 1)))
+                                    (.lit (.int 2)) }]
+  }
+
+/-- Generate a Cedar.Spec.Policy. 42 shapes (was 38 before novelty sweep 2026-04-25):
     Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
     Shapes 16–24: condition variants (when/unless with eq, in, is, has)
     Shape 25:     genWellTyped-derived bool expr (~18 outputs)
@@ -637,6 +714,11 @@ private def permitWhenIpV6EqSelf : Policy :=
                   (decimal cross-precision eq + IPv6 zero-compression
                   self-eq). Probes the parser-level residual flagged
                   in paper §10.3.
+    Shapes 39–42: novelty sweep (Aidan 2026-04-25) — empty-set .mem,
+                  multi-key record literal `has`, .unaryApp .not on a
+                  bool eq, and .binaryApp .add int arithmetic in a when
+                  body. Each probes a constructor class the 38-shape
+                  grammar does not yet exercise.
     Shapes are chained with Gen.pick for uniform sampling. -/
 def genPolicy (_ : Schema) : Gen Policy :=
   -- Scope-only shapes (1–15)
@@ -682,9 +764,14 @@ def genPolicy (_ : Schema) : Gen Policy :=
   -- ATH-603 sub-3 parser-level string-form drift (37–38)
   (Gen.pick (pure permitWhenDecimalCrossPrecisionEq)
   (Gen.pick (pure permitWhenIpV6EqSelf)
+  -- Novelty sweep (39–42): empty-set, multi-key record, .not, .add
+  (Gen.pick (pure permitWhenPrincipalInEmptySet)
+  (Gen.pick (pure permitWhenTwoKeyRecordHas)
+  (Gen.pick (pure permitWhenNotPrincipalEqAlice)
+  (Gen.pick (pure permitWhenIntArithEqTwo)
             -- Shape 25 (placed at end): permit when {<well-typed bool>}
             (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))))))
+                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 

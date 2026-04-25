@@ -583,4 +583,54 @@ theorem wellTypedAt_setLitSingletonAlice
     wellTypedAt env setLitSingletonAlice = true := by
   sorry
 
+-- ── Novelty sweep (Aidan 2026-04-25): shapes 39-42 widening lemmas ─
+-- One sorry-stubbed wellTypedAt lemma per new shape, matching the
+-- existing ATH-WIDEN-PROOF pattern. Mechanically tedious but
+-- solvable; deferred to a follow-up batch per paper §10.3's
+-- "literal-shape cardinality" caveat.
+
+/-- Shape 39: empty-set membership `principal in []`. The empty set
+    typechecks under any environment (typeOfSet's empty-list branch
+    LUBs over nothing); .mem typechecks against (.entity X) on the
+    left and (.set _) on the right. SORRY: ATH-WIDEN-PROOF-SET. -/
+theorem wellTypedAt_emptySetMem (_env : TypeEnv) :
+    wellTypedAt _env (.binaryApp .mem (.var .principal) (.set [])) = true := by
+  sorry
+
+/-- Shape 40: 2-key record literal `{approved: true, denied: false}
+    has approved`. typeOfRecord LUBs over the two attribute types;
+    typeOfHasAttr returns Bool when the key is statically present.
+    SORRY: ATH-WIDEN-PROOF-RECORD. -/
+theorem wellTypedAt_twoKeyRecordHas (_env : TypeEnv) :
+    wellTypedAt _env
+      (.hasAttr
+        (.record [ ("approved", .lit (.bool true))
+                 , ("denied",   .lit (.bool false)) ])
+        "approved")
+    = true := by
+  sorry
+
+/-- Shape 41: `!(principal == User::"alice")`. Inner .binaryApp .eq
+    typechecks at Bool; .unaryApp .not preserves Bool. SORRY:
+    ATH-WIDEN-PROOF-NOT. -/
+theorem wellTypedAt_notPrincipalEqAlice (_env : TypeEnv) :
+    wellTypedAt _env
+      (.unaryApp .not
+        (.binaryApp .eq
+          (.var .principal)
+          (.lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" }))))
+    = true := by
+  sorry
+
+/-- Shape 42: `(1 + 1) == 2`. .binaryApp .add typechecks at Int when
+    both operands are Int; outer .eq typechecks at Bool. SORRY:
+    ATH-WIDEN-PROOF-INTARITH. -/
+theorem wellTypedAt_intArithEqTwo (_env : TypeEnv) :
+    wellTypedAt _env
+      (.binaryApp .eq
+        (.binaryApp .add (.lit (.int 1)) (.lit (.int 1)))
+        (.lit (.int 2)))
+    = true := by
+  sorry
+
 end CedarFull
