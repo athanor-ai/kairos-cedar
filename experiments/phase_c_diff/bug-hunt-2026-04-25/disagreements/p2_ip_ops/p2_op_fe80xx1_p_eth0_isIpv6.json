@@ -1,0 +1,25 @@
+{
+  "idx": "p2_ip_ops__p2_op_fe80xx1_p_eth0_isIpv6",
+  "shape": "p2_ip_ops",
+  "sample_id": "p2_op_fe80xx1_p_eth0_isIpv6",
+  "policy": "permit(principal, action, resource) when { ip(\"fe80::1%eth0\").isIpv6() };",
+  "principal": "User::alice",
+  "action": "Action::view",
+  "resource": "Document::doc1",
+  "rust": {
+    "idx": "p2_ip_ops__p2_op_fe80xx1_p_eth0_isIpv6",
+    "decision": "Deny",
+    "stdout_tail": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `ipaddr` extension function: invalid IP address: fe80::1%eth0\n",
+    "stderr_tail": "",
+    "returncode": 2
+  },
+  "go": {
+    "idx": "p2_ip_ops__p2_op_fe80xx1_p_eth0_isIpv6",
+    "decision": "Allow"
+  },
+  "classification": "evaluator_disagreement",
+  "diff_debug": {
+    "rust_err": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `ipaddr` extension function: invalid IP address: fe80::1%eth0\n",
+    "go_decision": "Allow"
+  }
+}
