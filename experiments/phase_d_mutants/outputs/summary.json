@@ -1,0 +1,113 @@
+{
+  "task_id": "ath-cedar-mutant-study-n1000",
+  "n_target": 1000,
+  "n_sampled": 1000,
+  "n_rust_decisions": 1000,
+  "image": "ghcr.io/athanor-ai/kairos-cedar:latest",
+  "cedar_full_src": "/home/azureuser/agents/platform/kairos-cedar/cedar-full",
+  "wall_time_total_sec": 145.4017329240014,
+  "phase_timings_sec": {
+    "sample_tuples": 1.0429014200017264,
+    "rust_per_tuple": 11.021290486001817
+  },
+  "per_mutant": [
+    {
+      "mutant_id": "M1",
+      "mutant_dir": "M1_flip_allow_deny",
+      "status": "ok",
+      "n_compared": 1000,
+      "n_agreements": 0,
+      "n_disagreements": 1000,
+      "disagreement_rate": 1.0,
+      "wall_time_sec": 35.365536573997815,
+      "go_elapsed_sec": 15.43143031100044,
+      "per_shape_disagreements": {
+        "permit+scope_only": 83,
+        "forbid+scope_only": 42,
+        "permit+eq": 145,
+        "forbid+eq": 83,
+        "permit+in": 124,
+        "forbid+in": 21,
+        "permit+when_other": 162,
+        "permit+and": 100,
+        "permit+or": 80,
+        "permit+ite": 160
+      },
+      "disagreement_sample_path": "/tmp/kc-mutants/experiments/phase_d_mutants/outputs/disagreements_M1.jsonl",
+      "disagreement_sample_capped": true
+    },
+    {
+      "mutant_id": "M2",
+      "mutant_dir": "M2_and_short_circuit_wrong",
+      "status": "ok",
+      "n_compared": 1000,
+      "n_agreements": 681,
+      "n_disagreements": 319,
+      "disagreement_rate": 0.319,
+      "wall_time_sec": 16.71026678099952,
+      "go_elapsed_sec": 7.7612890060008795,
+      "per_shape_disagreements": {
+        "permit+in": 21,
+        "permit+when_other": 87,
+        "permit+and": 80,
+        "permit+or": 20,
+        "permit+ite": 80,
+        "permit+scope_only": 7,
+        "permit+eq": 24
+      },
+      "disagreement_sample_path": "/tmp/kc-mutants/experiments/phase_d_mutants/outputs/disagreements_M2.jsonl",
+      "disagreement_sample_capped": true
+    },
+    {
+      "mutant_id": "M3",
+      "mutant_dir": "M3_in_always_true",
+      "status": "ok",
+      "n_compared": 1000,
+      "n_agreements": 911,
+      "n_disagreements": 89,
+      "disagreement_rate": 0.089,
+      "wall_time_sec": 18.1569033880005,
+      "go_elapsed_sec": 10.476805082998908,
+      "per_shape_disagreements": {
+        "permit+in": 89
+      },
+      "disagreement_sample_path": "/tmp/kc-mutants/experiments/phase_d_mutants/outputs/disagreements_M3.jsonl",
+      "disagreement_sample_capped": false
+    },
+    {
+      "mutant_id": "M4",
+      "mutant_dir": "M4_ite_branches_flipped",
+      "status": "ok",
+      "n_compared": 1000,
+      "n_agreements": 920,
+      "n_disagreements": 80,
+      "disagreement_rate": 0.08,
+      "wall_time_sec": 36.30100227499861,
+      "go_elapsed_sec": 15.999643866998667,
+      "per_shape_disagreements": {
+        "permit+ite": 80
+      },
+      "disagreement_sample_path": "/tmp/kc-mutants/experiments/phase_d_mutants/outputs/disagreements_M4.jsonl",
+      "disagreement_sample_capped": false
+    },
+    {
+      "mutant_id": "M5",
+      "mutant_dir": "M5_equal_loose",
+      "status": "ok",
+      "n_compared": 1000,
+      "n_agreements": 940,
+      "n_disagreements": 60,
+      "disagreement_rate": 0.06,
+      "wall_time_sec": 23.504240172998834,
+      "go_elapsed_sec": 9.65115955500005,
+      "per_shape_disagreements": {
+        "permit+eq": 60
+      },
+      "disagreement_sample_path": "/tmp/kc-mutants/experiments/phase_d_mutants/outputs/disagreements_M5.jsonl",
+      "disagreement_sample_capped": false
+    }
+  ],
+  "blind_spots": [],
+  "compile_failures": [],
+  "patch_failures": []
+}
