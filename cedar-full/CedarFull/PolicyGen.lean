@@ -581,7 +581,45 @@ private def permitWhenSingletonInPrincipal : Policy :=
                                     (.var .principal) setLitSingletonAlice }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 36 shapes (was 34 before ATH-617):
+-- ── ATH-603 sub-3: parser-level string-form drift probes ─────────────
+-- Shapes 33-36 cover evaluator-path divergence classes. The honest
+-- residual called out in paper §10.3 is at the parser level: cedar-
+-- policy and cedar-go run distinct Decimal + IPAddr parsers. These
+-- shapes use string forms that differ from the canonical extDecimalLit
+-- + extIpLit values to probe whether cross-form equality stays in
+-- agreement.
+
+-- Shape 37: when { decimal("1.0") == decimal("1.000") }
+-- Same value semantically; different string forms. cedar-policy and
+-- cedar-go independently parse + normalize Decimal — cross-form
+-- equality probes whether the two parsers agree on canonical form.
+private def permitWhenDecimalCrossPrecisionEq : Policy :=
+  { id             := "permit-when-decimal-cross-precision-eq"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq
+                                    extDecimalLit extDecimalLitThousandths }]
+  }
+
+-- Shape 38: when { ip("::1") == ip("::1") }
+-- IPv6 self-equality. Same .ext .ipaddr type as IPv4 (extIpLit) but
+-- exercises the IPv6 parser path. cedar-go's IPAddr parser had
+-- historical drift on IPv6 zero-compression forms.
+private def permitWhenIpV6EqSelf : Policy :=
+  { id             := "permit-when-ipv6-eq-self"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq
+                                    extIpV6LocalhostLit extIpV6LocalhostLit }]
+  }
+
+/-- Generate a Cedar.Spec.Policy. 38 shapes (was 36 before ATH-603 sub-3):
     Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
     Shapes 16–24: condition variants (when/unless with eq, in, is, has)
     Shape 25:     genWellTyped-derived bool expr (~18 outputs)
@@ -595,6 +633,10 @@ private def permitWhenSingletonInPrincipal : Policy :=
     Shapes 35–36: ATH-617 — single-element set + .contains/.in
                   isolation pair. Probes cedar-drt's single-
                   membership divergence class directly.
+    Shapes 37–38: ATH-603 sub-3 — parser-level string-form drift
+                  (decimal cross-precision eq + IPv6 zero-compression
+                  self-eq). Probes the parser-level residual flagged
+                  in paper §10.3.
     Shapes are chained with Gen.pick for uniform sampling. -/
 def genPolicy (_ : Schema) : Gen Policy :=
   -- Scope-only shapes (1–15)
@@ -637,9 +679,12 @@ def genPolicy (_ : Schema) : Gen Policy :=
   -- ATH-617 single-element-set isolation pair (35–36)
   (Gen.pick (pure permitWhenSingletonContainsPrincipal)
   (Gen.pick (pure permitWhenSingletonInPrincipal)
+  -- ATH-603 sub-3 parser-level string-form drift (37–38)
+  (Gen.pick (pure permitWhenDecimalCrossPrecisionEq)
+  (Gen.pick (pure permitWhenIpV6EqSelf)
             -- Shape 25 (placed at end): permit when {<well-typed bool>}
             (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))))
+                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 
