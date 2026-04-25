@@ -47,6 +47,39 @@ OUT_DIR = HERE / "outputs"
 IMAGE = os.environ.get("KAIROS_CEDAR_IMAGE", "ghcr.io/athanor-ai/kairos-cedar:latest")
 
 
+_EMIT_SEQUENCE = [0]  # mutable single-element list as monotonic counter
+
+
+def _emit(sink, sess, event_type: str, payload: dict) -> None:
+    """Best-effort SDK trace emit. Per Sam 2026-04-25 directive: every
+    meaningful callsite should emit so the run is auditable in
+    sdk_agent_events even on crash. Swallows errors so a sink hiccup
+    never kills the run, but logs.
+
+    Uses the kairos.trace.TraceEvent dataclass — passing a dict to
+    SupabaseTraceSink.emit silently fails validation and drops the event.
+    """
+    if sink is None:
+        return
+    try:
+        from kairos.trace import TraceEvent
+        run_id = (getattr(sess, "run_id", None)
+                  or getattr(sess, "session_id", None)
+                  or getattr(sess, "task_id", "unknown"))
+        _EMIT_SEQUENCE[0] += 1
+        event = TraceEvent(
+            run_id=run_id,
+            run_type="sdk_orchestration",
+            run_subtype="differential_test",
+            event_type=event_type,
+            sequence=_EMIT_SEQUENCE[0],
+            payload=payload,
+        )
+        sink.emit(event)
+    except Exception as e:
+        print(f"      WARN: emit failed for event_type={event_type}: {e}", file=sys.stderr)
+
+
 def run_in_image(cmd: list[str], *, workdir: str = "/work", timeout: int = 600):
     argv = [
         "docker", "run", "--rm",
@@ -237,17 +270,50 @@ def main() -> int:
             run_type="sdk_orchestration",
             run_subtype="autoformalize",
         ):
-            return _run_diff(args)
+            return _run_diff(args, sess, sink)
 
 
-def _run_diff(args) -> int:
+def _run_diff(args, sess=None, sink=None) -> int:
+    import math as _math
+
+    t0_total = time.monotonic()
+    _emit(sink, sess, "run_start", {
+        "n_target": args.n,
+        "workers": args.workers,
+        "image": IMAGE,
+        "no_session": bool(args.no_session),
+        "n_probe_per_sample": len(PROBE_REQUESTS),
+    })
+
+    # Phase 1: sample CedarMicro bool exprs from MeasureAll.lean
     print(f"[cm-diff] sampling {args.n} CedarMicro bool exprs via MeasureAll.lean ...")
+    _emit(sink, sess, "phase_start", {"phase": "sample_cm_exprs", "n_target": args.n})
     t0 = time.monotonic()
-    exprs = sample_cm_bool_exprs(args.n)
+    try:
+        exprs = sample_cm_bool_exprs(args.n)
+    except Exception as e:
+        t_sample_err = time.monotonic() - t0
+        _emit(sink, sess, "phase_error", {
+            "phase": "sample_cm_exprs", "error": str(e),
+            "elapsed_sec": round(t_sample_err, 3),
+        })
+        _emit(sink, sess, "run_complete", {
+            "status": "failed", "reason": "sample_cm_exprs_failed",
+        })
+        raise
     t_sample = time.monotonic() - t0
     print(f"[cm-diff]   got {len(exprs)} samples in {t_sample:.1f}s")
+    _emit(sink, sess, "phase_complete", {
+        "phase": "sample_cm_exprs",
+        "n_generated": len(exprs),
+        "n_target": args.n,
+        "elapsed_sec": round(t_sample, 3),
+        "underflow": len(exprs) < args.n,
+    })
 
-    # Build per-call job list up front.
+    # Phase 2: build evaluator job list (one entry per (sample, probe))
+    _emit(sink, sess, "phase_start", {"phase": "build_jobs", "n_samples": len(exprs)})
+    t_jobs_start = time.monotonic()
     jobs = []
     for idx, cm_expr in enumerate(exprs):
         policy = _build_policy(cm_expr)
@@ -259,22 +325,60 @@ def _run_diff(args) -> int:
                 "expr": cm_expr,
                 "policy": policy,
             })
+    t_jobs = time.monotonic() - t_jobs_start
+    _emit(sink, sess, "phase_complete", {
+        "phase": "build_jobs",
+        "n_jobs": len(jobs),
+        "n_samples": len(exprs),
+        "n_probe_per_sample": len(PROBE_REQUESTS),
+        "elapsed_sec": round(t_jobs, 3),
+    })
 
+    # Phase 3: parallel rust evaluator probes
     print(f"[cm-diff] dispatching {len(jobs)} evaluator calls across {args.workers} workers ...")
+    _emit(sink, sess, "phase_start", {
+        "phase": "rust_evaluator_probes",
+        "n_jobs": len(jobs),
+        "workers": args.workers,
+    })
     t_eval_start = time.monotonic()
     results: list[dict] = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
-        for i, r in enumerate(pool.map(_eval_one, jobs)):
-            results.append(r)
-            if (i + 1) % 200 == 0:
-                elapsed = time.monotonic() - t_eval_start
-                rate = (i + 1) / elapsed
-                remaining = (len(jobs) - i - 1) / rate
-                print(f"[cm-diff]   {i+1}/{len(jobs)} ({rate:.1f} calls/s, "
-                      f"~{remaining:.0f}s remaining)")
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+            for i, r in enumerate(pool.map(_eval_one, jobs)):
+                results.append(r)
+                if (i + 1) % 200 == 0:
+                    elapsed = time.monotonic() - t_eval_start
+                    rate = (i + 1) / elapsed
+                    remaining = (len(jobs) - i - 1) / rate
+                    print(f"[cm-diff]   {i+1}/{len(jobs)} ({rate:.1f} calls/s, "
+                          f"~{remaining:.0f}s remaining)")
+    except Exception as e:
+        t_eval_err = time.monotonic() - t_eval_start
+        _emit(sink, sess, "phase_error", {
+            "phase": "rust_evaluator_probes",
+            "error": str(e),
+            "elapsed_sec": round(t_eval_err, 3),
+            "n_completed": len(results),
+        })
+        _emit(sink, sess, "run_complete", {
+            "status": "failed", "reason": "rust_evaluator_probes_failed",
+        })
+        raise
     t_eval = time.monotonic() - t_eval_start
+    _emit(sink, sess, "phase_complete", {
+        "phase": "rust_evaluator_probes",
+        "n_jobs": len(jobs),
+        "n_results": len(results),
+        "elapsed_sec": round(t_eval, 3),
+        "calls_per_sec": round(len(jobs) / max(1e-6, t_eval), 2),
+    })
 
-    # Write per-sample TSV + count aggregates.
+    # Phase 4: aggregate results, write TSV + summary.json
+    _emit(sink, sess, "phase_start", {
+        "phase": "aggregate", "n_results": len(results),
+    })
+    t_agg_start = time.monotonic()
     samples_tsv = OUT_DIR / "samples.tsv"
     with samples_tsv.open("w") as sf:
         sf.write("idx\tprobe\texpr\tdecision_rust\tdecision_go\tagree\n")
@@ -290,13 +394,15 @@ def _run_diff(args) -> int:
                 f"{r['decision_rust']}\tN/A\tN/A\n"
             )
 
+    n_eval_calls = len(exprs) * len(PROBE_REQUESTS)
+    valid_rate_rust = n_valid / max(1, n_eval_calls)
     summary = {
         "n_samples": len(exprs),
         "n_probe_per_sample": len(PROBE_REQUESTS),
-        "n_evaluator_calls": len(exprs) * len(PROBE_REQUESTS),
+        "n_evaluator_calls": n_eval_calls,
         "n_rust_valid": n_valid,
         "n_rust_error": n_rust_err,
-        "valid_rate_rust": n_valid / max(1, len(exprs) * len(PROBE_REQUESTS)),
+        "valid_rate_rust": valid_rate_rust,
         "t_sample_sec": round(t_sample, 2),
         "t_eval_sec": round(t_eval, 2),
         "note": (
@@ -308,17 +414,44 @@ def _run_diff(args) -> int:
         ),
     }
     (OUT_DIR / "summary.json").write_text(json.dumps(summary, indent=2))
+    t_agg = time.monotonic() - t_agg_start
+    _emit(sink, sess, "phase_complete", {
+        "phase": "aggregate",
+        "n_rust_valid": n_valid,
+        "n_rust_error": n_rust_err,
+        "valid_rate_rust": valid_rate_rust,
+        "elapsed_sec": round(t_agg, 3),
+        "samples_tsv": str(samples_tsv),
+    })
 
     print(f"\n[cm-diff] SUMMARY")
     print(f"  samples         : {len(exprs)}")
-    print(f"  evaluator calls : {len(exprs) * len(PROBE_REQUESTS)} "
+    print(f"  evaluator calls : {n_eval_calls} "
           f"({len(PROBE_REQUESTS)} probes per sample)")
-    print(f"  rust valid      : {n_valid}/{len(exprs) * len(PROBE_REQUESTS)} "
-          f"({summary['valid_rate_rust']:.3f})")
+    print(f"  rust valid      : {n_valid}/{n_eval_calls} "
+          f"({valid_rate_rust:.3f})")
     print(f"  rust errors     : {n_rust_err}")
     print(f"  sample wall     : {t_sample:.1f}s")
     print(f"  eval wall       : {t_eval:.1f}s")
     print(f"  outputs         : {OUT_DIR}")
+
+    # Terminal run_complete event — closes the session in DB so it doesn't
+    # get marked failed by the stale-run watchdog (ATH-571). Coerce NaN →
+    # None since PostgREST rejects NaN with PGRST102.
+    _valid_rate_rust = (None if _math.isnan(valid_rate_rust) else valid_rate_rust)
+    total_elapsed = time.monotonic() - t0_total
+    _emit(sink, sess, "run_complete", {
+        "status": "succeeded" if n_rust_err == 0 else "failed",
+        "n_samples": len(exprs),
+        "n_probe_per_sample": len(PROBE_REQUESTS),
+        "n_evaluator_calls": n_eval_calls,
+        "n_rust_valid": n_valid,
+        "n_rust_error": n_rust_err,
+        "valid_rate_rust": _valid_rate_rust,
+        "t_sample_sec": round(t_sample, 3),
+        "t_eval_sec": round(t_eval, 3),
+        "wall_time_total_sec": round(total_elapsed, 3),
+    })
 
     return 0 if n_rust_err == 0 else 1
 
