@@ -544,7 +544,44 @@ private def permitWhenSetContainsPrincipal : Policy :=
                                     setLitUserEntities (.var .principal) }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 34 shapes (was 32 before ATH-603):
+-- ── ATH-617: single-element set + .contains/.in isolation pair ──────
+-- The 3-element setLitUserEntities (shapes 33-34) does not isolate the
+-- cedar-drt-flagged single-membership divergence class. Shapes 35-36
+-- use setLitSingletonAlice (the singleton [User::"alice"]) so any
+-- disagreement between .contains-side and .mem-side can be
+-- triangulated to the membership cardinality.
+
+-- Shape 35: when { [User::"alice"].contains(principal) }
+-- Single-element .contains. Probes the cedar-drt-flagged class
+-- directly. The principal-is-User scope ensures the contains arg
+-- typechecks as a (.entity User), matching the set's element type.
+private def permitWhenSingletonContainsPrincipal : Policy :=
+  { id             := "permit-when-singleton-contains-principal"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .contains
+                                    setLitSingletonAlice (.var .principal) }]
+  }
+
+-- Shape 36: when { principal in [User::"alice"] }
+-- Same predicate as shape 35 but routed through .mem instead of
+-- .contains. Pair lets us isolate whether a disagreement (if any
+-- ever surfaces) sits on the .contains side or the .mem side.
+private def permitWhenSingletonInPrincipal : Policy :=
+  { id             := "permit-when-singleton-in-principal"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .mem
+                                    (.var .principal) setLitSingletonAlice }]
+  }
+
+/-- Generate a Cedar.Spec.Policy. 36 shapes (was 34 before ATH-617):
     Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
     Shapes 16–24: condition variants (when/unless with eq, in, is, has)
     Shape 25:     genWellTyped-derived bool expr (~18 outputs)
@@ -555,6 +592,9 @@ private def permitWhenSetContainsPrincipal : Policy :=
                   self and set `.contains` of principal. Exercise
                   binary-op constructors (.containsAll, .contains)
                   that are distinct evaluator paths from .mem (shape 28).
+    Shapes 35–36: ATH-617 — single-element set + .contains/.in
+                  isolation pair. Probes cedar-drt's single-
+                  membership divergence class directly.
     Shapes are chained with Gen.pick for uniform sampling. -/
 def genPolicy (_ : Schema) : Gen Policy :=
   -- Scope-only shapes (1–15)
@@ -594,9 +634,12 @@ def genPolicy (_ : Schema) : Gen Policy :=
   -- ATH-603 bug-hunt shapes (33–34)
   (Gen.pick (pure permitWhenSetContainsAllSelf)
   (Gen.pick (pure permitWhenSetContainsPrincipal)
+  -- ATH-617 single-element-set isolation pair (35–36)
+  (Gen.pick (pure permitWhenSingletonContainsPrincipal)
+  (Gen.pick (pure permitWhenSingletonInPrincipal)
             -- Shape 25 (placed at end): permit when {<well-typed bool>}
             (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))
+                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 
