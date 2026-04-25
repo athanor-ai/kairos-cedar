@@ -1,0 +1,15 @@
+--- a/internal/eval/evalers.go
++++ b/internal/eval/evalers.go
+@@ -236,11 +236,11 @@
+ 	}
+ 	b, err := ValueToBool(v)
+ 	if err != nil {
+ 		return zeroValue(), err
+ 	}
+-	if !b {
++	if b {
+ 		return v, nil
+ 	}
+ 	v, err = n.rhs.Eval(env)
+ 	if err != nil {
+ 		return zeroValue(), err

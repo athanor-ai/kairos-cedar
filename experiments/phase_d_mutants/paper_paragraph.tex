@@ -1,0 +1,68 @@
+% Paper paragraph for §8 Evaluation: Discriminative Power of the
+% type-directed differential pipeline. Slot in between
+% subsection{Bug-Finding Rate} (\S\ref{sec:eval-bugs}) and
+% subsection{Coverage} (\S\ref{sec:eval-cov}). Numbers are from the
+% Phase D run at $N = 1{,}000$ logged in
+% \texttt{experiments/phase_d_mutants/outputs/summary.json}.
+
+\subsection{Discriminative Power}
+\label{sec:eval-discriminative}
+
+The zero-disagreement headline of \S\ref{sec:eval-bugs} would be
+epistemically empty if the pipeline could not detect a planted bug
+either. We address this with a seeded-mutant study. Five
+single-localised mutants were injected into \cedargo, each a
+$\le\!4$-line edit reverting one correctness invariant: M1 swaps
+every \texttt{Allow}/\texttt{Deny} return in
+\texttt{Authorize}; M2 inverts the \texttt{\&\&} short-circuit branch
+in \texttt{andEval}; M3 short-circuits \texttt{inEval} to
+\texttt{true}; M4 swaps the \texttt{then} and \texttt{else} arms of
+\texttt{ifThenElseEval}; M5 short-circuits \texttt{equalEval} to
+\texttt{true}. Each mutant is a stand-alone unified diff; the
+pipeline applies it, builds the harness, runs the §8 driver, and
+reverts. All five compile without a workaround.
+%
+The 1000-tuple run is reported in
+Table~\ref{tbl:phase-d-mutants}. M1 yields a $100.0\%$ disagreement
+rate — every non-error decision is inverted, as predicted by
+construction. The remaining four mutants yield disagreement rates
+of $31.9\%$, $8.9\%$, $8.0\%$, and $6.0\%$ respectively, each
+reflecting the share of the 25-shape \texttt{PolicyGen} corpus whose
+final verdict depends on the mutated operator. The per-shape
+breakdown isolates the responsible construct: M3 fires on
+$89 / 89$ \texttt{permit$+$in} shapes (the only shapes that hit
+the \texttt{in} evaluator on a load-bearing principal scope), M4 on
+$80 / 80$ \texttt{permit$+$ite} shapes, and M5 on $60 / 60$
+\texttt{permit$+$eq} shapes. No mutant yielded zero disagreements,
+so the pipeline has no operator-blind spot among the mutated set.
+M3, M4, and M5 do, however, illustrate how the disagreement rate is
+upper-bounded by the share of policies whose decision actually
+depends on the broken construct: an evaluator bug is invisible on a
+policy whose final answer is fixed by other terms.
+
+\begin{table}[t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrr}
+\toprule
+ID & Injected bug                                & Disagr. & Rate \\
+\midrule
+M1 & flip \texttt{Allow}/\texttt{Deny}            & $1000 / 1000$ & $1.000$ \\
+M2 & \texttt{\&\&} short-circuit on the wrong arm & $319 / 1000$  & $0.319$ \\
+M3 & \texttt{in} unconditionally true             & $89 / 1000$   & $0.089$ \\
+M4 & \texttt{ite} arms swapped                    & $80 / 1000$   & $0.080$ \\
+M5 & \texttt{==} unconditionally true             & $60 / 1000$   & $0.060$ \\
+\bottomrule
+\end{tabular}
+\caption{Phase D seeded-mutant study at $N = 1{,}000$ on the 25-shape
+\texttt{PolicyGen} grammar. Each mutant is a single localised edit
+to \cedargo (\texttt{$\le 4$ lines}) that reverts one correctness
+invariant. The pipeline catches every mutant with a non-zero
+disagreement rate; the rate scales with the share of generated
+policies whose final decision depends on the mutated operator.
+M1 lower-bounds the pipeline at $100\%$ when the mutation
+is global; M3, M4, M5 illustrate the operator-coverage envelope of
+the current 25-shape grammar.}
+\label{tbl:phase-d-mutants}
+\end{table}

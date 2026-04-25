@@ -1,0 +1,74 @@
+[
+  {
+    "uid": {
+      "type": "User",
+      "id": "alice"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "bob"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "carol"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Document",
+      "id": "doc1"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Document",
+      "id": "doc2"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Photo",
+      "id": "photo1"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Action",
+      "id": "view"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Action",
+      "id": "edit"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Action",
+      "id": "admin"
+    },
+    "attrs": {},
+    "parents": []
+  }
+]

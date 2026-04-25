@@ -1,0 +1,17 @@
+--- a/authorize.go
++++ b/authorize.go
+@@ -52,11 +52,11 @@
+ 	}
+ 	if len(forbids) > 0 {
+ 		diag.Reasons = forbids
+-		return Deny, diag
++		return Allow, diag
+ 	}
+ 	if len(permits) > 0 {
+ 		diag.Reasons = permits
+-		return Allow, diag
++		return Deny, diag
+ 	}
+-	return Deny, diag
++	return Allow, diag
+ }
