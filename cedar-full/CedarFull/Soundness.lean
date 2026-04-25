@@ -22,9 +22,17 @@
             canonical literals.
     Step 5. `genWellTyped_sound`: Step 4 specialised to fuel = 3.
 
-  Status: sorry-free, kernel-only (no `native_decide`, no `decide`,
-  no axiom or external solver). All twelve constructor arms of
-  `genSize_sound` close under the proof recipe above.
+  Sorry inventory (current state, after §8 widening proof closures):
+    - genSize_sound compound arms: all closed (and/or/ite/add/neg/etc.).
+    - §8 widening helpers:
+        - extDecimalLit, extIpLit: closed via forward typeOfCall composition;
+          parse-isSome facts bundled into `ext_parses_blocked` (1 sorry,
+          blocked by Lean 4.29.1 String.Slice kernel reduction;
+          cedar-spec uses native_decide here, prohibited on this branch).
+        - setLitUserEntities: closed via typeOfLit + typeOfSet + lub?
+          reflexivity, schema-conditioned by isValidEntityUID hypotheses.
+        - recordEmpty, recordSingleton: closed.
+  Total: 1 sorry, isolated to a single named blocker theorem.
 -/
 
 import CedarFull.Expr
@@ -408,29 +416,123 @@ theorem genWellTyped_sound (env : TypeEnv) (τ : CedarType) (e : Expr) :
 -- bottom-up `wellTypedAt env _ = true` lemma that PolicyGen uses
 -- transitively when the helper is composed in a `when {}` body.
 --
--- Proof status (V1 of §8 widening):
---   • recordEmpty:       sorry-free
---   • recordSingleton:   sorry-free
---   • extDecimalLit:     sorry, deferred follow-up
---   • extIpLit:          sorry, deferred follow-up
---   • setLitUserEntities: sorry, deferred follow-up
--- The two ext-type sorrys are blocked by Decimal.parse / IPAddr.parse
--- not kernel-reducing in Lean 4.29.1 (BitVec/Int64.ofInt? machinery).
--- The set sorry is blocked by typeOfSet's lub? fold needing schema-
--- conditioned reasoning; solvable but mechanically tedious.
+-- Proof status (V2, after §8 widening proof closures):
+--   - recordEmpty:        sorry-free (kernel reduction)
+--   - recordSingleton:    sorry-free (kernel reduction)
+--   - setLitUserEntities: sorry-free (closed via typeOfLit + typeOfSet
+--                          + lub? reflexivity on equal entity types;
+--                          schema-conditioned by isValidEntityUID
+--                          hypotheses for each UID in the set).
+--   - extDecimalLit:      sorry, blocker: Decimal.parse "1.0".isSome
+--                          requires `String.Slice.toInt?`/`startsWith`
+--                          to kernel-reduce on the literal "1.0", which
+--                          they don't in Lean 4.29.1 (UTF-8 byte-position
+--                          arithmetic via ForwardPattern abstraction).
+--                          cedar-spec only proves these via `native_decide`
+--                          (see UnitTest/IPAddr.lean, prohibited here).
+--                          Existing cedar-spec inversion theorems
+--                          (`type_of_call_decimal_inversion`) consume
+--                          a known `.ok` result; they cannot construct
+--                          the forward `.ok` for a fixed string literal.
+--   - extIpLit:           sorry, identical blocker on IPAddr.ip "10.0.0.1"
+--                          (same Slice-arithmetic kernel obstruction).
+--
+-- For both ext arms we factored the *forward typecheck* (the part that
+-- compositionally uses cedar-spec's `typeOfCall`/`typeOfConstructor`)
+-- into shared schematic helpers, so the only obligation each arm carries
+-- is the parse-isSome fact; the irreducible blocker; keeping the proof
+-- debt minimal and named.
 -- ────────────────────────────────────────────────────────────────────
 
-/-- Decimal literal `decimal("1.0")` typechecks at `(.ext .decimal)`.
-    SORRY: deferred follow-up (Decimal.parse not kernel-reducing). -/
-theorem wellTypedAt_extDecimalLit (env : TypeEnv) :
-    wellTypedAt env extDecimalLit = true := by
+/-- Forward soundness for cedar-spec's `typeOfCall .decimal`: given that
+    a string parses as a `Decimal`, the call expression typechecks at
+    `(.ext .decimal)`. Companion to `type_of_call_decimal_inversion` in
+    cedar-spec/cedar-lean/Cedar/Thm/Validation/Typechecker/Call.lean,
+    which goes the other way (.ok -> parseable string + isSome witness).
+    Provable cleanly via `simp` through `typeOfCall`/`typeOfConstructor`. -/
+private theorem typeOf_callDecimal_lit_ok
+    (env : TypeEnv) (s : String)
+    (hParses : (Cedar.Spec.Ext.Decimal.decimal s).isSome = true) :
+    Cedar.Validation.typeOf (.call .decimal [.lit (.string s)]) [] env = .ok
+      (TypedExpr.call .decimal
+        [TypedExpr.lit (.string s) .string]
+        (.ext .decimal),
+        ∅) := by
+  simp [Cedar.Validation.typeOf, Cedar.Validation.typeOfCall,
+        Cedar.Validation.typeOfConstructor, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map]
+  cases h : Cedar.Spec.Ext.Decimal.decimal s with
+  | none => rw [h] at hParses; simp at hParses
+  | some _ => simp
+
+/-- Forward soundness for cedar-spec's `typeOfCall .ip`. Companion to
+    `type_of_call_ip_inversion`. -/
+private theorem typeOf_callIp_lit_ok
+    (env : TypeEnv) (s : String)
+    (hParses : (Cedar.Spec.Ext.IPAddr.ip s).isSome = true) :
+    Cedar.Validation.typeOf (.call .ip [.lit (.string s)]) [] env = .ok
+      (TypedExpr.call .ip
+        [TypedExpr.lit (.string s) .string]
+        (.ext .ipAddr),
+        ∅) := by
+  simp [Cedar.Validation.typeOf, Cedar.Validation.typeOfCall,
+        Cedar.Validation.typeOfConstructor, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map]
+  cases h : Cedar.Spec.Ext.IPAddr.ip s with
+  | none => rw [h] at hParses; simp at hParses
+  | some _ => simp
+
+/-- The single irreducible blocker for both ext arms.
+
+    Lean 4.29.1 cannot kernel-reduce these `isSome` checks because
+    `String.Slice.toInt?` / `String.startsWith` (used inside
+    `Decimal.parse` and `IPAddr.parse`) walk UTF-8 byte positions via
+    the `String.ForwardPattern` abstraction, which never opens to
+    `rfl` or `decide` on a string literal. The split itself reduces
+    cleanly via `Batteries.String.splitToList_of_valid` (we use that
+    elsewhere), but `toInt?` and `startsWith` go through the slice
+    machinery, which the kernel cannot evaluate.
+
+    cedar-spec's own unit tests (UnitTest/IPAddr.lean) discharge
+    these via `native_decide`. The branch constraint
+    (widen-genpolicy-extension-types) bans `native_decide`,
+    `decide`, axioms, and external solvers; so we leave a single
+    bundled sorry naming the missing facts. Cedar-spec already
+    proves *both directions of inversion* on the typechecker
+    (`type_of_call_decimal_inversion`, `type_of_call_ip_inversion`),
+    so the only thing missing is forward evaluation of the parser
+    on these specific literal strings.
+
+    The follow-up to close this is one of:
+      - upstream a `String.Slice.toInt?` reduction simp set;
+      - or: a Mathlib-style `Decidable.decide` proc that handles
+        `Decimal.parse "1.0"` via meta-unfolding;
+      - or: lift the cedar-full generator to emit only literals
+        whose `isSome` witness is computed at OCaml-side
+        (cedar-drt) and threaded back as a Lean-checked obligation.
+
+    None are in scope for the §8 widening commit. -/
+private theorem ext_parses_blocked :
+    (Cedar.Spec.Ext.Decimal.decimal "1.0").isSome = true ∧
+    (Cedar.Spec.Ext.IPAddr.ip "10.0.0.1").isSome = true := by
+  -- Blocker: String.Slice.toInt?, String.startsWith do not kernel-reduce
+  -- on string literals in Lean 4.29.1; cedar-spec tests use native_decide
+  -- which is forbidden on this branch (widen-genpolicy constraint).
   sorry
 
-/-- IP literal `ip("10.0.0.1")` typechecks at `(.ext .ipAddr)`.
-    SORRY: deferred follow-up (IPAddr.parse not kernel-reducing). -/
+/-- Decimal literal `decimal("1.0")` typechecks at `(.ext .decimal)`. -/
+theorem wellTypedAt_extDecimalLit (env : TypeEnv) :
+    wellTypedAt env extDecimalLit = true := by
+  simp [wellTypedAt, extDecimalLit,
+        typeOf_callDecimal_lit_ok env "1.0" ext_parses_blocked.1]
+
+/-- IP literal `ip("10.0.0.1")` typechecks at `(.ext .ipAddr)`. -/
 theorem wellTypedAt_extIpLit (env : TypeEnv) :
     wellTypedAt env extIpLit = true := by
-  sorry
+  simp [wellTypedAt, extIpLit,
+        typeOf_callIp_lit_ok env "10.0.0.1" ext_parses_blocked.2]
 
 /-- Empty record literal `{}` typechecks under any environment. -/
 theorem wellTypedAt_recordEmpty (env : TypeEnv) :
@@ -447,12 +549,27 @@ theorem wellTypedAt_recordSingleton (env : TypeEnv) :
         Cedar.Data.Map.mk, Cedar.Validation.TypedExpr.typeOf]
 
 /-- Set literal `[User::"alice", User::"bob", User::"carol"]` typechecks
-    at `(.set (.entity User))`.  SORRY: deferred follow-up. -/
+    at `(.set (.entity User))` whenever every UID in the set is valid in
+    the schema (i.e. the `User` entity-type is declared and the eids are
+    accepted by `env.ets.isValidEntityUID`).  Closed by composing
+    `typeOfLit` (entity arm), `typeOfSet`, and `lub?` reflexivity on
+    equal entity types: the lub fold over three `entity User` typed
+    elements collapses to `.some (.entity User)`, so the set literal
+    typechecks without the schema needing to widen User. -/
 theorem wellTypedAt_setLitUserEntities_fixed
     (env : TypeEnv)
-    (_hUser : env.ets.isValidEntityUID
-              { ty := { id := "User", path := [] }, eid := "alice" } = true) :
+    (hAlice : env.ets.isValidEntityUID
+              { ty := { id := "User", path := [] }, eid := "alice" } = true)
+    (hBob : env.ets.isValidEntityUID
+              { ty := { id := "User", path := [] }, eid := "bob" } = true)
+    (hCarol : env.ets.isValidEntityUID
+              { ty := { id := "User", path := [] }, eid := "carol" } = true) :
     wellTypedAt env setLitUserEntities = true := by
-  sorry
+  simp [wellTypedAt, setLitUserEntities, Cedar.Validation.typeOf,
+        Cedar.Validation.typeOfLit, Cedar.Validation.ok, hAlice, hBob, hCarol,
+        List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, TypedExpr.typeOf,
+        Cedar.Validation.lub?]
 
 end CedarFull
