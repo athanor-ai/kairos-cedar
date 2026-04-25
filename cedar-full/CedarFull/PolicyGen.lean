@@ -56,15 +56,39 @@ def mkUID (tyName : String) (eid : String) : EntityUID :=
 --   action edit appliesTo { principal: User, resource: [Document, Photo] };
 --   action admin appliesTo { principal: User, resource: [Document, Photo] };
 
-/-- The fixed entity schema: User, Group, Document, Photo.
-    Group is added to support `principal in Group::"admins"` conditions.
-    Context carries a boolean attribute "approved" for has/getAttr shapes. -/
+/-- Address record type used as User.address attribute (V2 §8 widening). -/
+def addressRecordType : RecordType :=
+  Map.make
+    [ ("city",   .required .string)
+    , ("street", .required .string)
+    , ("zip",    .required .string)
+    ]
+
+/-- The fixed entity schema (V2 §8 widening):
+      User has `address: { city: String, street: String, zip: String }`,
+      Document has `owner: User`,
+      Group/Photo are attribute-free.
+    The attributes give the new nested-attr / has / record-literal shapes
+    a non-trivial schema target.  cedar-drt §8 reports differential bugs
+    on schemas with attribute records — widening enables those tests. -/
 def fixedEntitySchema : EntitySchema :=
   Map.make
-    [ (mkEty "User",     EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
-    , (mkEty "Group",    EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
-    , (mkEty "Document", EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
-    , (mkEty "Photo",    EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
+    [ (mkEty "User",
+        EntitySchemaEntry.standard
+          { ancestors := Set.empty
+          , attrs     := Map.make [("address", .required (.record addressRecordType))]
+          , tags      := none })
+    , (mkEty "Group",
+        EntitySchemaEntry.standard
+          { ancestors := Set.empty, attrs := Map.empty, tags := none })
+    , (mkEty "Document",
+        EntitySchemaEntry.standard
+          { ancestors := Set.empty
+          , attrs     := Map.make [("owner", .required (.entity (mkEty "User")))]
+          , tags      := none })
+    , (mkEty "Photo",
+        EntitySchemaEntry.standard
+          { ancestors := Set.empty, attrs := Map.empty, tags := none })
     ]
 
 /-- The fixed action schema: view, edit, admin — each applies to User × {Document, Photo}. -/
@@ -397,10 +421,100 @@ private def permitUnlessResourceIsPhoto : Policy :=
                         , body := .unaryApp (.is (mkEty "Photo")) (.var .resource) }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 25 shapes covering scope variants (eq/is/in/actionInAny)
-    and condition variants (when/unless with eq, in, is, has on principal/action/resource/context).
-    The final shape uses genWellTyped for an arbitrary well-typed boolean condition.
-    Shapes are chained with Gen.pick for uniform sampling over the 25-element support. -/
+-- ── §8 widening: extension / set / record / nested-attr shapes ──────
+-- These are the four cedar-drt-flagged constructor classes from paper §8.
+-- Each uses an extension/set/record/nested-attr expression in a when body.
+-- Soundness lemmas in CedarFull.Soundness.lean.
+
+-- Shape 26: when { decimal("1.0") == decimal("1.0") }
+private def permitWhenDecimalEqSelf : Policy :=
+  { id             := "permit-when-decimal-eq-self"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq extDecimalLit extDecimalLit }]
+  }
+
+-- Shape 27: when { ip("10.0.0.1") == ip("10.0.0.1") }
+private def permitWhenIpEqSelf : Policy :=
+  { id             := "permit-when-ip-eq-self"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq extIpLit extIpLit }]
+  }
+
+-- Shape 28: when { principal in [User::"alice", User::"bob", User::"carol"] }
+private def permitWhenPrincipalInSet : Policy :=
+  { id             := "permit-when-principal-in-set"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .mem (.var .principal) setLitUserEntities }]
+  }
+
+-- Shape 29: when { {} has approved } (record literal in has)
+private def permitWhenEmptyRecordHas : Policy :=
+  { id             := "permit-when-empty-record-has"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .hasAttr recordEmptyLit "approved" }]
+  }
+
+-- Shape 30: when { {approved: true} has approved } (record literal in has)
+private def permitWhenSingletonRecordHas : Policy :=
+  { id             := "permit-when-singleton-record-has"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .hasAttr recordSingletonLit "approved" }]
+  }
+
+-- Shape 31: when { principal has address } (has on entity attr)
+private def permitWhenPrincipalHasAddress : Policy :=
+  { id             := "permit-when-principal-has-address"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .hasAttr (.var .principal) "address" }]
+  }
+
+-- Shape 32: when { principal has address && principal.address.street == "Main" }
+-- Capability threading: `has address` adds the attribute capability that
+-- lets the nested .address access typecheck in the AND right-arm.
+private def permitWhenNestedAttrEq : Policy :=
+  { id             := "permit-when-nested-attr-eq"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .and
+                            (.hasAttr (.var .principal) "address")
+                            (.binaryApp .eq nestedAttrLit (.lit (.string "Main"))) }]
+  }
+
+/-- Generate a Cedar.Spec.Policy. 32 shapes (was 25 before §8 widening):
+    Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
+    Shapes 16–24: condition variants (when/unless with eq, in, is, has)
+    Shape 25:     genWellTyped-derived bool expr (~18 outputs)
+    Shapes 26–32: §8 widening — extension types (decimal/ip), set
+                  literals, record literals (empty/singleton), `has`
+                  on entity attribute, nested attribute projection.
+    Shapes are chained with Gen.pick for uniform sampling. -/
 def genPolicy (_ : Schema) : Gen Policy :=
   -- Scope-only shapes (1–15)
   Gen.pick (pure permitAny)
@@ -417,7 +531,7 @@ def genPolicy (_ : Schema) : Gen Policy :=
   (Gen.pick (pure forbidPrincipalInViewers)
   (Gen.pick (pure permitResourceInFolder)
   (Gen.pick (pure permitActionInViewEdit)
-  -- Condition shapes (16–25)
+  -- Condition shapes (16–24)
   (Gen.pick (pure permitWhenPrincipalEqAlice)
   (Gen.pick (pure permitWhenActionEqView)
   (Gen.pick (pure forbidWhenResourceEqDoc1)
@@ -428,9 +542,17 @@ def genPolicy (_ : Schema) : Gen Policy :=
   (Gen.pick (pure forbidUnlessResourceEqDoc2)
   (Gen.pick (pure permitUnlessPrincipalInViewers)
   (Gen.pick (pure permitUnlessResourceIsPhoto)
-            -- 25th shape: permit(any, any, any) when {<well-typed bool expr>}
+  -- §8 widening shapes (26–32)
+  (Gen.pick (pure permitWhenDecimalEqSelf)
+  (Gen.pick (pure permitWhenIpEqSelf)
+  (Gen.pick (pure permitWhenPrincipalInSet)
+  (Gen.pick (pure permitWhenEmptyRecordHas)
+  (Gen.pick (pure permitWhenSingletonRecordHas)
+  (Gen.pick (pure permitWhenPrincipalHasAddress)
+  (Gen.pick (pure permitWhenNestedAttrEq)
+            -- Shape 25 (placed at end): permit when {<well-typed bool>}
             (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr)))))))))))))))))))))))))
+                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 
@@ -466,9 +588,33 @@ def actionScopeToText : ActionScope → String
     let joined := String.intercalate ", " (uids.map uidToText)
     s!"action in [{joined}]"
 
-/-- Serialize a Cedar Expr to a simple boolean expression text.
-    Only covers the constructors that genWellTyped can produce:
-    lit(bool), var, and, or, ite, binaryApp(add), unaryApp(neg/not). -/
+/-- Serialize an ExtFun to its Cedar surface name. -/
+def extFunToText : ExtFun → String
+  | .decimal           => "decimal"
+  | .ip                => "ip"
+  | .datetime          => "datetime"
+  | .duration          => "duration"
+  | .lessThan          => "lessThan"
+  | .lessThanOrEqual   => "lessThanOrEqual"
+  | .greaterThan       => "greaterThan"
+  | .greaterThanOrEqual => "greaterThanOrEqual"
+  | .isIpv4            => "isIpv4"
+  | .isIpv6            => "isIpv6"
+  | .isLoopback        => "isLoopback"
+  | .isMulticast       => "isMulticast"
+  | .isInRange         => "isInRange"
+  | .offset            => "offset"
+  | .durationSince     => "durationSince"
+  | .toDate            => "toDate"
+  | .toTime            => "toTime"
+  | .toMilliseconds    => "toMilliseconds"
+  | .toSeconds         => "toSeconds"
+  | .toMinutes         => "toMinutes"
+  | .toHours           => "toHours"
+  | .toDays            => "toDays"
+
+/-- Serialize a Cedar Expr to Cedar text.  V2 §8 widened: serialises
+    set/record/call constructors (extension functions, set/record literals). -/
 partial def exprToText : Expr → String
   | .lit (.bool true)          => "true"
   | .lit (.bool false)         => "false"
@@ -501,9 +647,18 @@ partial def exprToText : Expr → String
   | .binaryApp .getTag a b     => s!"({exprToText a} getTag {exprToText b})"
   | .hasAttr e attr            => s!"({exprToText e} has {attr})"
   | .getAttr e attr            => s!"({exprToText e}.{attr})"
-  | .set _                     => "false"   -- Phase B: unsupported, fallback
-  | .record _                  => "false"   -- Phase B: unsupported, fallback
-  | .call _ _                  => "false"   -- Phase B: unsupported, fallback
+  -- Set literal: [e1, e2, ...]
+  | .set xs                    =>
+    let elems := xs.map exprToText
+    s!"[{String.intercalate ", " elems}]"
+  -- Record literal: {a1: e1, a2: e2, ...}
+  | .record axs                =>
+    let pairs := axs.map (fun (a, e) => s!"\"{a}\": {exprToText e}")
+    s!"\{{String.intercalate ", " pairs}}"
+  -- Extension function call: fn(arg1, arg2, ...)
+  | .call fn args              =>
+    let argStrs := args.map exprToText
+    s!"{extFunToText fn}({String.intercalate ", " argStrs})"
 
 /-- Serialize a Cedar.Spec.Condition to `when { <expr> }` or `unless { <expr> }`. -/
 def conditionToText (c : Condition) : String :=
