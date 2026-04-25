@@ -2,12 +2,19 @@
 experiments/phase_c_diff/run_diff.py — §8 Evaluation diff runner.
 
 Samples N (default 1000) tuples from CedarFull.PolicyGen via the
-measure-diff Lean binary, then evaluates each tuple against:
+measure-diff Lean binary, then evaluates each tuple against THREE
+independent implementations:
   • cedar-policy (Rust reference, v4.3.1+) via `cedar authorize` CLI
   • cedar-go (Go implementation, v1 track HEAD) via a tiny Go harness
+  • cedar-lean (cedar-spec mechanised evaluator) via `measure-lean` Lean exe
+    — see cedar-full/MeasureLean.lean for the bridge.
 
-Emits a summary: valid-sample rate, agreement rate, disagreement corpus,
-wall-time per tuple.
+With three independent oracles, the §8 0-disagreement result becomes
+3-way triangulated consensus: a tuple counts as "consensus" only when
+all three implementations agree on Allow / Deny.
+
+Emits a summary: valid-sample rate, three-way consensus rate, pairwise
+disagreement counts, disagreement corpus, wall-time per tuple.
 
 Usage:
     python3 experiments/phase_c_diff/run_diff.py [--n N] [--timeout T]
@@ -446,6 +453,87 @@ def run_go_batch(
     return results
 
 
+# ── Lean (cedar-spec) batch runner ───────────────────────────────────────
+#
+# Third oracle: cedar-spec's mechanised Lean evaluator. We re-use the same
+# generator that produces the tuples (CedarFull.PolicyGen.genTuple), so the
+# Lean evaluator gets the AST directly rather than re-parsing the text the
+# Rust + Go runners see. Rationale: cedar-spec ships an evaluator over
+# Cedar.Spec.Policy AST but no Lean text parser, and the Lean-side AST
+# already IS the source of truth that gets serialized into the policy text
+# the other two oracles parse. Letting Lean look up the canonical AST by
+# idx is the fairest, most direct comparison.
+#
+# Wire shape: pipe the same TSV measure-diff emits (idx \t ... \t policy)
+# into measure-lean's stdin. measure-lean only consumes `idx`, looks up
+# `genTuple.val[i % supportSize]`, evaluates `Cedar.Spec.isAuthorized`
+# against the same fixed entity store, emits `idx \t Allow|Deny`.
+
+def run_lean_batch(
+    tuples: list[dict[str, str]],
+    timeout: int = 300,
+) -> dict[str, str]:
+    """Pipe idx-keyed tuple lines through measure-lean; parse decisions."""
+    # Reconstruct the exact TSV measure-diff emits (Lean only needs idx,
+    # but feeding the full line keeps the format symmetric and makes the
+    # bridge resilient to future field re-ordering).
+    lines = []
+    for t in tuples:
+        line = (
+            f"{t['idx']}\t{t['principal']}\t{t['action']}\t"
+            f"{t['resource']}\t{t['policy']}"
+        )
+        lines.append(line)
+    payload = "\n".join(lines)
+
+    payload_host = REPO_ROOT / "experiments" / "phase_c_diff" / "_lean_input.tsv"
+    payload_host.write_text(payload, encoding="utf-8")
+
+    cmd = (
+        "cd /work/cedar-full && "
+        ".lake/build/bin/measure-lean "
+        "< /work/experiments/phase_c_diff/_lean_input.tsv"
+    )
+    proc = run_in_image(["bash", "-c", cmd], timeout=timeout)
+
+    if proc.returncode != 0 and not proc.stdout.strip():
+        print("Lean batch run failed:")
+        print(proc.stderr[-2000:])
+        return {}
+
+    results: dict[str, str] = {}
+    for line in proc.stdout.splitlines():
+        line = line.strip()
+        if not line or "\t" not in line:
+            continue
+        idx, decision = line.split("\t", 1)
+        # measure-lean emits "Allow"/"Deny"/"ERROR:reason" — keep ERROR
+        # prefix consistent with go/rust formats so downstream filtering
+        # works uniformly.
+        if decision.startswith("ERROR"):
+            results[idx] = f"ERROR({decision[6:][:60]})"
+        else:
+            results[idx] = decision
+    return results
+
+
+def build_lean_oracle(timeout: int = 300) -> bool:
+    """Lake-build measure-lean inside the container so the binary is ready."""
+    proc = run_in_image(
+        [
+            "bash", "-c",
+            "cd /work/cedar-full && lake build measure-lean 2>&1 | tail -5",
+        ],
+        timeout=timeout,
+    )
+    if proc.returncode != 0:
+        print("Lean oracle build failed:")
+        print(proc.stdout[-2000:])
+        print(proc.stderr[-2000:])
+        return False
+    return True
+
+
 # ── Setup: write schema + entities files inside container space ──────────
 
 def setup_fixtures() -> tuple[str, str]:
@@ -477,6 +565,10 @@ def main() -> int:
     parser.add_argument(
         "--go-timeout", type=int, default=600,
         help="Total timeout for Go harness batch run (seconds)"
+    )
+    parser.add_argument(
+        "--lean-timeout", type=int, default=600,
+        help="Total timeout for Lean cedar-spec batch run (seconds)"
     )
     parser.add_argument("--skip-rust", action="store_true", help="Skip Rust authorize (faster)")
     parser.add_argument("--no-session", action="store_true",
@@ -577,8 +669,24 @@ def _run_diff(args, sess, sink) -> int:
         "phase": "build_go_harness", "elapsed_sec": elapsed_go,
     })
 
-    # 4. Run diff: Go batch first (fast), then Rust per-tuple
-    print(f"\n[4/4] Running diff (Rust + Go) on {len(tuples)} tuples ...")
+    # 3.5. Build Lean oracle (cedar-spec evaluator)
+    print(f"\n[3.5/4] Building Lean oracle (cedar-spec evaluator) ...")
+    _emit(sink, sess, "phase_start", {"phase": "build_lean_oracle"})
+    t_lean_build = time.monotonic()
+    lean_ok = build_lean_oracle()
+    if not lean_ok:
+        _emit(sink, sess, "phase_error", {"phase": "build_lean_oracle", "error": "build failed"})
+        _emit(sink, sess, "run_complete", {"status": "failed", "reason": "lean_oracle_build_failed"})
+        print("FAIL: Lean oracle build failed")
+        return 1
+    elapsed_lean_build = time.monotonic() - t_lean_build
+    print(f"      Lean oracle built in {elapsed_lean_build:.1f}s")
+    _emit(sink, sess, "phase_complete", {
+        "phase": "build_lean_oracle", "elapsed_sec": elapsed_lean_build,
+    })
+
+    # 4. Run diff: Go batch first (fast), Rust per-tuple, Lean batch
+    print(f"\n[4/4] Running 3-way diff (Rust + Go + Lean) on {len(tuples)} tuples ...")
 
     # Go batch
     print(f"      [4a] Go batch ...")
@@ -616,6 +724,22 @@ def _run_diff(args, sess, sink) -> int:
         for t in tuples:
             rust_decisions[t["idx"]] = "skipped"
 
+    # Lean batch (cedar-spec mechanised evaluator — third oracle for §8
+    # triangulation). One container invocation, idx-keyed, AST-direct
+    # (no text re-parse). Emits `Allow|Deny|ERROR:...` per tuple.
+    print(f"      [4c] Lean cedar-spec batch (third oracle) ...")
+    _emit(sink, sess, "phase_start", {"phase": "lean_per_tuple", "n_tuples": len(tuples)})
+    t_lean_run = time.monotonic()
+    lean_decisions = run_lean_batch(tuples, timeout=args.lean_timeout)
+    elapsed_lean_run = time.monotonic() - t_lean_run
+    print(f"           {len(lean_decisions)} decisions in {elapsed_lean_run:.1f}s")
+    _emit(sink, sess, "phase_complete", {
+        "phase": "lean_per_tuple",
+        "n_decisions": len(lean_decisions),
+        "n_tuples": len(tuples),
+        "elapsed_sec": elapsed_lean_run,
+    })
+
     # ── Summary ──────────────────────────────────────────────────────────
 
     total_elapsed = time.monotonic() - t0_total
@@ -625,22 +749,46 @@ def _run_diff(args, sess, sink) -> int:
     go_valid = sum(1 for v in go_decisions.values() if not v.startswith("ERROR"))
     valid_rate = go_valid / total if total > 0 else 0.0
 
-    # Agreement rate (only for tuples where both have real decisions)
-    agreements = 0
+    # 3-way agreement: triangulation across (Rust, Go, Lean). Pairwise
+    # disagreement counters surface which oracle pair drifted (e.g. Rust↔Go
+    # = parser/text-format drift, Rust↔Lean or Go↔Lean = semantic drift,
+    # all three disagreeing = generator-bug or fixture-mismatch).
+    n_three_way_agreements = 0
+    n_rust_go_disagreements = 0
+    n_rust_lean_disagreements = 0
+    n_go_lean_disagreements = 0
+    n_any_pairwise_disagreement = 0
     disagreements: list[dict] = []
     compared = 0
     for t in tuples:
         idx = t["idx"]
         rd = rust_decisions.get(idx, "missing")
         gd = go_decisions.get(idx, "missing")
-        if rd.startswith("ERROR") or rd == "skipped" or rd == "missing":
+        ld = lean_decisions.get(idx, "missing")
+
+        # Need all three to be real (non-error, non-skipped, non-missing)
+        # for 3-way comparison. The pairwise rust-vs-go counter falls back
+        # to skip-rust mode, but the 3-way and rust-lean / go-lean lanes
+        # require Rust to be present.
+        rd_ok = not rd.startswith("ERROR") and rd not in ("skipped", "missing")
+        gd_ok = not gd.startswith("ERROR") and gd not in ("missing",)
+        ld_ok = not ld.startswith("ERROR") and ld not in ("missing",)
+
+        if not (rd_ok and gd_ok and ld_ok):
             continue
-        if gd.startswith("ERROR") or gd == "missing":
-            continue
+
         compared += 1
-        if rd == gd:
-            agreements += 1
-        else:
+        rg = (rd != gd)
+        rl = (rd != ld)
+        gl = (gd != ld)
+        if rg:
+            n_rust_go_disagreements += 1
+        if rl:
+            n_rust_lean_disagreements += 1
+        if gl:
+            n_go_lean_disagreements += 1
+        if rg or rl or gl:
+            n_any_pairwise_disagreement += 1
             disagreements.append({
                 "idx": idx,
                 "principal": t["principal"],
@@ -649,35 +797,54 @@ def _run_diff(args, sess, sink) -> int:
                 "policy": t["policy"],
                 "rust": rd,
                 "go": gd,
+                "lean": ld,
+                "rust_go": rg,
+                "rust_lean": rl,
+                "go_lean": gl,
             })
+        else:
+            n_three_way_agreements += 1
 
-    agreement_rate = agreements / compared if compared > 0 else float("nan")
+    consensus_rate = n_three_way_agreements / compared if compared > 0 else float("nan")
     cost_per_tuple = total_elapsed / total if total > 0 else 0.0
 
-    # Emit one differential_test_tuple event per compared pair (qa PR #174,
-    # registry shape ('*', 'differential_test_tuple')). Per-tuple wall-clock
-    # is amortised from the batch totals (rust = elapsed_rust / N,
-    # go = elapsed_go / N) since the runners batch invocations; per-call
-    # timing is camera-ready follow-up.
+    # Emit one differential_test_tuple event per compared triple. Schema
+    # registry (qa PR #174 + Aidan 2026-04-24 generalisation) accepts the
+    # base impl_a/impl_b fields; we extend with impl_c_* + three_way_consensus
+    # via the model_config(extra="allow") slot. Per-tuple wall-clock is
+    # amortised from batch totals (rust = elapsed_rust / N etc.) since the
+    # runners batch invocations.
     rust_per = (elapsed_rust if not args.skip_rust else 0.0) / max(1, total)
     go_per = elapsed_go_run / max(1, total)
+    lean_per = elapsed_lean_run / max(1, total)
     schema_hash = _sha12(FIXED_SCHEMA_TEXT)
     if sink is not None:
         for t in tuples:
             idx = t["idx"]
             rd = rust_decisions.get(idx, "missing")
             gd = go_decisions.get(idx, "missing")
-            if rd == "skipped" or rd == "missing" or gd == "missing":
+            ld = lean_decisions.get(idx, "missing")
+            if rd in ("skipped", "missing") or gd == "missing" or ld == "missing":
                 continue
             request_blob = json.dumps({
                 "principal": t["principal"],
                 "action": t["action"],
                 "resource": t["resource"],
             }, sort_keys=True)
+            rd_ok = not rd.startswith("ERROR")
+            gd_ok = not gd.startswith("ERROR")
+            ld_ok = not ld.startswith("ERROR")
+            three_way_consensus = (
+                rd_ok and gd_ok and ld_ok and rd == gd == ld
+            )
+            # diff_found preserves the registry-defined pairwise A↔B semantics
+            # (cedar-policy vs cedar-go) so existing dashboards don't break,
+            # while impl_c_* + three_way_consensus carry the new triangulation
+            # signal.
+            diff_found_ab = (rd != gd) and rd_ok and gd_ok
             # Route through _emit so the per-tuple call uses TraceEvent
             # dataclass (not dict) — without this, SupabaseTraceSink.emit
-            # silently fails with AttributeError on dict.run_subtype. 10k
-            # per-tuple events were dropping this way.
+            # silently fails with AttributeError on dict.run_subtype.
             _emit(sink, sess, "differential_test_tuple", {
                 "sample_id": str(idx),
                 "impl_a_name": "cedar-policy",
@@ -686,39 +853,44 @@ def _run_diff(args, sess, sink) -> int:
                 "impl_b_name": "cedar-go",
                 "impl_b_verdict": gd,
                 "impl_b_elapsed_sec": go_per,
-                "diff_found": (rd != gd
-                               and not rd.startswith("ERROR")
-                               and not gd.startswith("ERROR")),
+                "impl_c_name": "cedar-lean",
+                "impl_c_verdict": ld,
+                "impl_c_elapsed_sec": lean_per,
+                "three_way_consensus": three_way_consensus,
+                "diff_found": diff_found_ab,
                 "input_hashes": {
                     "policy": _sha12(t["policy"]),
                     "schema": schema_hash,
                     "request": _sha12(request_blob),
                 },
                 "diff_details": (
-                    f"rust={rd} go={gd} principal={t['principal']} "
+                    f"rust={rd} go={gd} lean={ld} principal={t['principal']} "
                     f"action={t['action']} resource={t['resource']}"
-                ) if rd != gd else None,
+                ) if not three_way_consensus else None,
             })
 
     print("\n" + "=" * 72)
-    print("  §8 EVALUATION SUMMARY")
+    print("  §8 EVALUATION SUMMARY (3-way: Rust + Go + Lean)")
     print("=" * 72)
-    print(f"  N sampled          : {total}")
-    print(f"  Valid-sample rate  : {valid_rate:.3f}  ({go_valid}/{total} Go non-error)")
-    print(f"  Pairs compared     : {compared}  (both Rust+Go returned non-error decision)")
-    print(f"  Agreement rate     : {agreement_rate:.4f}  ({agreements}/{compared})")
-    print(f"  Disagreement count : {len(disagreements)}")
-    print(f"  Wall-time total    : {total_elapsed:.1f}s")
-    print(f"  Cost per tuple     : {cost_per_tuple:.3f}s")
+    print(f"  N sampled              : {total}")
+    print(f"  Valid-sample rate      : {valid_rate:.3f}  ({go_valid}/{total} Go non-error)")
+    print(f"  Triples compared       : {compared}  (all three oracles returned non-error)")
+    print(f"  3-way consensus        : {n_three_way_agreements}/{compared} ({consensus_rate:.4f})")
+    print(f"  Rust ↔ Go disagree     : {n_rust_go_disagreements}")
+    print(f"  Rust ↔ Lean disagree   : {n_rust_lean_disagreements}")
+    print(f"  Go   ↔ Lean disagree   : {n_go_lean_disagreements}")
+    print(f"  Any-pairwise disagree  : {n_any_pairwise_disagreement}")
+    print(f"  Wall-time total        : {total_elapsed:.1f}s")
+    print(f"  Cost per tuple         : {cost_per_tuple:.3f}s")
 
     # Terminal run_complete event — closes the session in DB so it doesn't
     # get marked failed by the stale-run watchdog (ATH-571). This event +
-    # the per-tuple differential_test_tuple events below are what populate
-    # paper §8 Table 4.
+    # the per-tuple differential_test_tuple events are what populate paper
+    # §8 Table 4 and the new 3-way triangulation columns.
     # NaN isn't valid JSON — PostgREST rejects it with PGRST102. Stash as
     # None when compared=0 so the DB row is clean.
     import math as _math
-    _agreement_rate = (None if _math.isnan(agreement_rate) else agreement_rate)
+    _consensus_rate = (None if _math.isnan(consensus_rate) else consensus_rate)
     _emit(sink, sess, "run_complete", {
         "status": "succeeded",
         "n_target": n,
@@ -726,18 +898,27 @@ def _run_diff(args, sess, sink) -> int:
         "n_go_valid": go_valid,
         "valid_rate": valid_rate,
         "n_compared": compared,
-        "n_agreements": agreements,
-        "n_disagreements": len(disagreements),
-        "agreement_rate": _agreement_rate,
+        "n_three_way_agreements": n_three_way_agreements,
+        "n_rust_go_disagreements": n_rust_go_disagreements,
+        "n_rust_lean_disagreements": n_rust_lean_disagreements,
+        "n_go_lean_disagreements": n_go_lean_disagreements,
+        "any_pairwise_disagreement_count": n_any_pairwise_disagreement,
+        "consensus_rate": _consensus_rate,
         "wall_time_total_sec": total_elapsed,
         "cost_per_tuple_sec": cost_per_tuple,
         "skip_rust": bool(args.skip_rust),
+        "oracles": ["cedar-policy", "cedar-go", "cedar-lean"],
     })
 
     if disagreements:
         print(f"\n  First {min(5, len(disagreements))} disagreements:")
         for d in disagreements[:5]:
-            print(f"    idx={d['idx']}  rust={d['rust']}  go={d['go']}")
+            tag = []
+            if d["rust_go"]: tag.append("R↔G")
+            if d["rust_lean"]: tag.append("R↔L")
+            if d["go_lean"]: tag.append("G↔L")
+            tag_str = ",".join(tag)
+            print(f"    idx={d['idx']}  rust={d['rust']}  go={d['go']}  lean={d['lean']}  [{tag_str}]")
             print(f"      {d['principal']} / {d['action']} / {d['resource']}")
             print(f"      policy: {d['policy'][:80]}")
 

@@ -24,3 +24,7 @@ name = "CedarFull"
 [[lean_exe]]
 name = "measure-diff"
 root = "MeasureDiff"
+
+[[lean_exe]]
+name = "measure-lean"
+root = "MeasureLean"
