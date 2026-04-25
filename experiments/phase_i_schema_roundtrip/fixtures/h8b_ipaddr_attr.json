@@ -1,0 +1,18 @@
+{
+  "": {
+    "entityTypes": {
+      "Host": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "addr": {
+              "type": "Extension",
+              "name": "ipaddr"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

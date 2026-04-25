@@ -1,0 +1,401 @@
+[
+  {
+    "schema_id": "h1_entity_shape_is_common_type_ref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "parse_fail",
+      "error": "\u00d7 The following entities have shapes that cannot be converted to Cedar\n  \u2502 schema syntax: [Baz]\n  help: Entity shapes may only be record types. In the Cedar schema syntax,\n        they additionally may not reference common type definitions.",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    },
+    "go": {
+      "classification": "silent_diff",
+      "error": null,
+      "diff_summary": "$..entityTypes.Baz.shape.name: dropped; $..entityTypes.Baz.shape.type: 'EntityOrCommon' -> 'Record'",
+      "intermediate_cedar": "type Foo = {\n\tbar: Long\n};\n\nentity Baz {};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Baz\":{\"shape\":{\"type\":\"Record\"}}},\"actions\":{},\"commonTypes\":{\"Foo\":{\"type\":\"Record\",\"attributes\":{\"bar\":{\"type\":\"EntityOrCommon\",\"name\":\"Long\"}}}}}}"
+    }
+  },
+  {
+    "schema_id": "h1b_entity_shape_is_common_type_ref_with_optional",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "parse_fail",
+      "error": "\u00d7 The following entities have shapes that cannot be converted to Cedar\n  \u2502 schema syntax: [Baz]\n  help: Entity shapes may only be record types. In the Cedar schema syntax,\n        they additionally may not reference common type definitions.",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    },
+    "go": {
+      "classification": "silent_diff",
+      "error": null,
+      "diff_summary": "$..commonTypes.Foo.attributes.opt.required: dropped; $..entityTypes.Baz.shape.name: dropped; $..entityTypes.Baz.shape.type: 'EntityOrCommon' -> 'Record'",
+      "intermediate_cedar": "type Foo = {\n\tbar: Long,\n\topt?: String\n};\n\nentity Baz {};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Baz\":{\"shape\":{\"type\":\"Record\"}}},\"actions\":{},\"commonTypes\":{\"Foo\":{\"type\":\"Record\",\"attributes\":{\"bar\":{\"type\":\"EntityOrCommon\",\"name\":\"Long\"},\"opt\":{\"type\":\"EntityOrCommon\",\"name\":\"String\",\"required\":false}}}}}}"
+    }
+  },
+  {
+    "schema_id": "h1c_entity_shape_is_namespaced_common_type_ref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "parse_fail",
+      "error": "\u00d7 The following entities have shapes that cannot be converted to Cedar\n  \u2502 schema syntax: [NS::Baz]\n  help: Entity shapes may only be record types. In the Cedar schema syntax,\n        they additionally may not reference common type definitions.",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    },
+    "go": {
+      "classification": "silent_diff",
+      "error": null,
+      "diff_summary": "$.NS.entityTypes.Baz.shape.name: dropped; $.NS.entityTypes.Baz.shape.type: 'EntityOrCommon' -> 'Record'",
+      "intermediate_cedar": "namespace NS {\n\ttype Foo = {\n\t\tbar: Long\n\t};\n\n\tentity Baz {};\n}\n",
+      "final_json": "{\"NS\":{\"entityTypes\":{\"Baz\":{\"shape\":{\"type\":\"Record\"}}},\"actions\":{},\"commonTypes\":{\"Foo\":{\"type\":\"Record\",\"attributes\":{\"bar\":{\"type\":\"EntityOrCommon\",\"name\":\"Long\"}}}}}}"
+    }
+  },
+  {
+    "schema_id": "h1d_entity_shape_is_entityorcommon_typeref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "parse_fail",
+      "error": "\u00d7 The following entities have shapes that cannot be converted to Cedar\n  \u2502 schema syntax: [Baz]\n  help: Entity shapes may only be record types. In the Cedar schema syntax,\n        they additionally may not reference common type definitions.",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    },
+    "go": {
+      "classification": "silent_diff",
+      "error": null,
+      "diff_summary": "$..entityTypes.Baz.shape.name: dropped; $..entityTypes.Baz.shape.type: 'EntityOrCommon' -> 'Record'",
+      "intermediate_cedar": "type Foo = {\n\tbar: Long\n};\n\nentity Baz {};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Baz\":{\"shape\":{\"type\":\"Record\"}}},\"actions\":{},\"commonTypes\":{\"Foo\":{\"type\":\"Record\",\"attributes\":{\"bar\":{\"type\":\"EntityOrCommon\",\"name\":\"Long\"}}}}}}"
+    }
+  },
+  {
+    "schema_id": "h1e_chained_common_types",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "parse_fail",
+      "error": "\u00d7 The following entities have shapes that cannot be converted to Cedar\n  \u2502 schema syntax: [Baz]\n  help: Entity shapes may only be record types. In the Cedar schema syntax,\n        they additionally may not reference common type definitions.",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": common type \"Outer\": attribute \"inner\": unknown type \"Inner\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h3_record_attr_aliases_long",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "type MyLong = __cedar::Long;\n\nentity Baz = {\n  n: MyLong\n};\n\n",
+      "final_json": "{\"\": {\"commonTypes\": {\"MyLong\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::Long\"}}, \"entityTypes\": {\"Baz\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"n\": {\"type\": \"EntityOrCommon\", \"name\": \"MyLong\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": entity \"Baz\" shape: attribute \"n\": unknown type \"MyLong\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h3b_record_attr_aliases_set",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "type MySet = Set<__cedar::String>;\n\nentity Baz = {\n  tags: MySet\n};\n\n",
+      "final_json": "{\"\": {\"commonTypes\": {\"MySet\": {\"type\": \"Set\", \"element\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::String\"}}}, \"entityTypes\": {\"Baz\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"tags\": {\"type\": \"EntityOrCommon\", \"name\": \"MySet\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": entity \"Baz\" shape: attribute \"tags\": unknown type \"MySet\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h3c_record_attr_nested_common_type_ref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "type Inner = {\n  x: __cedar::Long\n};\n\nentity Baz = {\n  inner: Inner\n};\n\n",
+      "final_json": "{\"\": {\"commonTypes\": {\"Inner\": {\"type\": \"Record\", \"attributes\": {\"x\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::Long\"}}}}, \"entityTypes\": {\"Baz\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"inner\": {\"type\": \"EntityOrCommon\", \"name\": \"Inner\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": entity \"Baz\" shape: attribute \"inner\": unknown type \"Inner\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h4_three_namespaces_cross_ref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "namespace A {\n  type AT = {\n    x: __cedar::Long\n  };\n\n  entity AE;\n}\n\nnamespace B {\n  entity BE = {\n    r: A::AE\n  };\n}\n\nnamespace C {\n  entity CE = {\n    a: A::AT\n  };\n}\n\n",
+      "final_json": "{\"A\": {\"commonTypes\": {\"AT\": {\"type\": \"Record\", \"attributes\": {\"x\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::Long\"}}}}, \"entityTypes\": {\"AE\": {}}, \"actions\": {}}, \"B\": {\"entityTypes\": {\"BE\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"r\": {\"type\": \"EntityOrCommon\", \"name\": \"A::AE\"}}}}}, \"actions\": {}}, \"C\": {\"entityTypes\": {\"CE\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"a\": {\"type\": \"EntityOrCommon\", \"name\": \"A::AT\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"C\": entity \"CE\" shape: attribute \"a\": unknown type \"A::AT\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h5_three_level_entity_hierarchy",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity L1;\n\nentity L2 in [L1];\n\nentity L3 in [L2];\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"L1\": {}, \"L2\": {\"memberOfTypes\": [\"L1\"]}, \"L3\": {\"memberOfTypes\": [\"L2\"]}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity L1 {};\n\nentity L2 in L1 {};\n\nentity L3 in L2 {};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"L1\":{\"shape\":{\"type\":\"Record\"}},\"L2\":{\"memberOfTypes\":[\"L1\"],\"shape\":{\"type\":\"Record\"}},\"L3\":{\"memberOfTypes\":[\"L2\"],\"shape\":{\"type\":\"Record\"}}},\"actions\":{}}}"
+    }
+  },
+  {
+    "schema_id": "h5b_diamond_entity_hierarchy",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Leaf in [MidA, MidB];\n\nentity MidA in [Top];\n\nentity MidB in [Top];\n\nentity Top;\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"Leaf\": {\"memberOfTypes\": [\"MidA\", \"MidB\"]}, \"MidA\": {\"memberOfTypes\": [\"Top\"]}, \"MidB\": {\"memberOfTypes\": [\"Top\"]}, \"Top\": {}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Leaf in [MidA, MidB] {};\n\nentity MidA in Top {};\n\nentity MidB in Top {};\n\nentity Top {};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Leaf\":{\"memberOfTypes\":[\"MidA\",\"MidB\"],\"shape\":{\"type\":\"Record\"}},\"MidA\":{\"memberOfTypes\":[\"Top\"],\"shape\":{\"type\":\"Record\"}},\"MidB\":{\"memberOfTypes\":[\"Top\"],\"shape\":{\"type\":\"Record\"}},\"Top\":{\"shape\":{\"type\":\"Record\"}}},\"actions\":{}}}"
+    }
+  },
+  {
+    "schema_id": "h6_tagged_entity_primitive_tags",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Resource tags __cedar::String;\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"Resource\": {\"tags\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::String\"}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Resource {} tags String;\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Resource\":{\"shape\":{\"type\":\"Record\"},\"tags\":{\"type\":\"EntityOrCommon\",\"name\":\"String\"}}},\"actions\":{}}}"
+    }
+  },
+  {
+    "schema_id": "h6b_tagged_entity_tags_is_common_type_ref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "type TagT = __cedar::String;\n\nentity Resource tags TagT;\n\n",
+      "final_json": "{\"\": {\"commonTypes\": {\"TagT\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::String\"}}, \"entityTypes\": {\"Resource\": {\"tags\": {\"type\": \"EntityOrCommon\", \"name\": \"TagT\"}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": entity \"Resource\" tags: unknown type \"TagT\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h6c_tagged_entity_tags_set",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Resource tags Set<__cedar::Long>;\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"Resource\": {\"tags\": {\"type\": \"Set\", \"element\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::Long\"}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Resource {} tags Set<Long>;\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Resource\":{\"shape\":{\"type\":\"Record\"},\"tags\":{\"type\":\"Set\",\"element\":{\"type\":\"EntityOrCommon\",\"name\":\"Long\"}}}},\"actions\":{}}}"
+    }
+  },
+  {
+    "schema_id": "h6d_tagged_entity_tags_is_record_common_type_ref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "type TagRec = {\n  k: __cedar::String\n};\n\nentity Resource tags TagRec;\n\n",
+      "final_json": "{\"\": {\"commonTypes\": {\"TagRec\": {\"type\": \"Record\", \"attributes\": {\"k\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::String\"}}}}, \"entityTypes\": {\"Resource\": {\"tags\": {\"type\": \"EntityOrCommon\", \"name\": \"TagRec\"}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": entity \"Resource\" tags: unknown type \"TagRec\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h7_action_context_common_type_ref",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "type Ctx = {\n  ip: __cedar::ipaddr\n};\n\nentity Doc;\n\nentity User;\n\naction \"view\" appliesTo {\n  principal: [User],\n  resource: [Doc],\n  context: Ctx\n};\n\n",
+      "final_json": "{\"\": {\"commonTypes\": {\"Ctx\": {\"type\": \"Record\", \"attributes\": {\"ip\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::ipaddr\"}}}}, \"entityTypes\": {\"Doc\": {}, \"User\": {}}, \"actions\": {\"view\": {\"appliesTo\": {\"resourceTypes\": [\"Doc\"], \"principalTypes\": [\"User\"], \"context\": {\"type\": \"Ctx\"}}}}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": action \"view\" context: unknown type \"Ctx\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  },
+  {
+    "schema_id": "h7b_multi_action_multi_resource_appliesto",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Admin;\n\nentity Doc;\n\nentity Folder;\n\nentity User;\n\naction \"edit\" appliesTo {\n  principal: [Admin],\n  resource: [Doc],\n  context: {}\n};\n\naction \"view\" appliesTo {\n  principal: [User, Admin],\n  resource: [Doc, Folder],\n  context: {}\n};\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"Admin\": {}, \"Doc\": {}, \"Folder\": {}, \"User\": {}}, \"actions\": {\"edit\": {\"appliesTo\": {\"resourceTypes\": [\"Doc\"], \"principalTypes\": [\"Admin\"]}}, \"view\": {\"appliesTo\": {\"resourceTypes\": [\"Doc\", \"Folder\"], \"principalTypes\": [\"User\", \"Admin\"]}}}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Admin {};\n\nentity Doc {};\n\nentity Folder {};\n\nentity User {};\n\naction edit appliesTo {\n\tprincipal: Admin,\n\tresource: Doc\n};\n\naction view appliesTo {\n\tprincipal: [User, Admin],\n\tresource: [Doc, Folder]\n};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Admin\":{\"shape\":{\"type\":\"Record\"}},\"Doc\":{\"shape\":{\"type\":\"Record\"}},\"Folder\":{\"shape\":{\"type\":\"Record\"}},\"User\":{\"shape\":{\"type\":\"Record\"}}},\"actions\":{\"edit\":{\"appliesTo\":{\"principalTypes\":[\"Admin\"],\"resourceTypes\":[\"Doc\"]}},\"view\":{\"appliesTo\":{\"principalTypes\":[\"User\",\"Admin\"],\"resourceTypes\":[\"Doc\",\"Folder\"]}}}}}"
+    }
+  },
+  {
+    "schema_id": "h8_decimal_attr",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity U = {\n  bal: __cedar::decimal\n};\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"U\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"bal\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::decimal\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity U {\n\tbal: decimal\n};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"U\":{\"shape\":{\"type\":\"Record\",\"attributes\":{\"bal\":{\"type\":\"EntityOrCommon\",\"name\":\"decimal\"}}}}},\"actions\":{}}}"
+    }
+  },
+  {
+    "schema_id": "h8b_ipaddr_attr",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Host = {\n  addr: __cedar::ipaddr\n};\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"Host\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"addr\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::ipaddr\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Host {\n\taddr: ipaddr\n};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Host\":{\"shape\":{\"type\":\"Record\",\"attributes\":{\"addr\":{\"type\":\"EntityOrCommon\",\"name\":\"ipaddr\"}}}}},\"actions\":{}}}"
+    }
+  },
+  {
+    "schema_id": "h8c_datetime_and_duration_attrs",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Event = {\n  at: __cedar::datetime,\n  len: __cedar::duration\n};\n\n",
+      "final_json": "{\"\": {\"entityTypes\": {\"Event\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"at\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::datetime\"}, \"len\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::duration\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "entity Event {\n\tat: datetime,\n\tlen: duration\n};\n",
+      "final_json": "{\"\":{\"entityTypes\":{\"Event\":{\"shape\":{\"type\":\"Record\",\"attributes\":{\"at\":{\"type\":\"EntityOrCommon\",\"name\":\"datetime\"},\"len\":{\"type\":\"EntityOrCommon\",\"name\":\"duration\"}}}}},\"actions\":{}}}"
+    }
+  },
+  {
+    "schema_id": "h8d_extension_in_common_type",
+    "well_formed_json": true,
+    "well_formed_msg": null,
+    "rust": {
+      "classification": "clean",
+      "error": null,
+      "diff_summary": null,
+      "intermediate_cedar": "type Bal = __cedar::decimal;\n\nentity U = {\n  bal: Bal\n};\n\n",
+      "final_json": "{\"\": {\"commonTypes\": {\"Bal\": {\"type\": \"EntityOrCommon\", \"name\": \"__cedar::decimal\"}}, \"entityTypes\": {\"U\": {\"shape\": {\"type\": \"Record\", \"attributes\": {\"bal\": {\"type\": \"EntityOrCommon\", \"name\": \"Bal\"}}}}}, \"actions\": {}}}"
+    },
+    "go": {
+      "classification": "parse_fail",
+      "error": "namespace \"\": entity \"U\" shape: attribute \"bal\": unknown type \"Bal\"",
+      "diff_summary": null,
+      "intermediate_cedar": null,
+      "final_json": null
+    }
+  }
+]

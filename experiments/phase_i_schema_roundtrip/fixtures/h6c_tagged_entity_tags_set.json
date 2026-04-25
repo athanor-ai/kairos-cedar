@@ -1,0 +1,19 @@
+{
+  "": {
+    "entityTypes": {
+      "Resource": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        },
+        "tags": {
+          "type": "Set",
+          "element": {
+            "type": "Long"
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

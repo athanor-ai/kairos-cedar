@@ -1,0 +1,18 @@
+{
+  "": {
+    "entityTypes": {
+      "U": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "bal": {
+              "type": "Extension",
+              "name": "decimal"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

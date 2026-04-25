@@ -1,0 +1,25 @@
+{
+  "": {
+    "commonTypes": {
+      "MySet": {
+        "type": "Set",
+        "element": {
+          "type": "String"
+        }
+      }
+    },
+    "entityTypes": {
+      "Baz": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "tags": {
+              "type": "MySet"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

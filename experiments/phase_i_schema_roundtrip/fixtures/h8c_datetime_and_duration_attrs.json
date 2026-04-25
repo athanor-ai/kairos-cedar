@@ -1,0 +1,22 @@
+{
+  "": {
+    "entityTypes": {
+      "Event": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "at": {
+              "type": "Extension",
+              "name": "datetime"
+            },
+            "len": {
+              "type": "Extension",
+              "name": "duration"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

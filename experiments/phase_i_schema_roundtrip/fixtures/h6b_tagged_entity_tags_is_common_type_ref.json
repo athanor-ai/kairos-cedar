@@ -1,0 +1,21 @@
+{
+  "": {
+    "commonTypes": {
+      "TagT": {
+        "type": "String"
+      }
+    },
+    "entityTypes": {
+      "Resource": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        },
+        "tags": {
+          "type": "TagT"
+        }
+      }
+    },
+    "actions": {}
+  }
+}

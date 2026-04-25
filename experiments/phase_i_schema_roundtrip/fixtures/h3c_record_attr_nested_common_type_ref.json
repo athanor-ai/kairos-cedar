@@ -1,0 +1,27 @@
+{
+  "": {
+    "commonTypes": {
+      "Inner": {
+        "type": "Record",
+        "attributes": {
+          "x": {
+            "type": "Long"
+          }
+        }
+      }
+    },
+    "entityTypes": {
+      "Baz": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "inner": {
+              "type": "Inner"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

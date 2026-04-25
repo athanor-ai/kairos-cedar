@@ -1,0 +1,41 @@
+{
+  "": {
+    "entityTypes": {
+      "Top": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "MidA": {
+        "memberOfTypes": [
+          "Top"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "MidB": {
+        "memberOfTypes": [
+          "Top"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "Leaf": {
+        "memberOfTypes": [
+          "MidA",
+          "MidB"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      }
+    },
+    "actions": {}
+  }
+}

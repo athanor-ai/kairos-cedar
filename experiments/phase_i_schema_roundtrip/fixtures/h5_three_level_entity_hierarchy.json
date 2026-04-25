@@ -1,0 +1,31 @@
+{
+  "": {
+    "entityTypes": {
+      "L1": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "L2": {
+        "memberOfTypes": [
+          "L1"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "L3": {
+        "memberOfTypes": [
+          "L2"
+        ],
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      }
+    },
+    "actions": {}
+  }
+}

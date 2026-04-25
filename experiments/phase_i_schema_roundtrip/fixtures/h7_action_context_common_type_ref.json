@@ -1,0 +1,44 @@
+{
+  "": {
+    "commonTypes": {
+      "Ctx": {
+        "type": "Record",
+        "attributes": {
+          "ip": {
+            "type": "Extension",
+            "name": "ipaddr"
+          }
+        }
+      }
+    },
+    "entityTypes": {
+      "User": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "Doc": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      }
+    },
+    "actions": {
+      "view": {
+        "appliesTo": {
+          "principalTypes": [
+            "User"
+          ],
+          "resourceTypes": [
+            "Doc"
+          ],
+          "context": {
+            "type": "Ctx"
+          }
+        }
+      }
+    }
+  }
+}
