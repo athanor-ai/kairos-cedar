@@ -1,0 +1,11 @@
+namespace FS {
+    entity Disk = {
+        "__cedar": Bool
+    };
+    entity Person;
+}
+
+action Write appliesTo {
+    principal: FS::Person,
+    resource: [FS::Disk],
+};

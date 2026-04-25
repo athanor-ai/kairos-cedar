@@ -1,0 +1,18 @@
+{
+  "effect": "permit",
+  "principal": {
+    "op": "==",
+    "entity": { "type": "User", "id": "bob" }
+  },
+  "resource": {
+    "op": "==",
+    "entity": { "type": "User", "id": "bob" }
+  },
+  "action": { "op": "All" },
+  "conditions": [
+    {
+      "kind": "when",
+      "body": { "offset": [] }
+    }
+  ]
+}

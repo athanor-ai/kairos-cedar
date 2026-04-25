@@ -1,0 +1,12 @@
+[
+  {
+    "uid": { "type": "FS::Person", "id": "alice" },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": { "type": "FS::Disk", "id": "disk1" },
+    "attrs": { "__cedar": true },
+    "parents": []
+  }
+]

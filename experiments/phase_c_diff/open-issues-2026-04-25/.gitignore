@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+go_harness/h
+go_harness_json/h
+disagreements/issue_1_common_type_entity_shape/go_roundtrip/h
+disagreements/issue_3_offset_zero_arg/go_marshalcedar/h
