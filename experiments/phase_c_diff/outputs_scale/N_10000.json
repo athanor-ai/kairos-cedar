@@ -1,0 +1,33 @@
+{
+  "n_target": 10000,
+  "session_id": "608566f3-ad67-4bf6-8b8f-c25c1f10c7c9",
+  "task_id": "ath-529-cedar-full-n10000-diff",
+  "n_generated": 10000,
+  "sample_tuples_sec": 1.7,
+  "build_go_sec": 11.1,
+  "go_batch_sec": 18.0,
+  "rust_per_tuple_sec": 83.1,
+  "wall_time_total_sec": 113.9,
+  "cost_per_tuple_sec": 0.011390,
+  "valid_rate": 1.0,
+  "agreement_rate": 1.0,
+  "n_disagreements": 0,
+  "skip_rust": false,
+  "no_session": false,
+  "kairos_trace_strict": true,
+  "sdk_trace": {
+    "run_subtype": "differential_test",
+    "session_open": 1,
+    "run_start": 1,
+    "phase_start": 5,
+    "phase_complete": 5,
+    "differential_test_tuple_landed": 3280,
+    "run_complete": 0,
+    "session_close": 0,
+    "note": "Run killed at the 600s wrapper-timeout before all 10k per-tuple emits flushed. SDK pipeline confirmed working; emit-per-event throughput is the bottleneck (~7.5/sec). Bracket events (session_open/run_start/phase_*) all landed cleanly. Subsequent N=100k and N=1M runs use --no-session to bypass the emit loop and isolate genPolicy/Go/Rust wall-time."
+  },
+  "image": "ghcr.io/athanor-ai/kairos-cedar:latest",
+  "branch": "platform/run-diff-comprehensive-emits",
+  "commit": "da6f081",
+  "notes": "wall_time_total_sec computed from sum of measured phase timings (sample + build_go + go_batch + rust_per_tuple); does not include emit-loop time which is post-measurement and not part of the genPolicy cost-per-tuple metric. Rust phase ~83s reflects ATL-load-time competing-container overhead; baseline standalone is 61.8s."
+}
