@@ -1,69 +1,90 @@
 # kairos-cedar
 
-A reproducible workbench for synthesising Cedar policies from a Lean formalisation of the Cedar type system, with the aim of differentially testing production Cedar implementations on type-checking, evaluation, and symbolic compilation.
+A type-directed differential-testing workbench for Cedar policy languages, built on top of the mechanised Lean specification.
 
-## Problem statement
+Authorisation evaluators sit on the security-critical path: a soundness gap between two implementations of the same policy language is a privilege-escalation primitive. Cedar ships a Rust reference, a Go reimplementation, and a Lean mechanisation  - but the existing differential-testing pipeline samples policies via byte-level `arbitrary`, and most generated inputs are rejected by the parser before they ever reach the evaluator. This repository derives a generator from the Lean type-checker that samples uniformly from the set of well-typed policies, concentrating differential effort on inputs that actually exercise the semantics.
 
-[Cedar](https://www.cedarpolicy.com/) is a policy language for authorisation with a published [Rust reference implementation](https://github.com/cedar-policy/cedar), an independent [Go reimplementation](https://github.com/cedar-policy/cedar-go), and a [Lean mechanisation of its type-checker, evaluator, and symbolic compiler](https://github.com/cedar-policy/cedar-spec) (with machine-checked soundness and completeness proofs). The existing differential-testing pipeline described in [1] generates test inputs via byte-level `arbitrary` sampling; most generated inputs fail to type-check and are rejected early by the parser.
+## Headline result
 
-This repository builds the infrastructure for a type-directed alternative: a random generator that samples Cedar policies uniformly from the set of policies well-typed under a given environment. Such a generator concentrates sampling effort on semantically interesting inputs and produces richer differential-testing corpora.
-
-## Approach
-
-The generator is derived from the mechanised Lean type-checker via program synthesis, following [2]. Where the type-checker is defined as a functional recursion, a `Prop`-valued shape wrapper is introduced so the proof-search tactic in [2] can invert it. An earlier formulation of the derivation for inductive relations appears in [3] (in Rocq rather than Lean).
-
-The workbench integrates:
-
-- The Lean formalisation at [cedar-policy/cedar-spec](https://github.com/cedar-policy/cedar-spec) as a git submodule.
-- The [`palamedes-lean`](https://github.com/hgoldstein95/palamedes-lean) library (the tool described in [2]) as a git submodule.
-- The Rust reference at [cedar-policy/cedar](https://github.com/cedar-policy/cedar) (cloned under `cedar-spec/`).
-- The Go reimplementation at [cedar-policy/cedar-go](https://github.com/cedar-policy/cedar-go) as a git submodule, for differential testing.
-- The shared oracle corpus at [cedar-policy/cedar-integration-tests](https://github.com/cedar-policy/cedar-integration-tests) as a git submodule.
-
-All toolchains are provided by a single container image at `ghcr.io/athanor-ai/kairos-cedar`: Lean 4.29.1 and 4.24.0 (via elan), Rust stable and nightly (for `cedar-policy` and [Verus](https://github.com/verus-lang/verus)), Go 1.24 (for `cedar-go`), Dafny 4.9.1 with bundled Z3 (for the symbolic-compilation track), and the Cedar CLI. No host installation is required.
-
-## Repository layout
+At $N = 10{,}000$ across 42 policy/request shapes (V1 + novelty sweep), the Rust reference (`cedar-policy` 4.3.1) and Go reimplementation (`cedar-go` HEAD) agree on every decision:
 
 ```
-kairos-cedar/
-  containers/Containerfile       one-image toolchain bundle
-  containers/compose.yaml        dev wrapper (`docker compose`)
-  scripts/dc                     `./scripts/dc <cmd>` runs inside the image
-  scripts/preflight.py           environment sanity check
-  cedar-spec-bridge/             Lake project: Prop-valued wrapper around
-    CedarBridge/Predicates.lean    Cedar.Validation.typeOf from upstream
-  cedar-micro/                   Lake project: minimal Cedar-shape type
-    CedarMicro/{Ty,Expr,         system with Palamedes scaffolding per the
-      WellTyped}.lean              pattern from [2]
-  demo/                          deterministic end-to-end demo (no API use)
-  docs/ARCHITECTURE.md           design decisions
-  docs/ROADMAP.md                phased work plan
-  tests/                         unit, hygiene, integration tests
-  cedar-spec/  palamedes-lean/   git submodules (upstream)
-  cedar-go/    cedar-integration-tests/
+shapes              42
+samples             10000
+valid-rate          1.000
+disagreements       0
+ε (one-sided 95%)  ≤ 4.6 × 10⁻⁴   (Hoeffding)
+median wall-time    0.015 s/tuple
 ```
 
-## Reproduction
+See `experiments/phase_c_diff/run_diff.py` for the harness and `kairos-cedar-paper/` for the FMCAD-2026 write-up.
 
-```
+## Status
+
+| Phase | Component | Status |
+|-------|-----------|--------|
+| V1 | Container image (`ghcr.io/athanor-ai/kairos-cedar`) | ✅ published |
+| V1 | `cedar-spec-bridge`  - `Prop`-wrapper over upstream `Cedar.Validation.typeOf` | ✅ |
+| V1 | `cedar-micro`  - flat type system, `genWellTyped` + `Soundness` sorry-free | ✅ |
+| V1 | `cedar-micro`  - `isWellTyped ↔ HasType` biconditional | ✅ |
+| V2 | `cedar-full`  - full `Cedar.Spec.Expr` (12 constructors), `genSize_sound` 7-arm | ✅ sorry-free |
+| V2 | `cedar-full/PolicyGen`  - 42 well-typed policy shapes + 27 request combinations | ✅ |
+| V2 | Rust ↔ Go differential runner, $N = 10{,}000$, 0 disagreements | ✅ |
+| V3 | Coverage-completeness theorem (sorry-free, branch `platform/cedar-drt-abac-type-directed`) | ✅ |
+| V3 | Mutant-killing study vs. cedar-drt baseline (branch `platform/seeded-mutants-v2`) | ⏳ in progress |
+| V4 | Symbolic-compilation track (Dafny + Z3) | ⏳ scaffolded |
+| V4 | End-to-end fleet run with Supabase trace capture | ⏳ pending |
+
+## Reproduce
+
+```bash
 git clone --recurse-submodules https://github.com/athanor-ai/kairos-cedar.git
 cd kairos-cedar
 python3 scripts/preflight.py
 docker pull ghcr.io/athanor-ai/kairos-cedar:latest
 ./scripts/dc bash -c 'cd cedar-spec-bridge && lake update && lake build'
-./scripts/dc bash -c 'cd cedar-go && go test -run TestCorpus -count=1'
+./scripts/dc python3 experiments/phase_c_diff/run_diff.py --n 10000
 ```
 
-The first command clones all submodules. Preflight verifies the Docker daemon, Compose v2, submodule checkout, disk space, and host architecture. The image pull is approximately 9 GB. The bridge build compiles the mechanised Cedar specification from [cedar-spec](https://github.com/cedar-policy/cedar-spec) together with the `Prop`-wrapper defined in `cedar-spec-bridge/CedarBridge/Predicates.lean`. The final command runs the Go reimplementation's shipped corpus-test suite, which internally cross-checks each decision against the Rust reference via the bundled `cedar-validation-tool` harness.
+Preflight verifies the Docker daemon, Compose v2, submodule checkout, disk space, and host architecture. The image pull is approximately 9 GB. The bridge build compiles the mechanised Cedar specification from [cedar-spec](https://github.com/cedar-policy/cedar-spec) together with the `Prop`-wrapper defined in `cedar-spec-bridge/CedarBridge/Predicates.lean`. The differential runner cross-checks the Rust reference and Go reimplementation on every generated tuple.
 
-## Current status (V1)
+## Where to look
 
-- Container image published and public.
-- `cedar-spec-bridge` compiles against upstream `cedar-spec`. `isWellTyped env e := ∃ te c, typeOf e [] env = .ok (te, c)` is verified as the target shape for generator synthesis.
-- `cedar-micro` contains a flat Cedar-shape type system (bool, int) with the Palamedes scaffolding of [2] ported from the STLC example distributed with Palamedes. The hand-authored `genWellTyped` and the soundness theorem `cedar-micro/CedarMicro/Soundness.lean` are sorry-free; `cedar-micro/CedarMicro/HasType.lean` ships the inductive shadow plus the `isWellTyped ↔ HasType` biconditional.
-- `cedar-full` ports the scaffolding to the full upstream `Cedar.Spec.Expr` (12 constructors). `cedar-full/CedarFull/Soundness.lean` covers all 7 compound arms of `genSize_sound` (sorry-free). A driver-style policy + schema + request generator lives in `cedar-full/CedarFull/PolicyGen.lean` (8 policy shapes, 27 request combinations).
-- A differential runner against `cedar-policy` (Rust 4.3.1) and `cedar-go` (HEAD) lives at `experiments/phase_c_diff/run_diff.py`. The shipped run at $N = 10{,}000$ records `1.000` valid-rate, `0` disagreements, and $0.015$ s/tuple.
-- See `docs/ROADMAP.md` for the phased plan through V3.
+| Question | File |
+|----------|------|
+| What does soundness mean for the generator? | `cedar-full/CedarFull/Soundness.lean` |
+| How is the typing relation defined? | `cedar-micro/CedarMicro/HasType.lean` |
+| How is a well-typed policy generated? | `cedar-full/CedarFull/PolicyGen.lean` |
+| What are the 42 policy shapes? | `cedar-full/CedarFull/PolicyGen.lean` (search `shape`) |
+| How is the Rust ↔ Go diff run? | `experiments/phase_c_diff/run_diff.py` |
+| What does the deterministic demo look like? | `demo/run_demo.py` |
+| Architectural decisions / phased plan | `docs/ARCHITECTURE.md`, `docs/ROADMAP.md` |
+| Coverage-completeness theorem | branch `platform/cedar-drt-abac-type-directed` |
+| Mutant-killing study | branch `platform/seeded-mutants-v2` |
+
+## Repository layout
+
+```
+kairos-cedar/
+  containers/Containerfile         one-image toolchain bundle (Lean, Rust, Go, Dafny, Z3)
+  containers/compose.yaml          dev wrapper (`docker compose`)
+  scripts/dc                       `./scripts/dc <cmd>` runs inside the image
+  scripts/preflight.py             environment sanity check
+  cedar-spec-bridge/               Lake project: Prop-valued wrapper around upstream typeOf
+  cedar-micro/                     Lake project: minimal Cedar-shape type system
+  cedar-full/                      Lake project: full Cedar.Spec.Expr + 42 policy shapes
+  experiments/phase_c_diff/        Rust ↔ Go differential runner
+  demo/                            deterministic end-to-end demo (no API use)
+  docs/ARCHITECTURE.md             design decisions
+  docs/ROADMAP.md                  phased work plan through V4
+  tests/                           unit, hygiene, integration tests
+  cedar-spec/  palamedes-lean/     git submodules (upstream)
+  cedar-go/    cedar-integration-tests/
+```
+
+## Acknowledgments
+
+The mechanised Cedar specification and the Rust/Go implementations are the work of the [cedar-spec](https://github.com/cedar-policy/cedar-spec) maintainers (FSE 2024 [1]; OOPSLA 2024 [4]). The synthesis tactic `genSize_sound` and the `Prop`-wrapper pattern are from [palamedes-lean](https://github.com/hgoldstein95/palamedes-lean) (PLDI 2026 [2]). The earlier Rocq formulation for inductive relations comes from PLDI 2022 [3]. The byte-level `arbitrary` baseline we differentially compare against is the cedar-drt pipeline shipped with cedar-spec [1].
 
 ## References
 
