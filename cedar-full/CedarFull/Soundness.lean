@@ -400,4 +400,59 @@ theorem genWellTyped_sound (env : TypeEnv) (τ : CedarType) (e : Expr) :
     Gen.support (genWellTyped env τ) e → isWellTyped env e :=
   genSize_sound env 3 τ e
 
+-- ────────────────────────────────────────────────────────────────────
+-- §8 widening soundness lemmas.
+--
+-- Each helper in CedarFull.Expr (extDecimalLit, extIpLit,
+-- setLitUserEntities, recordEmptyLit, recordSingletonLit) gets a
+-- bottom-up `wellTypedAt env _ = true` lemma that PolicyGen uses
+-- transitively when the helper is composed in a `when {}` body.
+--
+-- Proof status (V1 of §8 widening, ATH widen-genpolicy-extension-types):
+--   • recordEmpty:       sorry-free
+--   • recordSingleton:   sorry-free
+--   • extDecimalLit:     sorry, deferred ATH-WIDEN-PROOF-EXT
+--   • extIpLit:          sorry, deferred ATH-WIDEN-PROOF-EXT
+--   • setLitUserEntities: sorry, deferred ATH-WIDEN-PROOF-SET
+-- The two ext-type sorrys are blocked by Decimal.parse / IPAddr.parse
+-- not kernel-reducing in Lean 4.29.1 (BitVec/Int64.ofInt? machinery).
+-- The set sorry is blocked by typeOfSet's lub? fold needing schema-
+-- conditioned reasoning — solvable but mechanically tedious.
+-- ────────────────────────────────────────────────────────────────────
+
+/-- Decimal literal `decimal("1.0")` typechecks at `(.ext .decimal)`.
+    SORRY status: ATH-WIDEN-PROOF-EXT. -/
+theorem wellTypedAt_extDecimalLit (env : TypeEnv) :
+    wellTypedAt env extDecimalLit = true := by
+  sorry
+
+/-- IP literal `ip("10.0.0.1")` typechecks at `(.ext .ipAddr)`.
+    SORRY status: ATH-WIDEN-PROOF-EXT. -/
+theorem wellTypedAt_extIpLit (env : TypeEnv) :
+    wellTypedAt env extIpLit = true := by
+  sorry
+
+/-- Empty record literal `{}` typechecks under any environment. -/
+theorem wellTypedAt_recordEmpty (env : TypeEnv) :
+    wellTypedAt env recordEmptyLit = true := by
+  simp [wellTypedAt, recordEmptyLit, Cedar.Validation.typeOf,
+        Cedar.Validation.ok, List.mapM₂, List.attach₂]
+
+/-- Singleton record literal `{approved: true}` typechecks under any environment. -/
+theorem wellTypedAt_recordSingleton (env : TypeEnv) :
+    wellTypedAt env recordSingletonLit = true := by
+  simp [wellTypedAt, recordSingletonLit, Cedar.Validation.typeOf,
+        Cedar.Validation.typeOfLit, Cedar.Validation.ok, List.mapM₂,
+        List.attach₂, Cedar.Data.Map.make, Except.map, Except.bind,
+        Cedar.Data.Map.mk, Cedar.Validation.TypedExpr.typeOf]
+
+/-- Set literal `[User::"alice", User::"bob", User::"carol"]` typechecks
+    at `(.set (.entity User))`.  SORRY: ATH-WIDEN-PROOF-SET. -/
+theorem wellTypedAt_setLitUserEntities_fixed
+    (env : TypeEnv)
+    (_hUser : env.ets.isValidEntityUID
+              { ty := { id := "User", path := [] }, eid := "alice" } = true) :
+    wellTypedAt env setLitUserEntities = true := by
+  sorry
+
 end CedarFull
