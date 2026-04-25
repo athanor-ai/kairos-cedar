@@ -662,7 +662,6 @@ def _run_diff(args, sess, sink) -> int:
     rust_per = (elapsed_rust if not args.skip_rust else 0.0) / max(1, total)
     go_per = elapsed_go_run / max(1, total)
     schema_hash = _sha12(FIXED_SCHEMA_TEXT)
-    sid = getattr(sess, "session_id", None) or task_id
     if sink is not None:
         for t in tuples:
             idx = t["idx"]
@@ -675,36 +674,31 @@ def _run_diff(args, sess, sink) -> int:
                 "action": t["action"],
                 "resource": t["resource"],
             }, sort_keys=True)
-            try:
-                sink.emit({
-                    "session_id": sid,
-                    "event_type": "differential_test_tuple",
-                    "run_type": "sdk_orchestration",
-                    "run_subtype": "differential_test",
-                    "body": {
-                        "sample_id": str(idx),
-                        "impl_a_name": "cedar-policy",
-                        "impl_a_verdict": rd,
-                        "impl_a_elapsed_sec": rust_per,
-                        "impl_b_name": "cedar-go",
-                        "impl_b_verdict": gd,
-                        "impl_b_elapsed_sec": go_per,
-                        "diff_found": (rd != gd
-                                       and not rd.startswith("ERROR")
-                                       and not gd.startswith("ERROR")),
-                        "input_hashes": {
-                            "policy": _sha12(t["policy"]),
-                            "schema": schema_hash,
-                            "request": _sha12(request_blob),
-                        },
-                        "diff_details": (
-                            f"rust={rd} go={gd} principal={t['principal']} "
-                            f"action={t['action']} resource={t['resource']}"
-                        ) if rd != gd else None,
-                    },
-                })
-            except Exception as e:
-                print(f"      WARN: emit failed for idx={idx}: {e}")
+            # Route through _emit so the per-tuple call uses TraceEvent
+            # dataclass (not dict) — without this, SupabaseTraceSink.emit
+            # silently fails with AttributeError on dict.run_subtype. 10k
+            # per-tuple events were dropping this way.
+            _emit(sink, sess, "differential_test_tuple", {
+                "sample_id": str(idx),
+                "impl_a_name": "cedar-policy",
+                "impl_a_verdict": rd,
+                "impl_a_elapsed_sec": rust_per,
+                "impl_b_name": "cedar-go",
+                "impl_b_verdict": gd,
+                "impl_b_elapsed_sec": go_per,
+                "diff_found": (rd != gd
+                               and not rd.startswith("ERROR")
+                               and not gd.startswith("ERROR")),
+                "input_hashes": {
+                    "policy": _sha12(t["policy"]),
+                    "schema": schema_hash,
+                    "request": _sha12(request_blob),
+                },
+                "diff_details": (
+                    f"rust={rd} go={gd} principal={t['principal']} "
+                    f"action={t['action']} resource={t['resource']}"
+                ) if rd != gd else None,
+            })
 
     print("\n" + "=" * 72)
     print("  §8 EVALUATION SUMMARY")
