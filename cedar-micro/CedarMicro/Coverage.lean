@@ -65,7 +65,7 @@ theorem varsOfType_complete (Γ : List Ty) (τ : Ty) (n : Nat) :
     cases n with
     | zero =>
       -- Γ[0]? = some τ' = some τ ⇒ τ' = τ
-      simp [List.getElem?_cons_zero] at h
+      simp at h
       subst h
       unfold varsOfType
       simp
@@ -186,6 +186,74 @@ theorem genLeaf_complete (Γ : List Ty) (τ : Ty) (e : Expr)
     simp [Expr.depth] at hleaf
 
 -- ────────────────────────────────────────────────────────────────────
+-- Step 4 helpers: converse decomposition lemmas for wellTypedAt on
+-- compound forms. Mirror the wellTypedAt_ite / wellTypedAt_and helpers
+-- from CedarMicro.Soundness in the `inverse` direction.
+-- ────────────────────────────────────────────────────────────────────
+
+private theorem wellTypedAt_ite_inv (Γ : List Ty) (τ : Ty) (c t f : Expr)
+    (h : wellTypedAt Γ τ (.ite c t f) = true) :
+    wellTypedAt Γ .bool c = true ∧
+    wellTypedAt Γ τ t = true ∧
+    wellTypedAt Γ τ f = true := by
+  -- Decompose getType (.ite c t f) Γ via case analysis on each sub-result.
+  unfold wellTypedAt getType at h
+  cases hgc : getType c Γ with
+  | none => rw [hgc] at h; simp at h
+  | some τc =>
+    cases hgt : getType t Γ with
+    | none => rw [hgc, hgt] at h; simp at h
+    | some τt =>
+      cases hgf : getType f Γ with
+      | none => rw [hgc, hgt, hgf] at h; simp at h
+      | some τf =>
+        rw [hgc, hgt, hgf] at h
+        -- Now h is a guard chain. Case-split on each guard.
+        by_cases hτcb : τc = .bool
+        · subst hτcb
+          by_cases hτtf : τt = τf
+          · subst hτtf
+            -- Now h : (match some τt with | some τ' => τ == τ' | none => false) = true
+            simp at h
+            -- h : τ = τt (after Bool decode)
+            have hττ : τ = τt := by
+              cases τ with
+              | int => cases τt <;> simp at h; rfl
+              | bool => cases τt <;> simp at h; rfl
+            subst hττ
+            refine ⟨?_, ?_, ?_⟩
+            · unfold wellTypedAt; rw [hgc]; simp
+            · unfold wellTypedAt; rw [hgt]; simp
+            · unfold wellTypedAt; rw [hgf]; simp
+          · simp [hτtf] at h
+        · simp [hτcb] at h
+
+private theorem wellTypedAt_and_inv (Γ : List Ty) (τ : Ty) (a b : Expr)
+    (h : wellTypedAt Γ τ (.and a b) = true) :
+    τ = .bool ∧ wellTypedAt Γ .bool a = true ∧ wellTypedAt Γ .bool b = true := by
+  unfold wellTypedAt getType at h
+  cases hga : getType a Γ with
+  | none => rw [hga] at h; simp at h
+  | some τa =>
+    cases hgb : getType b Γ with
+    | none => rw [hga, hgb] at h; simp at h
+    | some τb =>
+      rw [hga, hgb] at h
+      by_cases hτa : τa = .bool
+      · subst hτa
+        by_cases hτb : τb = .bool
+        · subst hτb
+          simp at h
+          have hττ : τ = .bool := by
+            cases τ <;> simp at h; rfl
+          subst hττ
+          refine ⟨rfl, ?_, ?_⟩
+          · unfold wellTypedAt; rw [hga]; simp
+          · unfold wellTypedAt; rw [hgb]; simp
+        · simp [hτb] at h
+      · simp [hτa] at h
+
+-- ────────────────────────────────────────────────────────────────────
 -- Step 4: depth-≤1 completeness (the V1 generator's reachable scope).
 --
 -- The V1 generator recurses at fuel-0 only, so depth-1 is the
@@ -194,14 +262,11 @@ theorem genLeaf_complete (Γ : List Ty) (τ : Ty) (e : Expr)
 -- `genSize Γ k _`.
 -- ────────────────────────────────────────────────────────────────────
 
-/-- Coverage at the V1 fuel scope (depth ≤ 1). The full proof is
-    direct case analysis on the head constructor and the type τ;
-    we package the `.ite` and `.and` arms behind a single
-    `sorry`-free statement, deferring the depth-1 compound proof
-    to a follow-up due to a Mathlib `simp` interaction with the
-    `Nat.max_le` rewrite that requires careful tactic-script
-    bookkeeping not yet polished. The leaf cases discharge in full,
-    so the theorem is constructive on depth-0 inputs already. -/
+/-- Coverage at the V1 fuel scope (depth ≤ 1). Direct case analysis
+    on the head constructor and the type τ; the `.ite` and `.and`
+    arms factor through `wellTypedAt_ite_inv` /
+    `wellTypedAt_and_inv` plus three `genLeaf_complete` calls each.
+    Sorry-free. -/
 theorem genSize_succ_complete (Γ : List Ty) (n : Nat) (τ : Ty) (e : Expr)
     (hpal : Expr.inPalette e)
     (hdepth : e.depth ≤ 1)
@@ -238,15 +303,55 @@ theorem genSize_succ_complete (Γ : List Ty) (n : Nat) (τ : Ty) (e : Expr)
       left
       exact genLeaf_complete Γ .bool _ hpal rfl htyp
   | ite c t f =>
-    -- Depth-1 ite. The full proof requires unpacking htyp's bind chain
-    -- via getType to recover sub-expression types, then matching against
-    -- the .ite arm of genSize.succ. Statement-level commitment ships;
-    -- proof is deferred to a follow-up patch (ATH-600 subticket).
-    sorry
+    -- Depth-1 ite. Sub-expressions c, t, f must each be leaves.
+    have hde : (Expr.ite c t f).depth = 1 + max c.depth (max t.depth f.depth) :=
+      rfl
+    rw [hde] at hdepth
+    have hdc' : c.depth = 0 := by omega
+    have hdt' : t.depth = 0 := by
+      have : max t.depth f.depth ≤ 0 := by omega
+      omega
+    have hdf' : f.depth = 0 := by
+      have : max t.depth f.depth ≤ 0 := by omega
+      omega
+    obtain ⟨htc, htt, htf⟩ := wellTypedAt_ite_inv Γ τ c t f htyp
+    have hpc : c.inPalette ∧ t.inPalette ∧ f.inPalette := hpal
+    obtain ⟨hpc', hpt', hpf'⟩ := hpc
+    cases τ with
+    | int =>
+      simp only [genSize, Gen.Support.support_pick,
+                 Gen.Support.support_bind, Gen.Support.support_pure]
+      right
+      refine ⟨c, ?_, t, ?_, f, ?_, rfl⟩
+      · simpa [genSize] using genLeaf_complete Γ .bool c hpc' hdc' htc
+      · simpa [genSize] using genLeaf_complete Γ .int  t hpt' hdt' htt
+      · simpa [genSize] using genLeaf_complete Γ .int  f hpf' hdf' htf
+    | bool =>
+      simp only [genSize, Gen.Support.support_pick,
+                 Gen.Support.support_bind, Gen.Support.support_pure]
+      right; right
+      refine ⟨c, ?_, t, ?_, f, ?_, rfl⟩
+      · simpa [genSize] using genLeaf_complete Γ .bool c hpc' hdc' htc
+      · simpa [genSize] using genLeaf_complete Γ .bool t hpt' hdt' htt
+      · simpa [genSize] using genLeaf_complete Γ .bool f hpf' hdf' htf
   | and a b =>
-    -- Symmetric to .ite; only well-typed at .bool. Deferred to a
-    -- follow-up patch (ATH-600 subticket).
-    sorry
+    -- Depth-1 and. Symmetric to .ite. Both subexpressions must be leaves
+    -- at .bool; result is .bool.
+    have hde : (Expr.and a b).depth = 1 + max a.depth b.depth := rfl
+    rw [hde] at hdepth
+    have hda' : a.depth = 0 := by omega
+    have hdb' : b.depth = 0 := by omega
+    obtain ⟨hττ, hta, htb⟩ := wellTypedAt_and_inv Γ τ a b htyp
+    subst hττ
+    have hpab : a.inPalette ∧ b.inPalette := hpal
+    obtain ⟨hpa', hpb'⟩ := hpab
+    -- The .bool arm of genSize.succ has the .and branch.
+    simp only [genSize, Gen.Support.support_pick,
+               Gen.Support.support_bind, Gen.Support.support_pure]
+    right; left
+    refine ⟨a, ?_, b, ?_, rfl⟩
+    · simpa [genSize] using genLeaf_complete Γ .bool a hpa' hda' hta
+    · simpa [genSize] using genLeaf_complete Γ .bool b hpb' hdb' htb
 
 -- ────────────────────────────────────────────────────────────────────
 -- Main theorem: paper §5.1's coverage-completeness dual.
