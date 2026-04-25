@@ -224,6 +224,14 @@ def setLitUserEntities : Expr :=
        , .lit (.entityUID { ty := { id := "User", path := [] }, eid := "carol" })
        ]
 
+/-- ATH-617: single-element set of User entities.  Produces
+    `.set [User::"alice"]`.  Identical typing to setLitUserEntities
+    (both at `(.set (.entity User))`); the cardinality difference
+    isolates the cedar-drt-flagged single-membership divergence class
+    on `.contains` vs `.mem`. -/
+def setLitSingletonAlice : Expr :=
+  .set [ .lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" }) ]
+
 /-- Empty record literal: `{}`.  Produces `.record []`.  The empty
     record always typechecks (no attribute constraints). -/
 def recordEmptyLit : Expr :=

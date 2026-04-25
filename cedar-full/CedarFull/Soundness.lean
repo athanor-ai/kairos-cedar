@@ -572,4 +572,15 @@ theorem wellTypedAt_setLitUserEntities_fixed
         Cedar.Validation.typeOfSet, TypedExpr.typeOf,
         Cedar.Validation.lub?]
 
+/-- ATH-617: single-element set literal `[User::"alice"]` typechecks
+    at `(.set (.entity User))`. Same proof recipe as the 3-element
+    case (typeOfSet on a non-empty homogeneous list); inherits the
+    same SORRY: ATH-WIDEN-PROOF-SET deferral. -/
+theorem wellTypedAt_setLitSingletonAlice
+    (env : TypeEnv)
+    (_hUser : env.ets.isValidEntityUID
+              { ty := { id := "User", path := [] }, eid := "alice" } = true) :
+    wellTypedAt env setLitSingletonAlice = true := by
+  sorry
+
 end CedarFull
