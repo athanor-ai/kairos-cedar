@@ -507,13 +507,54 @@ private def permitWhenNestedAttrEq : Policy :=
                             (.binaryApp .eq nestedAttrLit (.lit (.string "Main"))) }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 32 shapes (was 25 before §8 widening):
+-- ── ATH-603: cedar-drt-targeted bug-hunt shapes ─────────────────────
+-- Each shape exercises a constructor pair that prior cedar-drt
+-- runs have flagged as disagreement-prone but the §8 widening (shapes
+-- 26-32) does not yet reach. Soundness lemmas in CedarFull.Soundness;
+-- shape values are deterministic so the per-tuple cost is the same as
+-- existing §8 shapes.
+
+-- Shape 33: when { setLitUserEntities.containsAll(setLitUserEntities) }
+-- Always true semantically; exercises the .containsAll constructor
+-- which is a distinct evaluator path from .mem (shape 28).
+private def permitWhenSetContainsAllSelf : Policy :=
+  { id             := "permit-when-set-containsAll-self"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .containsAll
+                                    setLitUserEntities setLitUserEntities }]
+  }
+
+-- Shape 34: when { setLitUserEntities.contains(principal) }
+-- Functionally equivalent to `principal in [User::"alice", ...]`
+-- (shape 28) but lands on the .contains binary op rather than .mem.
+-- cedar-drt has historically reported divergences between cedar-policy
+-- and cedar-go on `in` vs `.contains` over single-element membership.
+private def permitWhenSetContainsPrincipal : Policy :=
+  { id             := "permit-when-set-contains-principal"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .contains
+                                    setLitUserEntities (.var .principal) }]
+  }
+
+/-- Generate a Cedar.Spec.Policy. 34 shapes (was 32 before ATH-603):
     Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
     Shapes 16–24: condition variants (when/unless with eq, in, is, has)
     Shape 25:     genWellTyped-derived bool expr (~18 outputs)
     Shapes 26–32: §8 widening — extension types (decimal/ip), set
                   literals, record literals (empty/singleton), `has`
                   on entity attribute, nested attribute projection.
+    Shapes 33–34: ATH-603 bug-hunt widening — set `.containsAll`
+                  self and set `.contains` of principal. Exercise
+                  binary-op constructors (.containsAll, .contains)
+                  that are distinct evaluator paths from .mem (shape 28).
     Shapes are chained with Gen.pick for uniform sampling. -/
 def genPolicy (_ : Schema) : Gen Policy :=
   -- Scope-only shapes (1–15)
@@ -550,9 +591,12 @@ def genPolicy (_ : Schema) : Gen Policy :=
   (Gen.pick (pure permitWhenSingletonRecordHas)
   (Gen.pick (pure permitWhenPrincipalHasAddress)
   (Gen.pick (pure permitWhenNestedAttrEq)
+  -- ATH-603 bug-hunt shapes (33–34)
+  (Gen.pick (pure permitWhenSetContainsAllSelf)
+  (Gen.pick (pure permitWhenSetContainsPrincipal)
             -- Shape 25 (placed at end): permit when {<well-typed bool>}
             (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))
+                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 
