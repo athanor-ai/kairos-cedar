@@ -1,0 +1,109 @@
+{
+  "task_id": "ath-headtohead-cedardrt-vs-typed-N10000",
+  "session_id": "905ff685-7e8d-449b-b997-75051d4aa20a",
+  "image": "ghcr.io/athanor-ai/kairos-cedar:latest",
+  "args": {
+    "n_ours": 10000,
+    "drt_n_cap": 100000000,
+    "drt_budget_secs": 780,
+    "drt_min_byte_len": 1,
+    "drt_max_byte_len": 200,
+    "seed": 3235838670
+  },
+  "cedar_drt_bytes_summary": {
+    "mode": "bytes",
+    "n_attempts": 81328659,
+    "parsed": 10442,
+    "evaluated": 0,
+    "allow": 0,
+    "deny": 0,
+    "parse_reach_rate": 0.00012839262479417003,
+    "evaluator_reach_rate": 0.0,
+    "total_bytes_consumed": 14832327613,
+    "elapsed_secs": 390.000011384,
+    "attempts_per_sec": 208535.0169898394,
+    "evaluator_reach_per_sec": 0.0,
+    "cost_per_evaluator_reach_ms": null,
+    "min_byte_len": 1,
+    "max_byte_len": 200,
+    "seed": 3235838670,
+    "wall_secs": 391.3385697989979,
+    "exit_code": 0
+  },
+  "cedar_drt_corpus_summary": {
+    "mode": "corpus-mutate",
+    "n_attempts": 13043026,
+    "parsed": 901169,
+    "evaluated": 901163,
+    "allow": 168267,
+    "deny": 732896,
+    "parse_reach_rate": 0.06909201898393824,
+    "evaluator_reach_rate": 0.06909155896798795,
+    "total_bytes_consumed": 865288116,
+    "elapsed_secs": 390.000030059,
+    "attempts_per_sec": 33443.65383260823,
+    "evaluator_reach_per_sec": 2310.674180880628,
+    "cost_per_evaluator_reach_ms": 0.43277412638889967,
+    "min_byte_len": 1,
+    "max_byte_len": 200,
+    "seed": 3235838670,
+    "wall_secs": 391.080332472,
+    "exit_code": 0
+  },
+  "cedar_drt_primary_summary": {
+    "mode": "bytes",
+    "n_attempts": 81328659,
+    "parsed": 10442,
+    "evaluated": 0,
+    "allow": 0,
+    "deny": 0,
+    "parse_reach_rate": 0.00012839262479417003,
+    "evaluator_reach_rate": 0.0,
+    "total_bytes_consumed": 14832327613,
+    "elapsed_secs": 390.000011384,
+    "attempts_per_sec": 208535.0169898394,
+    "evaluator_reach_per_sec": 0.0,
+    "cost_per_evaluator_reach_ms": null,
+    "min_byte_len": 1,
+    "max_byte_len": 200,
+    "seed": 3235838670,
+    "wall_secs": 391.3385697989979,
+    "exit_code": 0
+  },
+  "type_directed_summary": {
+    "wall_secs": 83.17066459600028,
+    "exit_code": 0,
+    "n_sampled": 10000,
+    "valid_sample_rate": 1.0,
+    "pairs_compared": 10000,
+    "agreement_rate": 1.0,
+    "disagreement_count": 0
+  },
+  "comparison": {
+    "metric": [
+      "attempts",
+      "evaluator_reached",
+      "evaluator_reach_rate",
+      "disagreements_found",
+      "wall_secs",
+      "cost_per_evaluator_reach_ms"
+    ],
+    "cedar_drt": {
+      "attempts": 81328659,
+      "evaluator_reached": 0,
+      "evaluator_reach_rate": 0.0,
+      "disagreements_found": 0,
+      "wall_secs": 391.3385697989979,
+      "cost_per_evaluator_reach_ms": null
+    },
+    "type_directed": {
+      "attempts": 10000,
+      "evaluator_reached": 10000,
+      "evaluator_reach_rate": 1.0,
+      "disagreements_found": 0,
+      "wall_secs": 83.17066459600028,
+      "cost_per_evaluator_reach_ms": 8.317066459600028
+    }
+  },
+  "total_elapsed_secs": 868.4530658539989
+}
