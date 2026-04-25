@@ -232,6 +232,23 @@ def setLitUserEntities : Expr :=
 def setLitSingletonAlice : Expr :=
   .set [ .lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" }) ]
 
+/-- ATH-603 sub-3: decimal extension literal with extra-precision string
+    form `decimal("1.000")`. Same value semantically as `decimal("1.0")`
+    but the string form differs. Probes the parser-level residual
+    (\cedarpolicy and \cedargo run distinct Decimal parsers) flagged in
+    paper §10.3. Typechecks at `(.ext .decimal)` for the same reason
+    extDecimalLit does. -/
+def extDecimalLitThousandths : Expr :=
+  .call .decimal [.lit (.string "1.000")]
+
+/-- ATH-603 sub-3: IPv6 localhost extension literal `ip("::1")`. Same
+    .ext .ipaddr type as extIpLit (which is IPv4); the address-family
+    difference probes whether \cedarpolicy and \cedargo evaluate IPv6
+    forms identically. The double-colon zero-compression form is the
+    canonical edge case for IPv6 parser drift. -/
+def extIpV6LocalhostLit : Expr :=
+  .call .ip [.lit (.string "::1")]
+
 /-- Empty record literal: `{}`.  Produces `.record []`.  The empty
     record always typechecks (no attribute constraints). -/
 def recordEmptyLit : Expr :=
