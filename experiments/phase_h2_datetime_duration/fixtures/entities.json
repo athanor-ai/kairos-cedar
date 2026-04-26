@@ -1,0 +1,125 @@
+[
+  {
+    "uid": {
+      "type": "User",
+      "id": "alice"
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "type": "Group",
+        "id": "users"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "bob"
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "type": "Group",
+        "id": "users"
+      },
+      {
+        "type": "Group",
+        "id": "admins"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "User",
+      "id": "carol"
+    },
+    "attrs": {},
+    "parents": [
+      {
+        "type": "Group",
+        "id": "viewers"
+      }
+    ]
+  },
+  {
+    "uid": {
+      "type": "Group",
+      "id": "admins"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Group",
+      "id": "users"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Group",
+      "id": "viewers"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Document",
+      "id": "doc1"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Document",
+      "id": "doc2"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Document",
+      "id": "folder1"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Photo",
+      "id": "photo1"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Action",
+      "id": "view"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Action",
+      "id": "edit"
+    },
+    "attrs": {},
+    "parents": []
+  },
+  {
+    "uid": {
+      "type": "Action",
+      "id": "admin"
+    },
+    "attrs": {},
+    "parents": []
+  }
+]
