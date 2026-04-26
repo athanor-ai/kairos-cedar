@@ -67,7 +67,7 @@ def fixedEntitySchema : EntitySchema :=
     , (mkEty "Photo",    EntitySchemaEntry.standard { ancestors := Set.empty, attrs := Map.empty, tags := none })
     ]
 
-/-- The fixed action schema: view, edit, admin — each applies to User × {Document, Photo}. -/
+/-- The fixed action schema: view, edit, admin  - each applies to User × {Document, Photo}. -/
 def fixedActionEntry : ActionSchemaEntry :=
   { appliesToPrincipal := Set.make [mkEty "User"]
   , appliesToResource  := Set.make [mkEty "Document", mkEty "Photo"]

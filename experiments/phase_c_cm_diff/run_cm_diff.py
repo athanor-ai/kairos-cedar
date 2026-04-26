@@ -212,10 +212,10 @@ def main() -> int:
     disagree_dir = OUT_DIR / "disagree_corpus"
     disagree_dir.mkdir(parents=True, exist_ok=True)
 
-    # SDK dogfood per qa's capability map (2026-04-24 17:38Z): wrap the
-    # whole run in kairos.session so a parent solve_runs row opens +
-    # closes, every observed LLM/Lean call joins the same session, and
-    # /solve-runs + /cost dashboards populate. ATH-524/544/548.
+    # SDK dogfood per the capability map (2026-04-24): wrap the whole
+    # run in kairos.session so a parent solve_runs row opens and closes,
+    # every observed LLM/Lean call joins the same session, and
+    # /solve-runs and /cost dashboards populate.
     sink = ktrace.default_sink_from_env() if not args.no_session else None
     task_id = f"ath-529-cedar-n{args.n}-diff"
     session_cm = kairos.session(

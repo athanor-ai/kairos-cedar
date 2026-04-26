@@ -44,10 +44,10 @@ fi
 echo "integration: using image $IMAGE"
 
 # Actually build the bridge. This exercises:
-#   - docker image has lean 4.29.1 on PATH
-#   - cedar-spec submodule checkout produces a buildable Lake project
-#   - cedar-spec-bridge's lakefile.toml resolves the `path = ../cedar-spec/cedar-lean` requirement
-#   - isWellTyped predicate compiles against Cedar.Validation.typeOf
+# - docker image has lean 4.29.1 on PATH
+# - cedar-spec submodule checkout produces a buildable Lake project
+# - cedar-spec-bridge's lakefile.toml resolves the `path = ../cedar-spec/cedar-lean` requirement
+# - isWellTyped predicate compiles against Cedar.Validation.typeOf
 docker run --rm \
   -v "$REPO_ROOT":/work \
   -w /work/cedar-spec-bridge \

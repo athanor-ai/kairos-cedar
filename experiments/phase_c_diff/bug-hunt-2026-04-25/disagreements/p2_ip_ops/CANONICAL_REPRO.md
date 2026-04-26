@@ -1,4 +1,4 @@
-# Canonical Reproducer — IPv6 Zone-Identifier Disagreement
+# Canonical Reproducer  - IPv6 Zone-Identifier Disagreement
 
 **Discovered:** 2026-04-25 by widened bug-hunt harness.
 

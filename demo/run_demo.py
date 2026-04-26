@@ -344,7 +344,7 @@ def part_4_cedar_go_corpus() -> tuple[bool, str]:
     print("      What this proves: on the corpus cedar-go ships for its own CI,")
     print("      every one of ~7760 subtests gets the same decision from both")
     print("      the Rust reference (cedar-policy 4.3.1) and cedar-go (v1 HEAD).")
-    print("      This is the existing agreement baseline — anything our")
+    print("      This is the existing agreement baseline  - anything our")
     print("      type-directed generator finds beyond this is new.")
     t = time.monotonic()
     proc = run_in_image(
@@ -445,7 +445,7 @@ def main() -> int:
        identically by cedar-policy and cedar-go.
 
   Together: formal bridge + production evaluators + typed-input generator
-  + differential agreement — the four pieces a Cedar deployment would
+  + differential agreement  - the four pieces a Cedar deployment would
   want before trusting a policy engine in production.
 """)
 
@@ -498,11 +498,11 @@ def main() -> int:
     print()
     if all_pass:
         print("  Net signal:")
-        print("    - Formal bridge to cedar-policy's upstream Lean type system:  ALIVE")
-        print("    - Rust reference on the handwritten RBAC set:                  AGREES")
-        print("    - Type-directed generator soundness (machine-checked):         HOLDS")
-        print("    - Rust vs. Go on ~7760 shipped subtests:                       AGREE")
-        print("    - Rust vs. Go on 20 sampled type-directed policies:            AGREE")
+        print("  - Formal bridge to cedar-policy's upstream Lean type system:  ALIVE")
+        print("  - Rust reference on the handwritten RBAC set:                  AGREES")
+        print("  - Type-directed generator soundness (machine-checked):         HOLDS")
+        print("  - Rust vs. Go on ~7760 shipped subtests:                       AGREE")
+        print("  - Rust vs. Go on 20 sampled type-directed policies:            AGREE")
         print()
         print("  Next step for a deeper look:")
         print("    python3 experiments/phase_c_diff/run_diff.py --n 1000")

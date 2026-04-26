@@ -1,5 +1,5 @@
 """
-experiments/phase_c_diff/run_diff.py — §8 Evaluation diff runner.
+experiments/phase_c_diff/run_diff.py  - §8 Evaluation diff runner.
 
 Samples N (default 1000) tuples from CedarFull.PolicyGen via the
 measure-diff Lean binary, then evaluates each tuple against:
@@ -166,7 +166,7 @@ func parseUID(s string) (types.EntityUID, error) {
 }
 
 func main() {
-	// Read entities from arg[1] — JSON array of entity objects
+	// Read entities from arg[1]  - JSON array of entity objects
 	entitiesPath := os.Args[1]
 	entitiesData, err := os.ReadFile(entitiesPath)
 	if err != nil {
@@ -177,7 +177,7 @@ func main() {
 	// cedar-go EntityMap can be unmarshalled from the standard entities JSON format
 	var entities types.EntityMap
 	if err := json.Unmarshal(entitiesData, &entities); err != nil {
-		// The file is a JSON array, not a map — need to build from slice.
+		// The file is a JSON array, not a map  - need to build from slice.
 		// Build entities manually from our fixed set.
 		entities = types.EntityMap{}
 	}

@@ -1,5 +1,5 @@
 """
-Widened shapes for the §8 diff hunt — bug-hunt-2026-04-25.
+Widened shapes for the §8 diff hunt  - bug-hunt-2026-04-25.
 
 Each shape is a (shape_id, list[Tuple]) pair where Tuple = dict with keys:
   - sample_id: str (unique within shape)
@@ -8,14 +8,14 @@ Each shape is a (shape_id, list[Tuple]) pair where Tuple = dict with keys:
   - context: dict (will be passed to runners; default {})
 
 Shapes are grouped by widening priority:
-  P1 — decimal extension drift
-  P2 — ipaddr edge cases
-  P3 — datetime parse drift   (cedar-go has datetime; cedar-policy may not enable it without --features)
-  P4 — Unicode strings on `like`
-  P5 — set operations at large N
-  P6 — short-circuit-order divergence in nested && / ||
-  P7 — AWS IAM-style layered policies
-  P8 — RBAC document-share
+  P1  - decimal extension drift
+  P2  - ipaddr edge cases
+  P3  - datetime parse drift   (cedar-go has datetime; cedar-policy may not enable it without --features)
+  P4  - Unicode strings on `like`
+  P5  - set operations at large N
+  P6  - short-circuit-order divergence in nested && / ||
+  P7  - AWS IAM-style layered policies
+  P8  - RBAC document-share
 
 Note on entity / schema decisions:
   • All shapes use the SAME fixed schema + entities as the V1 generator
@@ -84,7 +84,7 @@ DECIMAL_EDGE_LITERALS = [
     # arithmetic-overflow boundary (just-over)
     ("d_just_over_max", '922337203685477.5808'),
     ("d_just_under_min", '-922337203685477.5809'),
-    # large exponent forms (not legal in Cedar grammar — must reject)
+    # large exponent forms (not legal in Cedar grammar  - must reject)
     ("d_exp_form", '1e2'),
     ("d_exp_form_caps", '1E2'),
     # negative zero variations
@@ -180,7 +180,7 @@ IP_EDGE_LITERALS = [
     ("ip_v6_upper", "2001:DB8::1"),
     # mixed case
     ("ip_v6_mixed_case", "2001:Db8::1"),
-    # invalid — must both reject
+    # invalid  - must both reject
     ("ip_v4_too_big", "256.0.0.1"),
     ("ip_v4_three_octets", "192.168.1"),
     ("ip_empty", ""),
@@ -200,7 +200,7 @@ IP_OPS = ["isIpv4", "isIpv6", "isLoopback", "isMulticast"]
 
 
 def shape_p2_ip_parse() -> list[dict[str, Any]]:
-    """ip("X").isIpv4() — fundamental drift question is whether parse succeeds."""
+    """ip("X").isIpv4()  - fundamental drift question is whether parse succeeds."""
     out = []
     for (lit_id, lit) in IP_EDGE_LITERALS:
         # quote the literal carefully
@@ -219,7 +219,7 @@ def shape_p2_ip_parse() -> list[dict[str, Any]]:
 
 
 def shape_p2_ip_ops() -> list[dict[str, Any]]:
-    """All 4 ops × all canonical-pass IPs — divergence on op semantics is rare but valued."""
+    """All 4 ops × all canonical-pass IPs  - divergence on op semantics is rare but valued."""
     out = []
     canon_ips = [
         "127.0.0.1", "::1", "0.0.0.0", "10.0.0.0/8", "fe80::1%eth0",
@@ -241,7 +241,7 @@ def shape_p2_ip_ops() -> list[dict[str, Any]]:
 
 
 def shape_p2_ip_in_range() -> list[dict[str, Any]]:
-    """isInRange — semantic disagreement is paper-grade."""
+    """isInRange  - semantic disagreement is paper-grade."""
     out = []
     pairs = [
         ("127.0.0.1", "127.0.0.0/8"),
@@ -278,7 +278,7 @@ def shape_p2_ip_in_range() -> list[dict[str, Any]]:
 DATETIME_LITERALS = [
     # canonical
     ("dt_basic", "2025-04-25T00:00:00Z"),
-    # fractional seconds — Cedar spec only allows 3-digit (millisecond)
+    # fractional seconds  - Cedar spec only allows 3-digit (millisecond)
     ("dt_ms_3", "2025-04-25T00:00:00.123Z"),
     ("dt_ms_1", "2025-04-25T00:00:00.1Z"),
     ("dt_ms_2", "2025-04-25T00:00:00.12Z"),
@@ -291,7 +291,7 @@ DATETIME_LITERALS = [
     ("dt_offset_p0_0", "2025-04-25T00:00:00+00:00"),
     ("dt_offset_n0500", "2025-04-25T00:00:00-0500"),
     ("dt_offset_n05_00", "2025-04-25T00:00:00-05:00"),
-    # leap second (cedar should reject — no 60)
+    # leap second (cedar should reject  - no 60)
     ("dt_leap", "2016-12-31T23:59:60Z"),
     # pre-epoch
     ("dt_pre_epoch", "1969-12-31T23:59:59Z"),
@@ -477,7 +477,7 @@ def shape_p5_set_ops() -> list[dict[str, Any]]:
 
 def shape_p6_short_circuit() -> list[dict[str, Any]]:
     out = []
-    # bad-decimal (over-precision) — known to error in Go.
+    # bad-decimal (over-precision)  - known to error in Go.
     bad_dec = '0.12345'
     bad_ip = '256.0.0.1'
 
@@ -495,7 +495,7 @@ def shape_p6_short_circuit() -> list[dict[str, Any]]:
         ("p6_double_nested_F_F",    f'false && (false && decimal("{bad_dec}").lessThan(decimal("0.5")))'),
         ("p6_double_nested_T_F",    f'true  && (false && decimal("{bad_dec}").lessThan(decimal("0.5")))'),
         ("p6_double_nested_F_T",    f'false || (true  || decimal("{bad_dec}").lessThan(decimal("0.5")))'),
-        # ITE with bad branch — Cedar `if` short-circuits unselected branch
+        # ITE with bad branch  - Cedar `if` short-circuits unselected branch
         ("p6_ite_unselected_bad",   f'if true then 1 == 1 else (decimal("{bad_dec}").lessThan(decimal("0.5")))'),
         ("p6_ite_unselected_bad_2", f'if false then (decimal("{bad_dec}").lessThan(decimal("0.5"))) else 1 == 1'),
     ]
