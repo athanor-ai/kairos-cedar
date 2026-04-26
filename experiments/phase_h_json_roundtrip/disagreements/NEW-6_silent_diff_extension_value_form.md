@@ -1,13 +1,13 @@
 # NEW-6: cedar-go changes extension value form `{__extn: {fn, arg}}` to call form `{fn: [arg]}` on round-trip
 
-**Severity:** Medium — JSON representation changes on round-trip; consumers of the JSON format may not handle both forms
+**Severity:** Medium; JSON representation changes on round-trip; consumers of the JSON format may not handle both forms
 **Class:** Silent diff on conformant input
 
 ## Summary
 
 The Cedar JSON format supports two ways to embed extension type values (e.g., IP addresses):
-1. **Value form**: `{"Value": {"__extn": {"fn": "ip", "arg": "192.168.1.1"}}}` — extension value embedded inside a `Value` node
-2. **Call form**: `{"ip": [{"Value": "192.168.1.1"}]}` — extension call expression
+1. **Value form**: `{"Value": {"__extn": {"fn": "ip", "arg": "192.168.1.1"}}}`; extension value embedded inside a `Value` node
+2. **Call form**: `{"ip": [{"Value": "192.168.1.1"}]}`; extension call expression
 
 Both forms are valid Cedar JSON. When cedar-go receives the value form and round-trips
 it through Cedar text, the output uses the call form. They are semantically equivalent

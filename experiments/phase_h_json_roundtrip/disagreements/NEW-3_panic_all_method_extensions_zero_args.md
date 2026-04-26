@@ -1,6 +1,6 @@
 # NEW-3: cedar-go MarshalCedar panics on ALL method-style extension calls with zero-arg array
 
-**Severity:** Critical — attacker-controlled JSON crashes cedar-go process
+**Severity:** Critical; attacker-controlled JSON crashes cedar-go process
 **Class:** Extension of NEW-2 (offset) to all 18 method-style extension operators
 
 ## Summary
@@ -59,7 +59,7 @@ func (n NodeTypeExtensionCall) marshalCedar(buf *bytes.Buffer) {
     var args []ast.IsNode
     info := extensions.ExtMap[n.Name]
     if info.IsMethod {
-        marshalChildNode(n.precedenceLevel(), n.Args[0], buf)  // line 199 — PANICS if len(Args)==0
+        marshalChildNode(n.precedenceLevel(), n.Args[0], buf)  // line 199; PANICS if len(Args)==0
         buf.WriteRune('.')
         args = n.Args[1:]
     } else {
@@ -80,7 +80,7 @@ The Rust cedar-policy CLI *accepts* the same malformed input and emits valid Ced
 permit(principal, action, resource) when { isIpv4() };
 ```
 
-Rust does not validate arity at parse time — it emits `ext_name()` with zero args.
+Rust does not validate arity at parse time; it emits `ext_name()` with zero args.
 The AST would fail at type-checking / evaluation, but the marshaller does not crash.
 
 **Cross-impl verdict:** cedar-go panics; Rust produces `method_name()` text (malformed

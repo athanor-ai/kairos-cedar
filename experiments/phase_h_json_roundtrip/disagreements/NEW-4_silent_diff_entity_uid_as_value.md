@@ -1,6 +1,6 @@
 # NEW-4: cedar-go silently changes entity-UID-as-Value to Record on JSON round-trip
 
-**Severity:** Medium — JSON round-trip not identity; information representation changes
+**Severity:** Medium; JSON round-trip not identity; information representation changes
 **Class:** Silent diff on conformant input
 
 ## Summary
@@ -46,7 +46,7 @@ Output JSON (differs from input):
 }
 ```
 
-The Cedar text is semantically ambiguous — `{"id": "admins", "type": "Group"}` is a
+The Cedar text is semantically ambiguous; `{"id": "admins", "type": "Group"}` is a
 record literal in Cedar text, not an entity UID. Cedar-go reads it back as a Record.
 
 ## Root cause
@@ -55,7 +55,7 @@ The JSON `Value` field unmarshaling (via `types.UnmarshalJSON`) interprets
 `{"type": "...", "id": "..."}` as an entity UID at JSON→AST time. When cedar-go
 marshals the Cedar text, a record literal `{"id": "...", "type": "..."}` appears.
 When that Cedar text is then parsed back, cedar-go has no way to distinguish a
-record literal from an entity UID — it parses as `Record`.
+record literal from an entity UID; it parses as `Record`.
 
 The standard entity UID JSON representation is `{"__entity": {"type": "...", "id": "..."}}`.
 The probe input used the non-standard short form `{"type": "...", "id": "..."}` which
@@ -67,7 +67,7 @@ This is a **semi-conformant** input: the short form `{"type":"...","id":"..."}` 
 entity UID encoding documented in the Cedar types JSON format, but the Cedar text
 representation of entity UIDs (`EntityType::"id"`) is what MarshalCedar emits.
 When reading back from Cedar text, the entity UID becomes an entity-UID AST node,
-which marshals back to `{"Value": {"__entity": ...}}` — but *only* if the Cedar text
+which marshals back to `{"Value": {"__entity": ...}}`; but *only* if the Cedar text
 parser can resolve it. In this specific case (entity UID in a `Set` literal), the
 Cedar text parser reads it as a Record, causing the representation change.
 
@@ -88,6 +88,6 @@ its type on round-trip. Rust rejects the input. This is a cross-impl acceptance 
 
 ## Affected probes
 
-- `A-032-in-expr` — entity UID in Set literal
-- `F-009-entity-uid-value` — entity UID as direct value
-- `A-025b-is-in-expr` — entity UID in is-in expression
+- `A-032-in-expr`; entity UID in Set literal
+- `F-009-entity-uid-value`; entity UID as direct value
+- `A-025b-is-in-expr`; entity UID in is-in expression

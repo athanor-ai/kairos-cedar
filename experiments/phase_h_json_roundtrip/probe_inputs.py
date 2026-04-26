@@ -1,18 +1,18 @@
 """
-probe_inputs.py — generator of JSON policy probe inputs for round-trip testing.
+probe_inputs.py; generator of JSON policy probe inputs for round-trip testing.
 
 Cedar JSON policy format reference:
   https://docs.cedarpolicy.com/policies/json-format.html
 
 Each probe is a dict with:
-  id          — unique string identifying this probe
-  policy_json — a dict (will be JSON-encoded) representing a Cedar policy
+  id         ; unique string identifying this probe
+  policy_json; a dict (will be JSON-encoded) representing a Cedar policy
 
 Probe categories:
-  A. CONFORMANT — well-formed per spec; round-trip should be identity or at least non-panicky
-  B. EDGE_ZERO  — empty-arg arrays for extension method calls (the NEW-2 class)
-  C. MALFORMED  — wrong types, missing required fields (parse_fail expected, not a bug)
-  D. EXTRAS     — extra fields in objects (should be ignored or fail gracefully)
+  A. CONFORMANT; well-formed per spec; round-trip should be identity or at least non-panicky
+  B. EDGE_ZERO ; empty-arg arrays for extension method calls (the NEW-2 class)
+  C. MALFORMED ; wrong types, missing required fields (parse_fail expected, not a bug)
+  D. EXTRAS    ; extra fields in objects (should be ignored or fail gracefully)
 
 Usage:
   python3 probe_inputs.py > probes.ndjson   (NDJSON for the Go harness)
@@ -67,7 +67,7 @@ def unary(op, arg):
     return {op: {"arg": arg}}
 
 def ext_call(name, *args):
-    """Extension call — args is the list of arg nodes (JSON-expressible)."""
+    """Extension call; args is the list of arg nodes (JSON-expressible)."""
     return {name: list(args)}
 
 def if_then_else(cond, then, else_):
@@ -159,7 +159,7 @@ probe("A-006-scope-is-in", base_policy(
     resource=scope_all(),
 ), "conformant")
 
-# A-007: when condition — simple equality
+# A-007: when condition; simple equality
 probe("A-007-when-eq", base_policy(
     "permit",
     conditions=[condition_when(
@@ -167,7 +167,7 @@ probe("A-007-when-eq", base_policy(
     )],
 ), "conformant")
 
-# A-008: when condition — binary operators
+# A-008: when condition; binary operators
 for op in ["==", "!=", "<", "<=", ">", ">="]:
     safe_op = op.replace("<", "lt").replace(">", "gt").replace("=", "e").replace("!", "ne")
     probe(
@@ -258,7 +258,7 @@ probe("A-024-is", base_policy("permit", conditions=[condition_when(
 probe("A-025-is-in-expr", base_policy("permit", conditions=[condition_when(
     is_node(principal(), "Employee",
             in_=binary("==", resource(), resource()))
-)]), "conformant", "is with in expression — note: in field should be a node")
+)]), "conformant", "is with in expression; note: in field should be a node")
 
 # Correct is-in: in field is a node expression not a binary
 probe("A-025b-is-in-expr", base_policy("permit", conditions=[condition_when(
@@ -337,7 +337,7 @@ probe("A-038-duration-constructor", base_policy("permit", conditions=[condition_
     binary("==", ext_call("duration", value("1h")), ext_call("duration", value("1h")))
 )]), "conformant")
 
-# Method-style: isIpv4(receiver)  — receiver is FIRST element of the args array in JSON
+# Method-style: isIpv4(receiver) ; receiver is FIRST element of the args array in JSON
 # JSON: {"isIpv4": [receiver_node]}
 probe("A-039-isIpv4", base_policy("permit", conditions=[condition_when(
     ext_call("isIpv4", ext_call("ip", value("192.168.1.1")))
@@ -401,7 +401,7 @@ probe("A-050-offset", base_policy("permit", conditions=[condition_when(
     ext_call("offset",
              ext_call("datetime", value("2024-01-15T12:00:00Z")),
              ext_call("duration", value("1h")))
-)]), "conformant", "offset(datetime, duration) — 2-arg method")
+)]), "conformant", "offset(datetime, duration); 2-arg method")
 
 probe("A-051-durationSince", base_policy("permit", conditions=[condition_when(
     ext_call("durationSince",
@@ -457,8 +457,8 @@ probe("A-059-action-in-set", {
 }, "conformant", "action in set scope")
 
 
-# ── B: EDGE_ZERO — empty args arrays (the NEW-2 class) ───────────────────────
-# These are NOT conformant — the extension call has wrong arity.
+# ── B: EDGE_ZERO; empty args arrays (the NEW-2 class) ───────────────────────
+# These are NOT conformant; the extension call has wrong arity.
 # Expected behavior: parse_fail at json_unmarshal OR panic at marshal_cedar.
 # Panics are findings; parse_fails here are "expected" per honest-reporting rule
 # UNLESS cedar-go accepts them (UnmarshalJSON succeeds) and then panics.
@@ -492,7 +492,7 @@ FUNC_EXTS = [
 ]
 
 for name, expected_arity in METHOD_EXTS:
-    # B-zero: empty args array [] — this is the NEW-2 pattern
+    # B-zero: empty args array []; this is the NEW-2 pattern
     probe(
         f"B-zero-{name}",
         base_policy("permit", conditions=[condition_when({name: []})]),
@@ -545,7 +545,7 @@ for name, expected_arity in [("isIpv4", 1), ("isIpv6", 1), ("isLoopback", 1), ("
     )
 
 
-# ── C: MALFORMED — malformed JSON structure (parse_fail expected) ─────────────
+# ── C: MALFORMED; malformed JSON structure (parse_fail expected) ─────────────
 
 # C-001: missing effect
 probe("C-001-missing-effect", {
@@ -639,7 +639,7 @@ probe("C-015-is-no-entity-type", base_policy("permit", conditions=[condition_whe
 )]), "malformed")
 
 
-# ── D: EXTRAS — extra/unknown fields (testing graceful handling) ──────────────
+# ── D: EXTRAS; extra/unknown fields (testing graceful handling) ──────────────
 
 # D-001: extra field in policy object
 probe("D-001-extra-policy-field", {
@@ -663,13 +663,13 @@ probe("D-003-extra-condition-field", base_policy("permit", conditions=[
     {"kind": "when", "body": value(True), "extra": "ignored?"}
 ]), "extras")
 
-# D-004: extra field in binary node  — nodeJSON uses DisallowUnknownFields
+# D-004: extra field in binary node ; nodeJSON uses DisallowUnknownFields
 # for known ops, but falls back to extensionJSON for unknown fields
 probe("D-004-extra-in-eq-node", base_policy("permit", conditions=[condition_when(
     {"==": {"left": value(1), "right": value(1)}, "extra_field": "should fail or ignored"}
 )]), "extras")
 
-# D-005: multiple known ops in one nodeJSON (ambiguous — which one wins?)
+# D-005: multiple known ops in one nodeJSON (ambiguous; which one wins?)
 probe("D-005-two-ops-in-node", base_policy("permit", conditions=[condition_when(
     {"==": {"left": value(1), "right": value(1)},
      "!=": {"left": value(1), "right": value(2)}}
@@ -773,7 +773,7 @@ if __name__ == "__main__":
         for p in PROBES:
             print(p["id"], p["category"])
     else:
-        # NDJSON for the Go harness — just id + policy_json
+        # NDJSON for the Go harness; just id + policy_json
         for p in PROBES:
             line = {"id": p["id"], "policy_json": p["policy_json"]}
             print(json.dumps(line))
