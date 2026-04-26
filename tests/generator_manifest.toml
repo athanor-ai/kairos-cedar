@@ -28,12 +28,15 @@
 id = "cedar_full_v1_policygen"
 path = "cedar-full/CedarFull/PolicyGen.lean"
 # Closed-form support: 3 principals * 3 actions * 3 resources = 27
-# request triples, multiplied by 25 policy shapes (genPolicy chain in
-# PolicyGen.lean lines 405-433). Shape 25 uses genWellTyped which
-# samples one well-typed expression per draw, so the realised support
-# is bounded above by 25, not by the genWellTyped output size; we
-# count it as 1 shape for the unique-tuple count.
-expected_support = 675   # 27 * 25
+# request triples, multiplied by 32 policy shapes (genPolicy chain in
+# PolicyGen.lean lines 405-433 + the §8 widening shapes 26-32 added
+# in PR #9: extension types decimal/ip, set literals, record literals,
+# nested attribute projection). Shape 25 plus extension/set/record
+# variants use genWellTyped which samples one well-typed expression
+# per draw, so the realised support is bounded above by the shape
+# count, not by the genWellTyped output size; we count each as 1
+# shape for the unique-tuple count.
+expected_support = 864   # 27 * 32
 claim_kind = "support_eq"
 
 # Declared evaluation count for the V1 phase-C run. Bug A pre-fix:
