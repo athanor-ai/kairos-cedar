@@ -1,4 +1,4 @@
-# Widened Bug-Hunt Summary — 2026-04-25
+# Widened Bug-Hunt Summary  - 2026-04-25
 
 - Total tuples: 206
 - Tools: cedar-policy-cli 4.10.0 (Rust) vs cedar-go v1.6.0 (HEAD)
@@ -32,7 +32,7 @@
 
 ## Disagreements (2)
 
-### `p1_decimal_parse__p1_parse_d_pos_sign_zero` — evaluator_disagreement
+### `p1_decimal_parse__p1_parse_d_pos_sign_zero`  - evaluator_disagreement
 
 ```cedar
 permit(principal, action, resource) when { principal == User::"alice" && decimal("+0.0").lessThan(decimal("0.5")) };
@@ -41,12 +41,12 @@ permit(principal, action, resource) when { principal == User::"alice" && decimal
 - principal: `User::alice`
 - action: `Action::view`
 - resource: `Document::doc1`
-- rust: `Deny` — `DENY
+- rust: `Deny`  - `DENY
 
 error while evaluating policy `policy0`: error while evaluating `decimal` extension function: `+0.0` is not a well-formed decimal value`
-- go: `Allow` — ``
+- go: `Allow`  - ``
 
-### `p2_ip_ops__p2_op_fe80xx1_p_eth0_isIpv6` — evaluator_disagreement
+### `p2_ip_ops__p2_op_fe80xx1_p_eth0_isIpv6`  - evaluator_disagreement
 
 ```cedar
 permit(principal, action, resource) when { ip("fe80::1%eth0").isIpv6() };
@@ -55,8 +55,8 @@ permit(principal, action, resource) when { ip("fe80::1%eth0").isIpv6() };
 - principal: `User::alice`
 - action: `Action::view`
 - resource: `Document::doc1`
-- rust: `Deny` — `DENY
+- rust: `Deny`  - `DENY
 
 error while evaluating policy `policy0`: error while evaluating `ipaddr` extension function: invalid IP address: fe80::1%eth0`
-- go: `Allow` — ``
+- go: `Allow`  - ``
 

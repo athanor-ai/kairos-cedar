@@ -90,15 +90,31 @@ class NoInternalLeaksTest(unittest.TestCase):
     def test_no_forbidden_patterns(self) -> None:
         violations: list[str] = []
         paths = _scan_paths()
+        # Per-pattern path allowlist. Some experiment scripts legitimately
+        # import the kairos SDK as a dependency to drive measurement /
+        # session-wrapping; that's not a leak, that's intended dogfood
+        # usage. Scope is narrow: only files that materially need the
+        # kairos.* surface get listed here, and only for the kairos.* +
+        # SDK-type patterns. All other patterns still scan everywhere.
+        KAIROS_DOGFOOD_ALLOW = {
+            "experiments/phase_c_diff/run_diff.py",
+            "experiments/phase_c_cm_diff/run_cm_diff.py",
+        }
+        KAIROS_PATTERNS = {
+            "closed-source kairos SDK internal",
+            "closed-source SDK type",
+        }
         for path in paths:
             text = path.read_text(errors="replace")
             # Also skip this test file itself. it necessarily contains
             # the patterns it's asserting about.
             if path.name == "test_repo_hygiene.py":
                 continue
+            rel = str(path.relative_to(REPO_ROOT))
             for pattern, label in FORBIDDEN_PATTERNS:
+                if rel in KAIROS_DOGFOOD_ALLOW and label in KAIROS_PATTERNS:
+                    continue
                 for m in re.finditer(pattern, text):
-                    rel = path.relative_to(REPO_ROOT)
                     violations.append(f"{rel}: {label}: {m.group(0)!r}")
 
         if violations:

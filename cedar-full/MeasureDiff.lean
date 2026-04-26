@@ -1,5 +1,5 @@
 /-
-  MeasureDiff.lean — driver for the §8 diff-testing experiment.
+  MeasureDiff.lean  - driver for the §8 diff-testing experiment.
 
   Usage:  lake env lean --run MeasureDiff.lean <n>
 
@@ -9,11 +9,11 @@
     idx TAB principal TAB action TAB resource TAB policyText
 
   where:
-    idx         — 0-based sample index
-    principal   — EntityUID in "Type::eid" format (no quotes)
-    action      — EntityUID in "Type::eid" format
-    resource    — EntityUID in "Type::eid" format
-    policyText  — Cedar policy text (spaces, no tabs)
+    idx      - 0-based sample index
+    principal  - EntityUID in "Type::eid" format (no quotes)
+    action   - EntityUID in "Type::eid" format
+    resource - EntityUID in "Type::eid" format
+    policyText - Cedar policy text (spaces, no tabs)
 
   Python diff runner (experiments/phase_c_diff/run_diff.py) reads
   this output, invokes cedar authorize + cedar-go for each tuple,

@@ -9,28 +9,28 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: run unit + hygiene tests
+    - name: run unit + hygiene tests
         run: python3 -m unittest discover -v tests
 
   preflight:
     runs-on: ubuntu-latest
     needs: unit-tests
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: preflight.py
+    - name: preflight.py
         run: python3 scripts/preflight.py
-      - name: preflight --strict (warn-only gates surfaced)
+    - name: preflight --strict (warn-only gates surfaced)
         run: python3 scripts/preflight.py --strict || true
 
   # Image build + integration tests run on a self-hosted runner on

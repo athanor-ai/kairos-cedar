@@ -1,5 +1,5 @@
 """
-run_widened.py — execute the widened shapes from widened_shapes.py against
+run_widened.py  - execute the widened shapes from widened_shapes.py against
 both cedar-policy (Rust) and cedar-go and report disagreements.
 
 Each tuple is dispatched independently. Per-tuple we record:
@@ -8,12 +8,12 @@ Each tuple is dispatched independently. Per-tuple we record:
   - rust_stderr_tail   for diagnosis
   - go_stderr_tail     for diagnosis
   - classification:
-       agreement                 — both Allow or both Deny
-       agreement_both_reject     — both ERROR/parse_error
-       generator_artifact        — both reject but for different reasons
+       agreement              - both Allow or both Deny
+       agreement_both_reject  - both ERROR/parse_error
+       generator_artifact     - both reject but for different reasons
                                    (we still call this an *agreement* on outcome)
-       evaluator_disagreement    — one Allow/Deny, other ERROR
-       semantic_disagreement     — both succeed, but Allow vs Deny
+       evaluator_disagreement - one Allow/Deny, other ERROR
+       semantic_disagreement  - both succeed, but Allow vs Deny
 
 Usage:
     python3 experiments/phase_c_diff/bug-hunt-2026-04-25/run_widened.py
@@ -90,7 +90,7 @@ def run_in_image(cmd: list[str], *, timeout: int = 600) -> subprocess.CompletedP
 
 
 # ──────────────────────────────────────────────────────────────────
-# Rust batch — write JSONL, batch into one container exec.
+# Rust batch  - write JSONL, batch into one container exec.
 # ──────────────────────────────────────────────────────────────────
 
 RUST_RUNNER_SCRIPT = r'''
@@ -186,7 +186,7 @@ def run_rust_batch(tuples: list[dict[str, Any]], timeout: int = 1800) -> dict[st
 
 
 # ──────────────────────────────────────────────────────────────────
-# Go batch — pipe tuples to harness binary, capture decision + error
+# Go batch  - pipe tuples to harness binary, capture decision + error
 # ──────────────────────────────────────────────────────────────────
 
 GO_HARNESS_DIR = HUNT_DIR / "go_harness"
@@ -369,9 +369,9 @@ def run_go_batch(tuples: list[dict[str, Any]], timeout: int = 600) -> dict[str, 
 def classify(rd: dict | None, gd: dict | None) -> tuple[str, dict]:
     """Returns (label, debug-info). Labels:
       agreement_allow, agreement_deny, agreement_both_reject,
-      semantic_disagreement (allow vs deny — paper grade),
-      evaluator_disagreement (one accepts, one rejects — likely paper grade),
-      generator_artifact (both reject for different reasons — log only),
+      semantic_disagreement (allow vs deny  - paper grade),
+      evaluator_disagreement (one accepts, one rejects  - likely paper grade),
+      generator_artifact (both reject for different reasons  - log only),
       missing (one runner failed to produce output)
     """
     if rd is None or gd is None:
@@ -406,7 +406,7 @@ def classify(rd: dict | None, gd: dict | None) -> tuple[str, dict]:
         # by the authorization decision: if Go's decision is Deny, the
         # *authorisation outcomes match* (Cedar maps eval-error in `permit-when`
         # to "policy not satisfied", so Rust → Deny; Go also → Deny because
-        # the boolean condition was false). That's an "asymmetric_path" — both
+        # the boolean condition was false). That's an "asymmetric_path"  - both
         # implementations land on Deny but for different reasons. Still useful
         # to flag, but it's NOT a paper-grade decision-flip.
         if gdec == "Deny":
@@ -536,7 +536,7 @@ def main() -> int:
     # Markdown summary
     summary_path = Path(args.summary)
     with open(summary_path, "w") as f:
-        f.write(f"# Widened Bug-Hunt Summary — 2026-04-25\n\n")
+        f.write(f"# Widened Bug-Hunt Summary  - 2026-04-25\n\n")
         f.write(f"- Total tuples: {len(rows)}\n")
         f.write(f"- Tools: cedar-policy-cli 4.10.0 (Rust) vs cedar-go v1.6.0 (HEAD)\n")
         f.write(f"- Image: `{IMAGE}`\n\n")
@@ -557,13 +557,13 @@ def main() -> int:
         if disagreements:
             f.write(f"\n## Disagreements ({len(disagreements)})\n\n")
             for r in disagreements:
-                f.write(f"### `{r['idx']}` — {r['classification']}\n\n")
+                f.write(f"### `{r['idx']}`  - {r['classification']}\n\n")
                 f.write(f"```cedar\n{r['policy']}\n```\n\n")
                 f.write(f"- principal: `{r['principal']}`\n")
                 f.write(f"- action: `{r['action']}`\n")
                 f.write(f"- resource: `{r['resource']}`\n")
-                f.write(f"- rust: `{(r['rust'] or {}).get('decision')}` — `{((r['rust'] or {}).get('stderr_tail') or (r['rust'] or {}).get('stdout_tail') or '').strip()[:300]}`\n")
-                f.write(f"- go: `{(r['go'] or {}).get('decision')}` — `{((r['go'] or {}).get('error') or (r['go'] or {}).get('diagnostic') or '').strip()[:300]}`\n\n")
+                f.write(f"- rust: `{(r['rust'] or {}).get('decision')}`  - `{((r['rust'] or {}).get('stderr_tail') or (r['rust'] or {}).get('stdout_tail') or '').strip()[:300]}`\n")
+                f.write(f"- go: `{(r['go'] or {}).get('decision')}`  - `{((r['go'] or {}).get('error') or (r['go'] or {}).get('diagnostic') or '').strip()[:300]}`\n\n")
     print(f"\n  summary → {summary_path}")
     print(f"  results → {out_path}")
     return 0

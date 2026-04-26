@@ -1,12 +1,12 @@
 /-
-  MeasurePalamedes.lean — §5.2 "Palamedes-derived row" sampler.
+  MeasurePalamedes.lean  - §5.2 "Palamedes-derived row" sampler.
 
   Option 3 (derivation-witnessed bypass): uses the hand-authored
   `CedarMicro.genWellTyped` as the runtime generator and packages it
   with the machine-checked soundness witness `genWellTyped_sound`.
 
   Rationale (Aidan 2026-04-24 directive): Palamedes's `generator_search`
-  tactic fails at CorrectGen totality for `Expr` — an upstream rule-set
+  tactic fails at CorrectGen totality for `Expr`  - an upstream rule-set
   gap we choose not to depend on.  The "Palamedes-derived" claim in
   Table 2 is therefore *witnessed*: every sample `e` drawn from
   `genWellTyped Γ τ` carries a `HasType Γ τ e` derivation, produced by
@@ -64,7 +64,7 @@ def main (args : List String) : IO Unit := do
   let Γ : List CedarMicro.Ty := [.int, .bool, .int]
 
   -- ── Announce provenance ────────────────────────────────────────────
-  IO.println "# MeasurePalamedes — derivation-witnessed generator"
+  IO.println "# MeasurePalamedes  - derivation-witnessed generator"
   IO.println s!"# Theorem: CedarMicro.genWellTyped_sound"
   IO.println s!"# Witness: isWellTyped_iff_hasType (bridging wellTypedAt → HasType)"
   IO.println s!"# N = {n} (bool) + {n} (int)"

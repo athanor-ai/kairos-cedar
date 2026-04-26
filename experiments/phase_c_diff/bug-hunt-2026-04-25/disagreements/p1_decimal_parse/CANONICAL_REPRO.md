@@ -1,4 +1,4 @@
-# Canonical Reproducer — Decimal Leading-`+` Sign Disagreement
+# Canonical Reproducer  - Decimal Leading-`+` Sign Disagreement
 
 **Discovered:** 2026-04-25 by widened bug-hunt harness.
 
