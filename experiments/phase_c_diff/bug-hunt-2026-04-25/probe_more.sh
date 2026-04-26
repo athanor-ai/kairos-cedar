@@ -21,10 +21,10 @@ probe() {
 # IPv4-mapped IPv6: Rust rejects, Go also rejects (Go has explicit "we don't accept" check)
 probe "v4_mapped" 'permit(principal, action, resource) when { ip("::ffff:192.0.2.1").isIpv4() };'
 
-# Smaller string of digits — does Go still accept it? RFC says "::a.b.c.d" is valid
+# Smaller string of digits; does Go still accept it? RFC says "::a.b.c.d" is valid
 probe "v6_compat" 'permit(principal, action, resource) when { ip("::192.0.2.1").isIpv4() };'
 
-# 10.0.0.5/8 — host bits set in CIDR. RFC 4632 says it's host 10.0.0.5 in a /8 network.
+# 10.0.0.5/8; host bits set in CIDR. RFC 4632 says it's host 10.0.0.5 in a /8 network.
 # Rust seems to ALLOW. Go uses netip.ParsePrefix which preserves host bits.
 probe "host_bits" 'permit(principal, action, resource) when { ip("10.0.0.5/8").isInRange(ip("10.0.0.0/8")) };'
 
@@ -51,5 +51,5 @@ probe "dt_date_only" 'permit(principal, action, resource) when { datetime("2025-
 probe "dt_p0_0" 'permit(principal, action, resource) when { datetime("2025-04-25T00:00:00+00:00") < datetime("2030-01-01T00:00:00Z") };'
 probe "dt_p0000" 'permit(principal, action, resource) when { datetime("2025-04-25T00:00:00+0000") < datetime("2030-01-01T00:00:00Z") };'
 
-# uppercase IPv6 — Rust accepts, Go ParseAddr accepts too
+# uppercase IPv6; Rust accepts, Go ParseAddr accepts too
 probe "v6_upper_eq" 'permit(principal, action, resource) when { ip("2001:DB8::1") == ip("2001:db8::1") };'

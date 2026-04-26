@@ -23,7 +23,7 @@ Generator support analysis:
 Add 11 widened shapes (206 tuples) in
 `bug-hunt-2026-04-25/widened_shapes.py`:
 
-- p1_decimal_parse           (30 tuples)  ← Aidan's #1
+- p1_decimal_parse           (30 tuples)
 - p1_decimal_compare         (32)
 - p2_ip_parse                (28)
 - p2_ip_ops                  (32)
@@ -83,4 +83,4 @@ Both Lean evaluator attribution: agrees with cedar-policy (Rust). The
 Cedar specification grammars do not include `+`-sign on decimal or
 zone-identifier on ipaddr. cedar-go bugs.
 
-No 8-h overnight run needed. Stopping here. Founder hand-off.
+No 8-h overnight run needed. Stopping here.

@@ -25,7 +25,7 @@ probe "isolate_01_5" 'permit(principal, action, resource) when { decimal("01.5")
 probe "isolate_01_5_v2" 'permit(principal, action, resource) when { decimal("01.5") == decimal("1.5") };'
 probe "isolate_007"  'permit(principal, action, resource) when { decimal("007.0") == decimal("7.0") };'
 
-# pure parse — true if parse succeeds & equality works
+# pure parse; true if parse succeeds & equality works
 probe "and_decimal" 'permit(principal, action, resource) when { decimal("01.5") == decimal("01.5") && true };'
 
 # put decimal under unless { } to invert

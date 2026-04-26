@@ -1,5 +1,5 @@
 """
-run_widened.py — execute datetime/duration probe shapes against both
+run_widened.py; execute datetime/duration probe shapes against both
 cedar-policy (Rust) and cedar-go and report disagreements.
 
 Usage:
@@ -536,8 +536,8 @@ def _write_summary(
     image: str,
 ) -> None:
     with open(path, "w") as f:
-        f.write("# Phase H2 — Datetime/Duration Drift Investigation\n\n")
-        f.write("**Purpose:** Empirically test §7.4 prediction — same drift class on datetime + duration.\n\n")
+        f.write("# Phase H2; Datetime/Duration Drift Investigation\n\n")
+        f.write("**Purpose:** Empirically test §7.4 prediction; same drift class on datetime + duration.\n\n")
         f.write(f"- Implementations: cedar-policy 4.10.0 (Rust) vs cedar-go v1.6.0 (commit `a9a4b1b`)\n")
         f.write(f"- Image: `{image}`\n")
         f.write(f"- Tuples: {len(rows)}\n\n")
@@ -561,7 +561,7 @@ def _write_summary(
         if disagreements:
             f.write(f"\n## Disagreements ({len(disagreements)})\n\n")
             for r in disagreements:
-                f.write(f"### `{r['idx']}` — {r['classification']}\n\n")
+                f.write(f"### `{r['idx']}`; {r['classification']}\n\n")
                 f.write(f"```cedar\n{r['policy']}\n```\n\n")
                 rust_out = ((r.get('rust') or {}).get('stderr_tail') or
                             (r.get('rust') or {}).get('stdout_tail') or '').strip()

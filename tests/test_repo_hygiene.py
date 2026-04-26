@@ -20,6 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 EXCLUDE_DIRS = {
     ".git",
     ".lake",
+    ".claude",
     "cedar-spec",
     "palamedes-lean",
     "cedar-go",
@@ -107,8 +108,12 @@ class NoInternalLeaksTest(unittest.TestCase):
         for path in paths:
             text = path.read_text(errors="replace")
             # Also skip this test file itself. it necessarily contains
-            # the patterns it's asserting about.
+            # the patterns it's asserting about. Same logic for tools/md_lint.py:
+            # it is the em-dash linter source and necessarily holds the patterns
+            # it detects.
             if path.name == "test_repo_hygiene.py":
+                continue
+            if str(path.relative_to(REPO_ROOT)) == "tools/md_lint.py":
                 continue
             rel = str(path.relative_to(REPO_ROOT))
             for pattern, label in FORBIDDEN_PATTERNS:

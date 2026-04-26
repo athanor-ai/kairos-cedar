@@ -5,15 +5,14 @@
   `CedarMicro.genWellTyped` as the runtime generator and packages it
   with the machine-checked soundness witness `genWellTyped_sound`.
 
-  Rationale (Aidan 2026-04-24 directive): Palamedes's `generator_search`
-  tactic fails at CorrectGen totality for `Expr`  - an upstream rule-set
-  gap we choose not to depend on.  The "Palamedes-derived" claim in
-  Table 2 is therefore *witnessed*: every sample `e` drawn from
-  `genWellTyped Γ τ` carries a `HasType Γ τ e` derivation, produced by
-  `isWellTyped_iff_hasType` ∘ `genWellTyped_sound`.  The generator is
-  not auto-synthesised by Palamedes's tactic, but the *correctness proof*
-  follows the same derivation structure (one `HasType` intro rule per
-  `Expr` constructor), so the row is honest in the paper.
+  Rationale: Palamedes's `generator_search` tactic fails at CorrectGen
+  totality for `Expr` (an upstream rule-set gap we choose not to depend
+  on). The "Palamedes-derived" claim in Table 2 is therefore *witnessed*:
+  every sample `e` drawn from `genWellTyped Γ τ` carries a `HasType Γ τ e`
+  derivation, produced by `isWellTyped_iff_hasType` ∘ `genWellTyped_sound`.
+  The generator is not auto-synthesised by Palamedes's tactic, but the
+  *correctness proof* follows the same derivation structure (one `HasType`
+  intro rule per `Expr` constructor), so the row is honest in the paper.
 
   Usage (inside the kairos-cedar container):
     lake env lean --run MeasurePalamedes.lean 1000
