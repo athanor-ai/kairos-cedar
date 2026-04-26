@@ -92,11 +92,14 @@ RUN cargo +${RUST_NIGHTLY} install cedar-policy-cli --features analyze \
 
 # CVC5 — required by `cedar analyze symcc` for symbolic verification.
 # Pinned to 1.3.1 to match the version the symcc encoder was tested
-# against (per kairos-cedar paper §9.3 sweep).
-RUN curl -fsSL -o /tmp/cvc5 \
-      "https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.1/cvc5-Linux-static" \
-    && install -m 0755 /tmp/cvc5 /usr/local/bin/cvc5 \
-    && rm /tmp/cvc5 \
+# against (per kairos-cedar paper §9.3 sweep). Asset name is
+# `cvc5-Linux-x86_64-static.zip`; the binary lives inside at
+# `cvc5-Linux-x86_64-static/bin/cvc5`.
+RUN curl -fsSL -o /tmp/cvc5.zip \
+      "https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.1/cvc5-Linux-x86_64-static.zip" \
+    && unzip -q /tmp/cvc5.zip -d /tmp \
+    && install -m 0755 /tmp/cvc5-Linux-x86_64-static/bin/cvc5 /usr/local/bin/cvc5 \
+    && rm -rf /tmp/cvc5.zip /tmp/cvc5-Linux-x86_64-static \
     && cvc5 --version | head -1
 
 # ── Lean (two toolchains via elan) ───────────────────────────────────
