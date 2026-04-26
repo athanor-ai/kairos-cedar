@@ -35,7 +35,7 @@ Extend the generator from type-checking to the two other semantic tiers exercise
 
 ## Verus track (optional, parallel)
 
-- Level 1: annotate the Rust differential-test harness (the code that runs both implementations and compares decisions) with [Verus](https://github.com/verus-lang/verus) `requires` and `ensures` preconditions. Proves harness correctness.
+- Level 1: annotate the Rust differential-test driver (the code that runs both implementations and compares decisions) with [Verus](https://github.com/verus-lang/verus) `requires` and `ensures` preconditions. Proves driver correctness.
 - Level 2: annotate a subset of `cedar-policy`'s evaluator (boolean, integer primitives, no entity lookups) and prove soundness against an algebraic specification. Compare the Verus-derived verdicts against the Lean-derived verdicts on identical fixtures. Divergences indicate a defect in at least one of the two formal models.
 
 ## Out of scope

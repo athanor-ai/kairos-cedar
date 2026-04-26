@@ -1,0 +1,35 @@
+[diff] session_id=5d56a351-3468-4f6b-8dd7-f9d28d0d89c6 sink=NoneType
+========================================================================
+  kairos-cedar §8 diff runner  N=10000
+  image: ghcr.io/athanor-ai/kairos-cedar:latest
+========================================================================
+
+[1/4] Writing fixed schema + entities fixtures ...
+      schema  → /work/experiments/phase_c_diff/fixtures/schema.cedarschema
+      entities→ /work/experiments/phase_c_diff/fixtures/entities.json
+
+[2/4] Sampling 10000 tuples from CedarFull.PolicyGen ...
+      Generated 10000 tuples in 0.5s
+
+[3/4] Building Go diff harness ...
+      Go harness built in 7.7s
+
+[4/4] Running diff (Rust + Go) on 10000 tuples ...
+      [4a] Go batch ...
+           10000 decisions in 8.3s
+      [4b] Rust cedar authorize (per-tuple, may be slow) ...
+           10000 decisions in 66.7s
+
+========================================================================
+  §8 EVALUATION SUMMARY
+========================================================================
+  N sampled          : 10000
+  Valid-sample rate  : 1.000  (10000/10000 Go non-error)
+  Pairs compared     : 10000  (both Rust+Go returned non-error decision)
+  Agreement rate     : 1.0000  (10000/10000)
+  Disagreement count : 0
+  Wall-time total    : 83.1s
+  Cost per tuple     : 0.008s
+
+
+--- STDERR ---

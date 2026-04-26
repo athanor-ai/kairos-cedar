@@ -1,0 +1,16 @@
+--- a/internal/eval/evalers.go
++++ b/internal/eval/evalers.go
+@@ -549,11 +549,11 @@
+ 	cond, err := evalBool(n.ifNode, env)
+ 	if err != nil {
+ 		return zeroValue(), err
+ 	}
+ 	if cond {
+-		return n.thenNode.Eval(env)
++		return n.elseNode.Eval(env)
+ 	}
+-	return n.elseNode.Eval(env)
++	return n.thenNode.Eval(env)
+ }
+
+ // notEqualNode

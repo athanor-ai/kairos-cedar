@@ -1,0 +1,38 @@
+name: anti-LLM-slop markdown lint
+
+# Runs `tools/md_lint.py` against every tracked .md file on push and PR.
+# Errors fail the build; warnings are reported but non-blocking.
+on:
+  push:
+    branches: ['**']
+    paths:
+      - '**.md'
+      - 'tools/md_lint.py'
+      - '.github/workflows/md-lint.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.md'
+      - 'tools/md_lint.py'
+      - '.github/workflows/md-lint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  md-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Lint all tracked .md files
+        run: |
+          set -e
+          fail=0
+          while IFS= read -r f; do
+            python3 tools/md_lint.py "$f" --format github || fail=1
+          done < <(git ls-files '*.md')
+          exit $fail

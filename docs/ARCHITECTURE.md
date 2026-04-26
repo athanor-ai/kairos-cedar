@@ -5,7 +5,7 @@
 The workbench composes artefacts from several upstream projects (see `README.md`). Each upstream pins a different toolchain version:
 
 | Component | Toolchain | Source |
-| --- | --- | --- |
+| :- | :- | :- |
 | [cedar-spec](https://github.com/cedar-policy/cedar-spec)/cedar-lean | Lean 4.29.1, `batteries` only | |
 | [palamedes-lean](https://github.com/hgoldstein95/palamedes-lean) | Lean 4.24.0, Mathlib, Aesop, Plausible | |
 | [cedar-policy](https://github.com/cedar-policy/cedar) (Rust reference) | Rust stable 1.82+ | |

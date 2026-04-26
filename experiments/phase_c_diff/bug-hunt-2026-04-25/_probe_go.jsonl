@@ -1,0 +1,12 @@
+{"idx":"go_01_5_eq","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"01.5\") == decimal(\"1.5\") };"}
+{"idx":"go_01_5_lt","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"01.5\").lessThan(decimal(\"0.5\")) };"}
+{"idx":"go_01_5_isolate","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"01.5\") == decimal(\"01.5\") };"}
+{"idx":"go_007_eq","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"007.0\") == decimal(\"7.0\") };"}
+{"idx":"go_no_dot","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"1\") == decimal(\"1.0\") };"}
+{"idx":"go_unless_01_5","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) unless { decimal(\"01.5\").lessThan(decimal(\"0.5\")) };"}
+{"idx":"go_v6_v4_mapped","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"::ffff:192.0.2.1\").isIpv4() };"}
+{"idx":"go_v6_v4_compat","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"::192.0.2.1\").isIpv4() };"}
+{"idx":"go_v6_zone","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%eth0\").isIpv6() };"}
+{"idx":"go_v4_lead_zero","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"127.000.000.001\").isIpv4() };"}
+{"idx":"go_v4_lead_zero_2","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"010.0.0.1\").isIpv4() };"}
+{"idx":"go_lpbk_v4_mapped","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"::ffff:127.0.0.1\").isLoopback() };"}

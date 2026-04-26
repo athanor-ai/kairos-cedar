@@ -1,0 +1,5 @@
+{"idx":"go_pos_zero_lt","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { principal == User::\"alice\" && decimal(\"+0.0\").lessThan(decimal(\"0.5\")) };"}
+{"idx":"go_pos_zero_alone","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"+0.0\").lessThan(decimal(\"0.5\")) };"}
+{"idx":"go_pos_zero_eq","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"+0.0\") == decimal(\"0.0\") };"}
+{"idx":"go_pos_15_alone","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"+1.5\").lessThan(decimal(\"0.5\")) };"}
+{"idx":"go_pos_15_eq","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { decimal(\"+1.5\") == decimal(\"1.5\") };"}

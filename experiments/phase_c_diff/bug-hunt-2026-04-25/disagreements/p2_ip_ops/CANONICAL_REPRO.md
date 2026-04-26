@@ -1,6 +1,6 @@
-# Canonical Reproducer  - IPv6 Zone-Identifier Disagreement
+# Canonical Reproducer: IPv6 Zone-Identifier Disagreement
 
-**Discovered:** 2026-04-25 by widened bug-hunt harness.
+**Discovered:** 2026-04-25 by widened bug-hunt driver.
 
 **Severity:** evaluator_disagreement (decision-flipping). Paper-grade.
 
@@ -29,7 +29,7 @@ action view, edit, admin appliesTo {
 ## Request
 
 | field | value |
-|---|---|
+| :- | :- |
 | principal | `User::"alice"` |
 | action | `Action::"view"` |
 | resource | `Document::"doc1"` |
@@ -46,7 +46,7 @@ permit(principal, action, resource) when {
 ## Verdicts
 
 | Implementation | Decision | Rationale |
-|---|---|---|
+| :- | :- | :- |
 | `cedar-policy` 4.10.0 (Rust) | **Deny** | `ipaddr` parser rejects `fe80::1%eth0` ("invalid IP address"). The `when` body errors → policy not satisfied → no permit policies match → default `Deny`. |
 | `cedar-go` v1.6.0 | **Allow** | Go's `netip.ParsePrefix`/`netip.ParseAddr` accept `fe80::1%eth0` (zone identifier per RFC 6874). `.isIpv6()` returns `true`. The `when` body is `true` → `Allow`. |
 
@@ -62,7 +62,7 @@ grammar.
 ## Variant cases (8 zone-id policies tested)
 
 | Policy condition | Rust | Go | Outcome |
-|---|---|---|---|
+| :- | :- | :- | :- |
 | `ip("fe80::1%eth0").isIpv6()` | Deny | **Allow** | **decision-flip** |
 | `ip("fe80::1%eth0").isIpv4()` | Deny (parse err) | Deny (parses, false) | asymmetric path |
 | `ip("fe80::1%eth0").isLoopback()` | Deny (parse err) | Deny (parses, false) | asymmetric path |
@@ -73,7 +73,7 @@ grammar.
 | `ip("fe80::1%1").isIpv6()` | Deny (parse err) | **Allow** | **decision-flip** (\*) |
 
 (\*) Verified by direct probe (`probe_zone.sh` + `_probe_go_zone.jsonl`)
-during widening; not in the harness 206-tuple sweep because the
+during widening; not in the driver 206-tuple sweep because the
 `p2_ip_ops` shape only enumerates `{isIpv4,isIpv6,isLoopback,isMulticast}`.
 The `isIpv6()` row is the canonical reproducer captured by the sweep.
 
@@ -95,7 +95,7 @@ EOF
 '
 # → Deny; "invalid IP address: fe80::1%eth0"
 
-# Go (via the harness in this repo):
+# Go (via the driver in this repo):
 ./scripts/dc bash -c '
   cd /work/experiments/phase_c_diff/bug-hunt-2026-04-25/go_harness
   GOFLAGS="-mod=mod -buildvcs=false" go build -o /tmp/h . && \
@@ -121,7 +121,7 @@ IPv4-embedded-in-IPv6 dotted notation.
 This is exactly the kind of divergence the §8 type-directed differential
 test pipeline is designed to surface. The V1 generator produced 0/10000
 disagreements because its support never produces `ip()`/`decimal()`
-literals. The widened harness exercises the extension-type ↔
+literals. The widened driver exercises the extension-type ↔
 standard-library boundary that the §Limitations section flagged as the
 most-likely-drift site; one of the eight zone-id variants flips the
 `Allow`/`Deny` decision (rows 1, 5, 6, 7, 8 in the variants table).

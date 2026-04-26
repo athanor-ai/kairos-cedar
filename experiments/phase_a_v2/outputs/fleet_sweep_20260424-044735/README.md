@@ -9,7 +9,7 @@ the LM-Proposer Variant" data.
 ## Runs
 
 | File                            | Model                      | Iters | Sampled | Cost (USD) | Wall (s) |
-|---------------------------------|----------------------------|-------|---------|------------|----------|
+| :- ------------------------------| :- -------------------------| :- ----| :- ------| :- ---------| :- -------|
 | anthropic-claude-sonnet-4-6.log  | Anthropic Claude Sonnet 4.6 | 3     | 0       | 0.025      | 74       |
 | openai-kimi-k2.6-1.log           | Moonshot Kimi K2.6          | 3     | 0       | 0.008      | 337      |
 | anthropic-claude-opus-4-6-retry.log | Anthropic Claude Opus 4.6 (1M) | 3 | 0   | 0.081      | 81       |

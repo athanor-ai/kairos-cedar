@@ -1,0 +1,8 @@
+{"idx":"go_v6_zone_eth0","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%eth0\").isIpv6() };"}
+{"idx":"go_v6_zone_0","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%0\").isIpv6() };"}
+{"idx":"go_v6_zone_1","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%1\").isIpv6() };"}
+{"idx":"go_v6_zone_loop","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%eth0\").isLoopback() };"}
+{"idx":"go_v6_zone_eq","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%eth0\") == ip(\"fe80::1%eth0\") };"}
+{"idx":"go_v6_zone_mc","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%eth0\").isMulticast() };"}
+{"idx":"go_v6_zone_v4","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%eth0\").isIpv4() };"}
+{"idx":"go_v6_zone_in_range","principal":"User::alice","action":"Action::view","resource":"Document::doc1","policy":"permit(principal, action, resource) when { ip(\"fe80::1%eth0\").isInRange(ip(\"fe80::/10\")) };"}

@@ -10,7 +10,7 @@ A deterministic, reproducible smoke of the kairos-cedar workbench. No LLM calls,
 
 3. **Generator synthesis.** Ten bool-typed + ten int-typed Cedar-micro expressions are sampled from the type-directed generator in `cedar-micro/CedarMicro/WellTyped.lean`. Each expression is runtime-verified against the functional typechecker `getType`. Every sampled expression satisfies `isWellTyped Γ` by construction. This is the core research artefact: a generator that produces only semantically meaningful inputs, rather than byte-level random data. ~2 s.
 
-4. **Shipped corpus at scale.** `go test -run TestCorpus -count=1` inside cedar-go, which internally cross-checks each decision against the Rust reference via the bundled `test/cedar-validation-tool` harness on approximately 7760 subtests drawn from [cedar-integration-tests](https://github.com/cedar-policy/cedar-integration-tests). ~11 s.
+4. **Shipped corpus at scale.** `go test -run TestCorpus -count=1` inside cedar-go, which internally cross-checks each decision against the Rust reference via the bundled `test/cedar-validation-tool` driver on approximately 7760 subtests drawn from [cedar-integration-tests](https://github.com/cedar-policy/cedar-integration-tests). ~11 s.
 
 5. **Type-directed differential pipeline.** Twenty (Policy, Schema, Request) tuples are sampled from `cedar-full/CedarFull/PolicyGen.lean` (driven by the `measure-diff` Lean binary) and evaluated against `cedar-policy` (Rust 4.3.1) and `cedar-go` (HEAD) via `experiments/phase_c_diff/run_diff.py`. The driver reports valid-input yield + agreement rate. The same driver, run at $N = 10{,}000$, populates Table 4 of the paper (1.000 yield, 0 disagreements, 0.015 s/tuple). ~5 s for the demo's $N = 20$ run on a warm cache.
 
