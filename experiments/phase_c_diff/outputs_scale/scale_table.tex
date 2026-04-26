@@ -6,7 +6,7 @@
 % N=100k, N=1M run with --no-session to bypass per-tuple Supabase HTTP POSTs
 % (~7.5 events/sec throughput would have added 22 min at 100k, 3.7 hr at 1M).
 % N=1M was killed at ELAPSED 02:03:16 (idx 576579 of 1\,000\,000) after the
-% per-tuple rate held stable at ~78 calls/sec — partial linearity confirmed.
+% per-tuple rate held stable at ~78 calls/sec; partial linearity confirmed.
 \begin{table}[h]
 \centering
 \caption{Scaling of the \textsc{genPolicy} type-directed differential pipeline.

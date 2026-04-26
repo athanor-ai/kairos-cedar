@@ -421,8 +421,8 @@ private def permitUnlessResourceIsPhoto : Policy :=
                         , body := .unaryApp (.is (mkEty "Photo")) (.var .resource) }]
   }
 
--- ── §8 widening: extension / set / record / nested-attr shapes ──────
--- These are the four cedar-drt-flagged constructor classes from paper §8.
+-- ── widening: extension / set / record / nested-attr shapes ──────
+-- These are the four cedar-drt-flagged constructor classes.
 -- Each uses an extension/set/record/nested-attr expression in a when body.
 -- Soundness lemmas in CedarFull.Soundness.lean.
 
@@ -507,12 +507,12 @@ private def permitWhenNestedAttrEq : Policy :=
                             (.binaryApp .eq nestedAttrLit (.lit (.string "Main"))) }]
   }
 
--- ── ATH-603: cedar-drt-targeted bug-hunt shapes ─────────────────────
+-- ── cedar-drt-targeted bug-hunt shapes ─────────────────────
 -- Each shape exercises a constructor pair that prior cedar-drt
--- runs have flagged as disagreement-prone but the §8 widening (shapes
--- 26-32) does not yet reach. Soundness lemmas in CedarFull.Soundness;
--- shape values are deterministic so the per-tuple cost is the same as
--- existing §8 shapes.
+-- runs have flagged as disagreement-prone but the prior widening
+-- (shapes 26-32) does not yet reach. Soundness lemmas in
+-- CedarFull.Soundness; shape values are deterministic so the
+-- per-tuple cost is the same as existing shapes.
 
 -- Shape 33: when { setLitUserEntities.containsAll(setLitUserEntities) }
 -- Always true semantically; exercises the .containsAll constructor
@@ -544,7 +544,7 @@ private def permitWhenSetContainsPrincipal : Policy :=
                                     setLitUserEntities (.var .principal) }]
   }
 
--- ── ATH-617: single-element set + .contains/.in isolation pair ──────
+-- ── single-element set + .contains/.in isolation pair ──────
 -- The 3-element setLitUserEntities (shapes 33-34) does not isolate the
 -- cedar-drt-flagged single-membership divergence class. Shapes 35-36
 -- use setLitSingletonAlice (the singleton [User::"alice"]) so any
@@ -581,17 +581,16 @@ private def permitWhenSingletonInPrincipal : Policy :=
                                     (.var .principal) setLitSingletonAlice }]
   }
 
--- ── ATH-603 sub-3: parser-level string-form drift probes ─────────────
--- Shapes 33-36 cover evaluator-path divergence classes. The honest
--- residual called out in paper §10.3 is at the parser level: cedar-
--- policy and cedar-go run distinct Decimal + IPAddr parsers. These
--- shapes use string forms that differ from the canonical extDecimalLit
--- + extIpLit values to probe whether cross-form equality stays in
--- agreement.
+-- ── parser-level string-form drift probes ─────────────
+-- Shapes 33-36 cover evaluator-path divergence classes. A separate
+-- residual sits at the parser level: cedar-policy and cedar-go run
+-- distinct Decimal + IPAddr parsers. These shapes use string forms
+-- that differ from the canonical extDecimalLit + extIpLit values to
+-- probe whether cross-form equality stays in agreement.
 
 -- Shape 37: when { decimal("1.0") == decimal("1.000") }
 -- Same value semantically; different string forms. cedar-policy and
--- cedar-go independently parse + normalize Decimal — cross-form
+-- cedar-go independently parse + normalize Decimal; cross-form
 -- equality probes whether the two parsers agree on canonical form.
 private def permitWhenDecimalCrossPrecisionEq : Policy :=
   { id             := "permit-when-decimal-cross-precision-eq"
@@ -619,10 +618,10 @@ private def permitWhenIpV6EqSelf : Policy :=
                                     extIpV6LocalhostLit extIpV6LocalhostLit }]
   }
 
--- ── Novelty sweep (Aidan 2026-04-25): shapes 39-42 ───────────────────
+-- ── Novelty sweep: shapes 39-42 ───────────────────
 -- Four constructor classes that the 38-shape grammar does not yet
 -- exercise. Each is one-line + a sorry-stubbed wellTypedAt lemma per
--- the existing ATH-WIDEN-PROOF pattern. Diff harness re-runs at
+-- the existing widening-deferral pattern. Diff harness re-runs at
 -- N=10k against the wider 42-shape grammar; soundness lemmas live in
 -- CedarFull.Soundness.
 
@@ -696,25 +695,24 @@ private def permitWhenIntArithEqTwo : Policy :=
                                     (.lit (.int 2)) }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 42 shapes (was 38 before novelty sweep 2026-04-25):
-    Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
-    Shapes 16–24: condition variants (when/unless with eq, in, is, has)
+/-- Generate a Cedar.Spec.Policy. 42 shapes (was 38 before the novelty sweep):
+    Shapes 1-15:  scope-only variants (eq/is/in/actionInAny)
+    Shapes 16-24: condition variants (when/unless with eq, in, is, has)
     Shape 25:     genWellTyped-derived bool expr (~18 outputs)
-    Shapes 26–32: §8 widening; extension types (decimal/ip), set
+    Shapes 26-32: widening; extension types (decimal/ip), set
                   literals, record literals (empty/singleton), `has`
                   on entity attribute, nested attribute projection.
-    Shapes 33–34: ATH-603 bug-hunt widening — set `.containsAll`
+    Shapes 33-34: bug-hunt widening; set `.containsAll`
                   self and set `.contains` of principal. Exercise
                   binary-op constructors (.containsAll, .contains)
                   that are distinct evaluator paths from .mem (shape 28).
-    Shapes 35–36: ATH-617 — single-element set + .contains/.in
+    Shapes 35-36: single-element set + .contains/.in
                   isolation pair. Probes cedar-drt's single-
                   membership divergence class directly.
-    Shapes 37–38: ATH-603 sub-3 — parser-level string-form drift
+    Shapes 37-38: parser-level string-form drift
                   (decimal cross-precision eq + IPv6 zero-compression
-                  self-eq). Probes the parser-level residual flagged
-                  in paper §10.3.
-    Shapes 39–42: novelty sweep (Aidan 2026-04-25) — empty-set .mem,
+                  self-eq). Probes the parser-level residual.
+    Shapes 39-42: novelty sweep; empty-set .mem,
                   multi-key record literal `has`, .unaryApp .not on a
                   bool eq, and .binaryApp .add int arithmetic in a when
                   body. Each probes a constructor class the 38-shape
@@ -755,13 +753,13 @@ def genPolicy (_ : Schema) : Gen Policy :=
   (Gen.pick (pure permitWhenSingletonRecordHas)
   (Gen.pick (pure permitWhenPrincipalHasAddress)
   (Gen.pick (pure permitWhenNestedAttrEq)
-  -- ATH-603 bug-hunt shapes (33–34)
+  -- bug-hunt shapes (33-34): set .containsAll/.contains
   (Gen.pick (pure permitWhenSetContainsAllSelf)
   (Gen.pick (pure permitWhenSetContainsPrincipal)
-  -- ATH-617 single-element-set isolation pair (35–36)
+  -- single-element-set isolation pair (35-36)
   (Gen.pick (pure permitWhenSingletonContainsPrincipal)
   (Gen.pick (pure permitWhenSingletonInPrincipal)
-  -- ATH-603 sub-3 parser-level string-form drift (37–38)
+  -- parser-level string-form drift (37-38)
   (Gen.pick (pure permitWhenDecimalCrossPrecisionEq)
   (Gen.pick (pure permitWhenIpV6EqSelf)
   -- Novelty sweep (39–42): empty-set, multi-key record, .not, .add

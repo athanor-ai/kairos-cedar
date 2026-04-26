@@ -33,7 +33,7 @@
 //                               OK).  Tracked separately so the JSONL
 //                               schema lines up with the bytes/corpus
 //                               replica.
-//   - evaluated               : per-request (8 requests per input) — sums
+//   - evaluated               : per-request (8 requests per input); sums
 //                               across all generated FuzzTargetInputs
 //   - allow / deny / runtime  : decision counts from is_authorized
 //   - disagreements           : currently 0 (we run a single Rust authorizer);
@@ -222,7 +222,7 @@ fn main() {
             Ok(input) => {
                 gen_succeeded += 1;
 
-                // Build a PolicySet — type-directed gen always produces a
+                // Build a PolicySet: type-directed gen always produces a
                 // single valid policy, but be defensive.
                 let mut pset = PolicySet::new();
                 let policy: Policy = input.policy.into();

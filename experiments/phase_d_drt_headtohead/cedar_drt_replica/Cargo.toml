@@ -16,8 +16,8 @@ publish = false
 # The `cedar_drt_typed_replica` binary additionally pulls in the
 # *actual* cedar-policy-generators crate (4.0.0, vendored at
 # ../../cedar-spec/cedar-policy-generators) and drives its
-# FuzzTargetInput<TYPE_DIRECTED=true> generator — the same generator
-# AWS's `abac-type-directed` cargo-fuzz target consumes — so the
+# FuzzTargetInput<TYPE_DIRECTED=true> generator (the same generator
+# AWS's `abac-type-directed` cargo-fuzz target consumes), so the
 # generator code path is byte-identical to the upstream target.
 
 [dependencies]

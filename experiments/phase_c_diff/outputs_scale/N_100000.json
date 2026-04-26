@@ -23,5 +23,5 @@
   "branch": "platform/run-diff-comprehensive-emits",
   "commit": "da6f081",
   "rust_cli_invocation": "--timeout 2 (per-tuple cap; default 30 overflows poll() at args.timeout * len(tuples) = 3M sec > INT_MAX/1000)",
-  "notes": "Sample sublinear (10x N → 0.65x sample time) — Lean cache warm. Build Go FLAT (independent of N). Go batch SUBLINEAR (10x N → 0.49x time) due to fixed Go-binary startup overhead. Rust per-tuple LINEAR (10x N → 10.13x time at 83.1s → 841.3s). Cost per tuple: 0.009s vs 0.0114s at 10k — improved on warm cache but slightly slower per-tuple than the original paper baseline of 0.008s due to load-time docker contention from sibling agents."
+  "notes": "Sample sublinear (10x N to 0.65x sample time) on Lean cache warm. Build Go FLAT (independent of N). Go batch SUBLINEAR (10x N to 0.49x time) due to fixed Go-binary startup overhead. Rust per-tuple LINEAR (10x N to 10.13x time at 83.1s to 841.3s). Cost per tuple: 0.009s vs 0.0114s at 10k; improved on warm cache but slightly slower per-tuple than the original baseline of 0.008s due to load-time docker contention from sibling agents."
 }

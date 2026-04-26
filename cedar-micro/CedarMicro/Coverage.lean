@@ -354,7 +354,7 @@ theorem genSize_succ_complete (Γ : List Ty) (n : Nat) (τ : Ty) (e : Expr)
     · simpa [genSize] using genLeaf_complete Γ .bool b hpb' hdb' htb
 
 -- ────────────────────────────────────────────────────────────────────
--- Main theorem: paper §5.1's coverage-completeness dual.
+-- Main theorem: coverage-completeness dual of soundness.
 -- ────────────────────────────────────────────────────────────────────
 
 /-- Coverage-completeness of the hand-authored generator at the V1

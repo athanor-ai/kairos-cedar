@@ -13,8 +13,8 @@
 //                       corpus of valid Cedar policies, apply 1-3 small
 //                       mutations (delete / duplicate / replace / insert
 //                       a byte), then parse + eval.  Mirrors cedar-drt's
-//                       `simple-parser` target with corpus seeding —
-//                       which is what produces the paper's ~0.05
+//                       `simple-parser` target with corpus seeding,
+//                       which is what produces the published ~0.05
 //                       byte-level reach rate when libfuzzer's coverage
 //                       guidance is in play.
 //   - `arbitrary`     : reserved.  cedar-drt's `arbitrary`-crate driven
@@ -169,7 +169,7 @@ fn bytes_to_policy_text(bytes: &[u8]) -> String {
 /// entities and a fixed request.  Returns (parsed, evaluated, decision).
 ///
 /// We reject empty PolicySets (from whitespace-only inputs) because they
-/// "evaluate" trivially to Deny without exercising the evaluator —
+/// "evaluate" trivially to Deny without exercising the evaluator;
 /// counting them would inflate the reach rate.
 fn try_parse_and_eval(
     text: &str,
@@ -188,7 +188,7 @@ fn try_parse_and_eval(
         Err(_) => return (true, false, "PolicySetBuildError".to_string()),
     };
 
-    // Reject empty policysets (vacuously Deny — does not exercise the evaluator).
+    // Reject empty policysets (vacuously Deny: does not exercise the evaluator).
     if pset.policies().count() == 0 {
         return (true, false, "EmptyPolicySet".to_string());
     }

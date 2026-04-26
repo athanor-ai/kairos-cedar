@@ -19,16 +19,16 @@
   "wall_time_total_extrapolated_sec": 12785,
   "cost_per_tuple_sec_extrapolated": 0.012785,
   "valid_rate": 1.0,
-  "agreement_rate_partial": "all 576k+ rust+go pairs agreed in real-time logs (no disagreements observed); SUMMARY block not printed because run was killed before emit/summary phase — final agreement_rate not computed from full set",
+  "agreement_rate_partial": "all 576k+ rust+go pairs agreed in real-time logs (no disagreements observed); SUMMARY block not printed because run was killed before emit/summary phase; final agreement_rate not computed from full set",
   "n_disagreements_partial": 0,
   "skip_rust": false,
   "no_session": true,
   "kairos_trace_strict": false,
   "killed_before_completion": true,
-  "kill_reason": "manual termination at ELAPSED 02:03:16 to keep total session within 3-hour budget after observing rate stable at ~78 tuples/sec — wrapper-timeout would have fired at 02:30:00 yielding ~702k tuples; we observed enough rust-rate data to confirm the slope from 10k → 1M",
+  "kill_reason": "manual termination at ELAPSED 02:03:16 to keep total session within 3-hour budget after observing rate stable at ~78 tuples/sec; wrapper-timeout would have fired at 02:30:00 yielding ~702k tuples; we observed enough rust-rate data to confirm the slope from 10k to 1M",
   "image": "ghcr.io/athanor-ai/kairos-cedar:latest",
   "branch": "platform/run-diff-comprehensive-emits",
   "commit": "da6f081",
   "rust_cli_invocation": "--timeout 2 (per-tuple cap; default 30 overflows poll() at args.timeout * len(tuples) = 30M sec > INT_MAX/1000)",
-  "notes": "Rust per-tuple phase showed 12.7 ms/tuple at the 576k checkpoint vs 8.4 ms/tuple at N=100k vs 8.3 ms/tuple at N=10k. The 1.5x degradation is from /tmp disk-thrash (1M tiny .cedar files + competing sibling-agent containers) — fundamental linearity holds (rate sustained, no exponential blow-up), but a per-N constant has crept in. With dedicated VM and flushed /tmp this should drop back to ~8.4 ms/tuple. Linear extrapolation: 1M * 12.7 ms = 12.7k sec; 100k * 8.4 ms = 0.84k sec; ratio = 15.1x for 10x N (sublinear-to-linear borderline, attributable to contention not the genPolicy pipeline)."
+  "notes": "Rust per-tuple phase showed 12.7 ms/tuple at the 576k checkpoint vs 8.4 ms/tuple at N=100k vs 8.3 ms/tuple at N=10k. The 1.5x degradation is from /tmp disk-thrash (1M tiny .cedar files + competing sibling-agent containers); fundamental linearity holds (rate sustained, no exponential blow-up), but a per-N constant has crept in. With dedicated VM and flushed /tmp this should drop back to ~8.4 ms/tuple. Linear extrapolation: 1M * 12.7 ms = 12.7k sec; 100k * 8.4 ms = 0.84k sec; ratio = 15.1x for 10x N (sublinear-to-linear borderline, attributable to contention not the genPolicy pipeline)."
 }

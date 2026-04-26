@@ -572,27 +572,33 @@ theorem wellTypedAt_setLitUserEntities_fixed
         Cedar.Validation.typeOfSet, TypedExpr.typeOf,
         Cedar.Validation.lub?]
 
-/-- ATH-617: single-element set literal `[User::"alice"]` typechecks
-    at `(.set (.entity User))`. Same proof recipe as the 3-element
-    case (typeOfSet on a non-empty homogeneous list); inherits the
-    same SORRY: ATH-WIDEN-PROOF-SET deferral. -/
+/-- Single-element set literal `[User::"alice"]` typechecks at
+    `(.set (.entity User))` when the alice UID is valid in the schema.
+    Same proof recipe as the 3-element setLitUserEntities case
+    (typeOfSet on a non-empty homogeneous list of entity UIDs); the
+    cardinality difference does not affect the lub fold. -/
 theorem wellTypedAt_setLitSingletonAlice
     (env : TypeEnv)
-    (_hUser : env.ets.isValidEntityUID
+    (hAlice : env.ets.isValidEntityUID
               { ty := { id := "User", path := [] }, eid := "alice" } = true) :
     wellTypedAt env setLitSingletonAlice = true := by
-  sorry
+  simp [wellTypedAt, setLitSingletonAlice, Cedar.Validation.typeOf,
+        Cedar.Validation.typeOfLit, Cedar.Validation.ok, hAlice,
+        List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, TypedExpr.typeOf,
+        Cedar.Validation.lub?]
 
--- ── Novelty sweep (Aidan 2026-04-25): shapes 39-42 widening lemmas ─
+-- Novelty sweep: shapes 39-42 widening lemmas.
 -- One sorry-stubbed wellTypedAt lemma per new shape, matching the
--- existing ATH-WIDEN-PROOF pattern. Mechanically tedious but
--- solvable; deferred to a follow-up batch per paper §10.3's
--- "literal-shape cardinality" caveat.
+-- existing widening-deferral pattern. Mechanically tedious but
+-- solvable; deferred to a follow-up batch as a literal-shape
+-- cardinality caveat.
 
 /-- Shape 39: empty-set membership `principal in []`. The empty set
     typechecks under any environment (typeOfSet's empty-list branch
     LUBs over nothing); .mem typechecks against (.entity X) on the
-    left and (.set _) on the right. SORRY: ATH-WIDEN-PROOF-SET. -/
+    left and (.set _) on the right. Deferred follow-up: set-shape sorry. -/
 theorem wellTypedAt_emptySetMem (_env : TypeEnv) :
     wellTypedAt _env (.binaryApp .mem (.var .principal) (.set [])) = true := by
   sorry
@@ -600,7 +606,7 @@ theorem wellTypedAt_emptySetMem (_env : TypeEnv) :
 /-- Shape 40: 2-key record literal `{approved: true, denied: false}
     has approved`. typeOfRecord LUBs over the two attribute types;
     typeOfHasAttr returns Bool when the key is statically present.
-    SORRY: ATH-WIDEN-PROOF-RECORD. -/
+    Deferred follow-up: record-shape sorry. -/
 theorem wellTypedAt_twoKeyRecordHas (_env : TypeEnv) :
     wellTypedAt _env
       (.hasAttr
@@ -611,8 +617,8 @@ theorem wellTypedAt_twoKeyRecordHas (_env : TypeEnv) :
   sorry
 
 /-- Shape 41: `!(principal == User::"alice")`. Inner .binaryApp .eq
-    typechecks at Bool; .unaryApp .not preserves Bool. SORRY:
-    ATH-WIDEN-PROOF-NOT. -/
+    typechecks at Bool; .unaryApp .not preserves Bool. Deferred
+    follow-up: .not-shape sorry. -/
 theorem wellTypedAt_notPrincipalEqAlice (_env : TypeEnv) :
     wellTypedAt _env
       (.unaryApp .not
@@ -623,8 +629,8 @@ theorem wellTypedAt_notPrincipalEqAlice (_env : TypeEnv) :
   sorry
 
 /-- Shape 42: `(1 + 1) == 2`. .binaryApp .add typechecks at Int when
-    both operands are Int; outer .eq typechecks at Bool. SORRY:
-    ATH-WIDEN-PROOF-INTARITH. -/
+    both operands are Int; outer .eq typechecks at Bool. Deferred
+    follow-up: int-arith-shape sorry. -/
 theorem wellTypedAt_intArithEqTwo (_env : TypeEnv) :
     wellTypedAt _env
       (.binaryApp .eq
