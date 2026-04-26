@@ -1,0 +1,25 @@
+{
+  "idx": "h1_datetime_equality__h1_dt_eq_dt_expanded_year_pos",
+  "shape": "h1_datetime_equality",
+  "sample_id": "h1_dt_eq_dt_expanded_year_pos",
+  "policy": "permit(principal, action, resource) when { datetime(\"+000000001-01-01T00:00:00Z\") == datetime(\"+000000001-01-01T00:00:00Z\") };",
+  "principal": "User::alice",
+  "action": "Action::view",
+  "resource": "Document::doc1",
+  "rust": {
+    "idx": "h1_datetime_equality__h1_dt_eq_dt_expanded_year_pos",
+    "decision": "Deny",
+    "stdout_tail": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `datetime` extension function: invalid date pattern\n",
+    "stderr_tail": "",
+    "returncode": 2
+  },
+  "go": {
+    "idx": "h1_datetime_equality__h1_dt_eq_dt_expanded_year_pos",
+    "decision": "Allow"
+  },
+  "classification": "evaluator_disagreement",
+  "diff_debug": {
+    "rust_err": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `datetime` extension function: invalid date pattern\n",
+    "go_decision": "Allow"
+  }
+}
