@@ -1,6 +1,6 @@
 # byte_fuzz_baseline
 
-Standalone byte-level fuzz harness for the [cedar-policy](https://crates.io/crates/cedar-policy) parser + evaluator. Provides a reproducible baseline for evaluating type-directed Cedar generators.
+Standalone byte-level fuzz driver for the [cedar-policy](https://crates.io/crates/cedar-policy) parser + evaluator. Provides a reproducible baseline for evaluating type-directed Cedar generators.
 
 ## Why this exists
 
@@ -13,7 +13,7 @@ It is **not** a drop-in replacement for cedar-drt. cedar-drt has libfuzzer's cov
 ## Modes
 
 | Mode | What it does | Mirrors |
-| :--- | :--- | :--- |
+| :----- | :----- | :----- |
 | `bytes` | Sample N random byte strings, attempt to parse as Cedar policyset, count parser-reach | cedar-drt `simple-parser` |
 | `corpus-mutate` | Pick a random seed from a small valid-policy corpus, apply 1-3 byte-level mutations, parse + evaluate | cedar-drt `simple-parser` with corpus seeding |
 | `arbitrary` | Reserved: `cedar-policy-generators` 4.0.0 does not compile against cedar 4.10. Re-enable when upstream fixes |
