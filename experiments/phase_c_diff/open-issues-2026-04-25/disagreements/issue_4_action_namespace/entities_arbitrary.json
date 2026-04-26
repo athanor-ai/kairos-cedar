@@ -1,0 +1,5 @@
+[
+  { "uid": { "type": "User",        "id": "alice" }, "attrs": {}, "parents": [] },
+  { "uid": { "type": "Document",    "id": "doc1"  }, "attrs": {}, "parents": [] },
+  { "uid": { "type": "Foo",         "id": "viewAll" }, "attrs": {}, "parents": [] }
+]

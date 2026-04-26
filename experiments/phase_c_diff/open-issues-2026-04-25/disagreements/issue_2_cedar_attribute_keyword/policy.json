@@ -1,0 +1,26 @@
+{
+    "templates": {},
+    "staticPolicies": {
+        "policy0": {
+            "effect": "permit",
+            "principal": { "op": "All" },
+            "action": { "op": "All" },
+            "resource": {
+                "op": "is",
+                "entity_type": "FS::Disk"
+            },
+            "conditions": [
+                {
+                    "kind": "when",
+                    "body": {
+                        ".": {
+                            "left": { "Var": "resource" },
+                            "attr": "__cedar"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "templateLinks": []
+}
