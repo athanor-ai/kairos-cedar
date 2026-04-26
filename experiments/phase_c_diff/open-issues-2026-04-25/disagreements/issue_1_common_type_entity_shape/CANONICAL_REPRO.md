@@ -1,4 +1,4 @@
-# Canonical Reproducer — cedar #1702 (entity shape uses common type)
+# Canonical Reproducer - cedar #1702 (entity shape uses common type)
 
 **Issue:** https://github.com/cedar-policy/cedar/issues/1702
 **Title:** "JSON schema defining entity attributes entirely with a common type cannot be represented as Cedar schema"
@@ -21,7 +21,7 @@ reference is dropped, leaving an empty entity shape).
   `ghcr.io/athanor-ai/kairos-cedar:latest`, image hash `d9c9ceb6be83`)
 - `cedar-go` **v1.6.0** (HEAD `a9a4b1b1450917d5df2a3c7c17d6567035fd8fcb`,
   experimental package `github.com/cedar-policy/cedar-go/x/exp/schema`)
-- Lean evaluator: **N/A** — `cedar-spec/cedar-lean` formalizes the
+- Lean evaluator: **N/A** - `cedar-spec/cedar-lean` formalizes the
   authorizer / evaluator over a parsed schema; it does not implement the
   Cedar-text-schema parser, so it does not contribute a verdict on
   schema-format round-trip questions.
@@ -118,13 +118,13 @@ Output:
 ```
 UNMARSHAL_JSON_OK
 MARSHAL_CEDAR_OK
---- BEGIN MARSHALLED CEDAR ---
+---- BEGIN MARSHALLED CEDAR ----
 type Foo = {
 	bar: Long
 };
 
 entity Baz {};
---- END MARSHALLED CEDAR ---
+---- END MARSHALLED CEDAR ----
 ROUNDTRIP_REPARSE_OK
 ```
 

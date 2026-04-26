@@ -1,4 +1,4 @@
-# Canonical Reproducer — cedar #2116 (zero-arg method-style call)
+# Canonical Reproducer - cedar #2116 (zero-arg method-style call)
 
 **Issue:** https://github.com/cedar-policy/cedar/issues/2116
 **Title:** "JSON policy with zero-argument method style call doesn't parse when converted to Cedar syntax"
@@ -6,8 +6,8 @@
 
 ## Summary
 
-The reporter notes that a JSON policy can encode `{"offset": []}` —
-the extension function `offset` called with zero arguments — and the
+The reporter notes that a JSON policy can encode `{"offset": []}` -
+the extension function `offset` called with zero arguments - and the
 JSON parser accepts it. When this is converted to Cedar text via
 `cedar translate-policy`, the emitted text is `offset()`, which fails
 to re-parse because `offset` is a method-style extension call (must be
@@ -63,7 +63,7 @@ permit(
 ## Verdicts
 
 | Implementation | Pipeline step | Result |
-|---|---|---|
+|----|----|----|
 | `cedar-policy` 4.10.0 (Rust) | `check-parse --policy-format json` | rc=0 (JSON parse OK) |
 | `cedar-policy` 4.10.0 (Rust) | `translate-policy --direction json-to-cedar` | rc=0, emits `offset()` |
 | `cedar-policy` 4.10.0 (Rust) | re-parse the emitted Cedar text | rc=1, `offset is a method, not a function` |
@@ -102,7 +102,7 @@ GOFLAGS='-mod=mod -buildvcs=false' go build -o probe .
 "
 ```
 
-### cedar-go authorize (no panic — diagnostic path)
+### cedar-go authorize (no panic - diagnostic path)
 
 ```bash
 ./scripts/dc bash -c "

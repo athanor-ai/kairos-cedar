@@ -1,4 +1,4 @@
-# Canonical Reproducer — cedar #1682 (`__cedar` attribute, format-asymmetric)
+# Canonical Reproducer - cedar #1682 (`__cedar` attribute, format-asymmetric)
 
 **Issue:** https://github.com/cedar-policy/cedar/issues/1682
 **Title:** "Record attribute identifiers" (Cedar text policy can't reference attribute named `__cedar`; JSON policy can)
@@ -12,7 +12,7 @@ declared in a schema and referenced from a *JSON-format* policy, but the
 treats anything containing `__cedar` as a reserved identifier. This is a
 **cross-format asymmetry inside one implementation** rather than a
 Rust-vs-Go disagreement. The probe confirms the asymmetry **on both**
-the cedar-policy 4.10.0 reference and cedar-go v1.6.0 — i.e. cedar-go
+the cedar-policy 4.10.0 reference and cedar-go v1.6.0 - i.e. cedar-go
 inherits the same asymmetry from upstream.
 
 ## Versions
@@ -50,7 +50,7 @@ permit ( principal, action, resource is FS::Disk )
 when { resource.__cedar };
 ```
 
-### JSON policy (the form accepted by both implementations — single-policy form for cedar-go)
+### JSON policy (the form accepted by both implementations - single-policy form for cedar-go)
 
 ```json
 {
@@ -83,7 +83,7 @@ formats.)
 ### Request
 
 | field | value |
-|---|---|
+|----|----|
 | principal | `FS::Person::"alice"` |
 | action | `Action::"Write"` |
 | resource | `FS::Disk::"disk1"` |
@@ -92,7 +92,7 @@ formats.)
 ## Verdicts
 
 | Implementation | Format | Decision | Detail |
-|---|---|---|---|
+|----|----|----|----|
 | `cedar-policy` 4.10.0 (Rust) | Cedar text | Parse error (rc=1) | `The name __cedar contains __cedar, which is reserved` |
 | `cedar-policy` 4.10.0 (Rust) | JSON       | **Allow**          | Body evaluates true on `resource.__cedar = true` |
 | `cedar-go`     v1.6.0       | Cedar text | Parse error (rc=2) | `parser error: parse error at <input>:6:25 "}": expected ident` |
@@ -142,7 +142,7 @@ authoritatively **agrees with the Cedar-text rejection** of
 the policy can't be parsed.
 
 For the JSON form, the Lean / EST front-end does *not* run an
-identifier-reservation check on the `attr` field of the `.` node — the
+identifier-reservation check on the `attr` field of the `.` node - the
 attribute name is a JSON string, not a parsed identifier. The
 Lean/Cedar EST therefore implicitly **agrees with the JSON-side
 Allow**: it would evaluate `resource."__cedar"` (the EST attribute) and
@@ -170,7 +170,7 @@ Cedar-text identifier rejection: `cedar-go/internal/parser/cedar_unmarshal.go`
 and the calling site for record-attribute access).
 
 JSON path bypass: `cedar-go/internal/json/json.go::policyJSON` and
-`json_unmarshal.go` — the `attr` field is unmarshalled as a plain
+`json_unmarshal.go` - the `attr` field is unmarshalled as a plain
 `json:"attr"` string with no reserved-identifier check, so the JSON
 parser is **wider than the Cedar-text grammar**. This matches the
 architectural pattern from the bug-hunt-2026-04-25 evidence: cedar-go's
@@ -180,7 +180,7 @@ specification's text grammar would reject.
 ## Honest reporting
 
 - `cedar` #1682 reproduces on both pinned implementations.
-- It is **not** a Rust-vs-Go disagreement — both sides exhibit the
+- It is **not** a Rust-vs-Go disagreement - both sides exhibit the
   same cross-format asymmetry, which is consistent with the spec's
   two grammars diverging on reserved-identifier handling.
 - For paper purposes this is a **specification-grammar gap**

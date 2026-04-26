@@ -1,4 +1,4 @@
-# Canonical Reproducer — cedar-go #11 (arbitrary action namespace)
+# Canonical Reproducer - cedar-go #11 (arbitrary action namespace)
 
 **Issue:** https://github.com/cedar-policy/cedar-go/issues/11
 **Title:** "cedar-go allows arbitrary entity id in Action, but aws rust implementation only supports namespace 'Action'"
@@ -15,7 +15,7 @@ accepted, `Action::Foo::"viewAll"` rejected).
 
 This is a **decision-flip** in our diff-testing pipeline: a policy
 that authorizes a request via `Foo::"viewAll"` is parse-error in Rust
-(treated as Deny by the harness) but Allow in cedar-go.
+(treated as Deny by the driver) but Allow in cedar-go.
 
 ## Versions
 
@@ -64,7 +64,7 @@ permit (
 ### Request
 
 | field | value |
-|---|---|
+|----|----|
 | principal | `User::"alice"` |
 | action    | `Foo::"viewAll"` |
 | resource  | `Document::"doc1"` |
@@ -73,7 +73,7 @@ permit (
 ## Verdicts
 
 | Implementation | Decision | Detail |
-|---|---|---|
+|----|----|----|
 | `cedar-policy` 4.10.0 (Rust) | **Deny** (parse error rc=1) | `expected an entity uid with type 'Action' but got 'Foo::"viewAll"'` |
 | `cedar-go` v1.6.0            | **Allow** | Policy parses, action UID matches request, body evaluates true |
 | Lean spec / `cedar-lean`     | (no parser-time check) | Spec's `ActionConstraint` permits any `EntityUID`; spec **agrees with cedar-go** |
@@ -108,16 +108,15 @@ echo "{\"idx\":\"foo_view\",\"principal\":\"User::alice\",\"action\":\"Foo::view
 ## Variant cases (all confirmed)
 
 | Action UID in policy | Rust verdict | cedar-go verdict | Outcome |
-|---|---|---|---|
+|----|----|----|----|
 | `Action::"view"`              | parse OK / Allow  | Allow | agreement |
 | `Foo::"viewAll"`              | **parse error**   | **Allow** | **decision-flip** |
 | `Foo::Action::"viewAll"`      | parse OK          | parse OK | agreement (last basename is `Action`) |
 | `Action::Foo::"viewAll"`      | **parse error**   | parse OK | **decision-flip** (basename `Foo` ≠ `Action`) |
 
-The pattern matches the cedar-go #11 commenter's observation:
-"cedar is perfectly happy to operate on any namespace prefix
-(including unknown), but requires that Action be the last element in
-the namespace."
+The pattern matches the cedar-go #11 commenter's observation
+that cedar will operate on any namespace prefix (including unknown),
+but requires that `Action` be the last element in the namespace.
 
 ## Source-line citation
 
