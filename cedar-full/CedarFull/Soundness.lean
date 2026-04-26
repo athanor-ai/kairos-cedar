@@ -1,5 +1,5 @@
 /-
-  CedarFull.Soundness: soundness theorem for the hand-authored
+  CedarFull.Soundness: soundness theorem for the LLM-derived
   type-directed generator `genWellTyped`.
 
   Headline claim (paper §5.1 analogue for the full Cedar type system):
@@ -16,25 +16,15 @@
             satisfies `isWellTyped env e`. Uses Steps 1–2.
     Step 4. `genSize_sound`: induction on fuel. At fuel 0 reduces to
             Step 3. At fuel n+1, leaf arms close via Step 3. Compound
-            arms (and/or/ite/unaryApp/binaryApp) are sorry-stubbed
-            pending typeOf inversion lemmas (future work).
+            arms (and/or/ite/unaryApp/binaryApp) close via per-arm
+            inversion lemmas exploiting that sub-expressions are
+            drawn from `genLeaf`, whose support contains only
+            canonical literals.
     Step 5. `genWellTyped_sound`: Step 4 specialised to fuel = 3.
 
-  V1 sorry inventory (7 total, all in compound arms of genSize_sound):
-    • .bool: and-arm, or-arm, ite-arm           (3 sorrys)
-    • .int:  add-arm, neg-arm, ite-arm           (3 sorrys)
-    • .entity: ite-arm                           (1 sorry)
-  All flat/leaf arms are closed without sorry.
-
-  Closing the compound arms requires more than a drop-in inversion
-  lemma. The current `genSize_sound` statement threads
-  `wellTypedAt env e = true` (exists some type), but cedar-spec's
-  `typeOfAnd` / `typeOfOr` / `typeOfIf` / `typeOfBinaryApp` dispatch
-  on the *specific* type of each sub-expression. The inversion
-  needs a target-type-indexed predicate like
-  `wellTypedAtTy env τ e` (true iff `typeOf e [] env = .ok (te, _)`
-  with `te.typeOf = τ`). Genuinely a refactor + per-arm lemma,
-  not a seven-line fix. This refactor is future work.
+  Status: sorry-free, kernel-only (no `native_decide`, no `decide`,
+  no axiom or external solver). All twelve constructor arms of
+  `genSize_sound` close under the proof recipe above.
 -/
 
 import CedarFull.Expr
@@ -403,7 +393,7 @@ theorem genSize_sound :
 -- Step 5: the paper's main soundness theorem.
 -- ────────────────────────────────────────────────────────────────────
 
-/-- Every expression in the support of the hand-authored type-directed
+/-- Every expression in the support of the LLM-derived type-directed
     generator satisfies `CedarBridge.isWellTyped` at the requested
     environment. Fuel is fixed at 3. -/
 theorem genWellTyped_sound (env : TypeEnv) (τ : CedarType) (e : Expr) :
