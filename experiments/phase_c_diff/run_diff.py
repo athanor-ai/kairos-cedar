@@ -50,7 +50,7 @@ def _emit(sink, sess, event_type: str, payload: dict) -> None:
     callsite should emit so the run is auditable in sdk_agent_events even on
     crash. Swallows errors so a sink hiccup never kills the run, but logs.
 
-    Uses the kairos.trace.TraceEvent dataclass — passing a dict to
+    Uses the kairos.trace.TraceEvent dataclass; passing a dict to
     SupabaseTraceSink.emit silently fails validation and drops the event.
     """
     if sink is None:
@@ -691,7 +691,7 @@ def _run_diff(args, sess, sink) -> int:
                 "resource": t["resource"],
             }, sort_keys=True)
             # Route through _emit so the per-tuple call uses TraceEvent
-            # dataclass (not dict) — without this, SupabaseTraceSink.emit
+            # dataclass (not dict); without this, SupabaseTraceSink.emit
             # silently fails with AttributeError on dict.run_subtype. 10k
             # per-tuple events were dropping this way.
             _emit(sink, sess, "differential_test_tuple", {
@@ -727,11 +727,11 @@ def _run_diff(args, sess, sink) -> int:
     print(f"  Wall-time total    : {total_elapsed:.1f}s")
     print(f"  Cost per tuple     : {cost_per_tuple:.3f}s")
 
-    # Terminal run_complete event — closes the session in DB so it doesn't
-    # get marked failed by the stale-run watchdog (ATH-571). This event +
+    # Terminal run_complete event; closes the session in DB so it doesn't
+    # get marked failed by the stale-run watchdog. This event +
     # the per-tuple differential_test_tuple events below are what populate
     # paper §8 Table 4.
-    # NaN isn't valid JSON — PostgREST rejects it with PGRST102. Stash as
+    # NaN isn't valid JSON; PostgREST rejects it with PGRST102. Stash as
     # None when compared=0 so the DB row is clean.
     import math as _math
     _agreement_rate = (None if _math.isnan(agreement_rate) else agreement_rate)

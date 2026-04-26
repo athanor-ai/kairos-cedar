@@ -70,7 +70,7 @@ def addressRecordType : RecordType :=
       Group/Photo are attribute-free.
     The attributes give the new nested-attr / has / record-literal shapes
     a non-trivial schema target.  cedar-drt §8 reports differential bugs
-    on schemas with attribute records — widening enables those tests. -/
+    on schemas with attribute records; widening enables those tests. -/
 def fixedEntitySchema : EntitySchema :=
   Map.make
     [ (mkEty "User",
@@ -511,7 +511,7 @@ private def permitWhenNestedAttrEq : Policy :=
     Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
     Shapes 16–24: condition variants (when/unless with eq, in, is, has)
     Shape 25:     genWellTyped-derived bool expr (~18 outputs)
-    Shapes 26–32: §8 widening — extension types (decimal/ip), set
+    Shapes 26–32: §8 widening; extension types (decimal/ip), set
                   literals, record literals (empty/singleton), `has`
                   on entity attribute, nested attribute projection.
     Shapes are chained with Gen.pick for uniform sampling. -/

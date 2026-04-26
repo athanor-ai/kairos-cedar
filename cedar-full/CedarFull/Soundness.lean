@@ -408,26 +408,26 @@ theorem genWellTyped_sound (env : TypeEnv) (τ : CedarType) (e : Expr) :
 -- bottom-up `wellTypedAt env _ = true` lemma that PolicyGen uses
 -- transitively when the helper is composed in a `when {}` body.
 --
--- Proof status (V1 of §8 widening, ATH widen-genpolicy-extension-types):
+-- Proof status (V1 of §8 widening):
 --   • recordEmpty:       sorry-free
 --   • recordSingleton:   sorry-free
---   • extDecimalLit:     sorry, deferred ATH-WIDEN-PROOF-EXT
---   • extIpLit:          sorry, deferred ATH-WIDEN-PROOF-EXT
---   • setLitUserEntities: sorry, deferred ATH-WIDEN-PROOF-SET
+--   • extDecimalLit:     sorry, deferred follow-up
+--   • extIpLit:          sorry, deferred follow-up
+--   • setLitUserEntities: sorry, deferred follow-up
 -- The two ext-type sorrys are blocked by Decimal.parse / IPAddr.parse
 -- not kernel-reducing in Lean 4.29.1 (BitVec/Int64.ofInt? machinery).
 -- The set sorry is blocked by typeOfSet's lub? fold needing schema-
--- conditioned reasoning — solvable but mechanically tedious.
+-- conditioned reasoning; solvable but mechanically tedious.
 -- ────────────────────────────────────────────────────────────────────
 
 /-- Decimal literal `decimal("1.0")` typechecks at `(.ext .decimal)`.
-    SORRY status: ATH-WIDEN-PROOF-EXT. -/
+    SORRY: deferred follow-up (Decimal.parse not kernel-reducing). -/
 theorem wellTypedAt_extDecimalLit (env : TypeEnv) :
     wellTypedAt env extDecimalLit = true := by
   sorry
 
 /-- IP literal `ip("10.0.0.1")` typechecks at `(.ext .ipAddr)`.
-    SORRY status: ATH-WIDEN-PROOF-EXT. -/
+    SORRY: deferred follow-up (IPAddr.parse not kernel-reducing). -/
 theorem wellTypedAt_extIpLit (env : TypeEnv) :
     wellTypedAt env extIpLit = true := by
   sorry
@@ -447,7 +447,7 @@ theorem wellTypedAt_recordSingleton (env : TypeEnv) :
         Cedar.Data.Map.mk, Cedar.Validation.TypedExpr.typeOf]
 
 /-- Set literal `[User::"alice", User::"bob", User::"carol"]` typechecks
-    at `(.set (.entity User))`.  SORRY: ATH-WIDEN-PROOF-SET. -/
+    at `(.set (.entity User))`.  SORRY: deferred follow-up. -/
 theorem wellTypedAt_setLitUserEntities_fixed
     (env : TypeEnv)
     (_hUser : env.ets.isValidEntityUID

@@ -205,7 +205,7 @@ def genWellTyped (env : TypeEnv) (τ : CedarType) : Gen Expr :=
     `.call .decimal [.lit (.string "1.0")]`.  Typechecks at
     `(.ext .decimal)` for any environment because typeOfCall .decimal
     only checks the argument is a string literal that parses as a
-    Decimal — and "1.0" does. -/
+    Decimal; and "1.0" does. -/
 def extDecimalLit : Expr :=
   .call .decimal [.lit (.string "1.0")]
 
