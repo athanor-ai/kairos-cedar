@@ -1,0 +1,25 @@
+{
+  "idx": "q5_precedence__q5_sc_zone_true_and",
+  "shape": "q5_precedence",
+  "sample_id": "q5_sc_zone_true_and",
+  "policy": "permit(principal, action, resource) when { true && ip(\"fe80::1%eth0\").isIpv6() };",
+  "principal": "User::alice",
+  "action": "Action::view",
+  "resource": "Document::doc1",
+  "rust": {
+    "idx": "q5_precedence__q5_sc_zone_true_and",
+    "decision": "Deny",
+    "stdout_tail": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `ipaddr` extension function: invalid IP address: fe80::1%eth0\n",
+    "stderr_tail": "",
+    "returncode": 2
+  },
+  "go": {
+    "idx": "q5_precedence__q5_sc_zone_true_and",
+    "decision": "Allow"
+  },
+  "classification": "evaluator_disagreement",
+  "diff_debug": {
+    "rust_err": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `ipaddr` extension function: invalid IP address: fe80::1%eth0\n",
+    "go_decision": "Allow"
+  }
+}

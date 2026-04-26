@@ -1,0 +1,25 @@
+{
+  "idx": "q1_decimal_boundary__q1_pos_sign_100",
+  "shape": "q1_decimal_boundary",
+  "sample_id": "q1_pos_sign_100",
+  "policy": "permit(principal, action, resource) when { decimal(\"+100.5000\").greaterThan(decimal(\"100.4999\")) };",
+  "principal": "User::alice",
+  "action": "Action::view",
+  "resource": "Document::doc1",
+  "rust": {
+    "idx": "q1_decimal_boundary__q1_pos_sign_100",
+    "decision": "Deny",
+    "stdout_tail": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `decimal` extension function: `+100.5000` is not a well-formed decimal value\n",
+    "stderr_tail": "",
+    "returncode": 2
+  },
+  "go": {
+    "idx": "q1_decimal_boundary__q1_pos_sign_100",
+    "decision": "Allow"
+  },
+  "classification": "evaluator_disagreement",
+  "diff_debug": {
+    "rust_err": "\nDENY\n\nerror while evaluating policy `policy0`: error while evaluating `decimal` extension function: `+100.5000` is not a well-formed decimal value\n",
+    "go_decision": "Allow"
+  }
+}
