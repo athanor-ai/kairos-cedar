@@ -1,22 +1,23 @@
 """tests/test_support_size_matches_claim.py: Bug A regression gate.
 
-Asserts that for every generator listed in ``tests/generator_manifest.toml``,
-the realised unique-tuple support size matches the paper's claim, and
-that paper-claimed N values that exceed the support are accompanied by
-a ``paper_must_disclose_cycling = true`` flag (forcing the paper text
+Asserts internal consistency between generator and its declared support:
+for every generator listed in ``tests/generator_manifest.toml``, the
+realised unique-tuple support size matches the manifest's expected
+value, and any declared N that exceeds the support is accompanied by a
+``claimed_n_exceeds_support = true`` flag (forcing the harness/driver
 to disclose the cycling rather than implying N distinct draws).
 
-Background: bug-hunt-2026-04-25 (FMCAD 2026 paper-evidence audit, Bug A)
-found that the paper claimed N=10000 over the V1 generator, while the
-generator's true support was 675 unique tuples. ``MeasureDiff.lean``
-cycles ``i % support_size`` so "10000 tuples" actually meant "675
-tuples replayed 14.8 times". This test class catches that drift class
-before merge.
+Background: an earlier driver run reported N=10000 over the V1
+generator while the generator's true support was 675 unique tuples.
+``MeasureDiff.lean`` cycles ``i % support_size`` so "10000 tuples"
+actually meant "675 tuples replayed 14.8 times". Nothing was checking
+the support claim against the realised support. This test class
+catches that drift class before merge.
 
 The test computes support via closed-form combinatorics derived from
 the generator's structure (genAny / Gen.pick chain). For the V1 PolicyGen
 this is 3 principals * 3 actions * 3 resources * 25 policy shapes = 675.
-For widened bug-hunt shapes the support is the literal len() of the
+For widened shapes the support is the literal len() of the
 emitted tuple list. For micro generators we use a lower-bound count
 because the underlying List monad is fuel-driven.
 """
@@ -97,12 +98,12 @@ def _support_cedar_full_v1_policygen() -> int:
     return n_principals * n_actions * n_resources * n_shapes
 
 
-def _support_widened_bug_hunt() -> int:
+def _support_widened_shapes() -> int:
     """Import widened_shapes.py and count realised tuples.
 
-    The bug-hunt directory only exists on the platform/cedar-bug-hunt-
-    evidence branch and successor PRs; on main this returns 0 and the
-    test skips.
+    The widened-shapes directory only exists on certain feature branches
+    and successor PRs; on main this returns -1 (sentinel) and the test
+    skips.
     """
     p = (
         REPO_ROOT / "experiments" / "phase_c_diff"
@@ -129,7 +130,7 @@ def _support_cedar_micro_genwelltyped(target: str) -> int:
     Lean is unavailable, the test falls back to asserting the manifest
     is internally consistent (claim_kind = support_at_least, and the
     claimed_N_evaluations > expected_support is paired with
-    paper_must_disclose_cycling = true).
+    claimed_n_exceeds_support = true).
     """
     # The CedarMicro generator is fuel-driven and we deliberately avoid
     # running it in unit-test scope. The static check below is enough to
@@ -156,22 +157,22 @@ class SupportSizeMatchesClaimTest(unittest.TestCase):
         return {}   # unreachable
 
     def _assert_disclosure_invariant(self, entry: dict, support: int) -> None:
-        """If the paper claims more evaluations than support, the manifest
-        must flag paper_must_disclose_cycling = true. This pushes the
-        paper-text fix (option (a) in the bug-A remediation) when the
-        generator-widening fix (option (b)) hasn't shipped yet."""
+        """If the manifest declares more evaluations than support, it
+        must flag claimed_n_exceeds_support = true. This pushes the
+        consumer to either widen the generator or disclose cycling
+        explicitly rather than implying N distinct draws."""
         claimed = entry.get("claimed_N_evaluations")
         if claimed is None:
             return
         if support > 0 and claimed > support:
             self.assertTrue(
-                entry.get("paper_must_disclose_cycling", False),
-                f"generator {entry['id']!r}: paper claims "
+                entry.get("claimed_n_exceeds_support", False),
+                f"generator {entry['id']!r}: manifest declares "
                 f"N={claimed} evaluations but realised support is only "
                 f"{support}; manifest must set "
-                f"paper_must_disclose_cycling = true so the paper text "
-                f"is forced to say 'N evaluations over support of S'. "
-                f"Bug A regression class.",
+                f"claimed_n_exceeds_support = true so any consumer is "
+                f"forced to read 'N evaluations over support of S' "
+                f"rather than 'N tuples'. Bug A regression class.",
             )
 
     def test_cedar_full_v1_policygen_support_matches_claim(self) -> None:
@@ -195,13 +196,13 @@ class SupportSizeMatchesClaimTest(unittest.TestCase):
 
         self._assert_disclosure_invariant(entry, support)
 
-    def test_widened_bug_hunt_support_matches_claim(self) -> None:
-        entry = self._entry("cedar_full_widened_bug_hunt_2026_04_25")
-        support = _support_widened_bug_hunt()
+    def test_widened_shapes_support_matches_claim(self) -> None:
+        entry = self._entry("cedar_full_widened_shapes")
+        support = _support_widened_shapes()
         if support == -1:
             self.skipTest(
-                "bug-hunt-2026-04-25 not present on this branch "
-                "(lives on platform/cedar-bug-hunt-evidence + successors)"
+                "widened_shapes.py not present on this branch "
+                "(lives on dedicated feature branches + successors)"
             )
         expected = entry["expected_support"]
         self.assertEqual(
@@ -217,8 +218,8 @@ class SupportSizeMatchesClaimTest(unittest.TestCase):
         support = _support_cedar_micro_genwelltyped("bool")
         # Sentinel -2: defer to manifest-only check (Lean not invoked).
         # We still enforce the disclosure invariant against the manifest
-        # value, so a paper claim of N=10000 over a 100-support generator
-        # MUST be paired with paper_must_disclose_cycling = true.
+        # value, so a declared N=10000 over a 100-support generator MUST
+        # be paired with claimed_n_exceeds_support = true.
         self._assert_disclosure_invariant(entry, entry["expected_support"])
         self.assertEqual(support, -2,
             "test scaffolding error: micro generator support probe "
@@ -241,7 +242,7 @@ class SupportSizeMatchesClaimTest(unittest.TestCase):
         # list in sync with the test methods above.
         ids_with_test = {
             "cedar_full_v1_policygen",
-            "cedar_full_widened_bug_hunt_2026_04_25",
+            "cedar_full_widened_shapes",
             "cedar_micro_genwelltyped_bool",
             "cedar_micro_genwelltyped_int",
         }

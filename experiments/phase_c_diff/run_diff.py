@@ -340,8 +340,8 @@ for line in lines:
     parsed = parse_cedar_cli_result(result)
     # V1 policies are generator-validated well-typed, so ParseError /
     # EvalError shouldn't occur. We collapse to {Allow, Deny} for the
-    # agreement rate; richer per-tuple bucketing lives in the bug-hunt
-    # widened harness (run_widened.py).
+    # agreement rate; richer per-tuple bucketing lives in the widened
+    # harness (run_widened.py).
     decision = parsed.decision_outcome
     print(f"{idx}\t{decision}", flush=True)
 """

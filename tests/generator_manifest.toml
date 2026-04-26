@@ -1,13 +1,14 @@
-# tests/generator_manifest.toml: paper-claimed generator support sizes
-# and evaluation counts. Authority for tests/test_support_size_matches_claim.py.
+# tests/generator_manifest.toml: expected support size and declared
+# evaluation count for each generator in this repo. Authority for
+# tests/test_support_size_matches_claim.py.
 #
-# Why this file exists: bug-hunt-2026-04-25 (classification 'Bug A')
-# found that the FMCAD 2026 paper claimed N=10000 over the V1 generator
-# while the V1 generator's true unique-tuple support was 675; the
-# MeasureDiff.lean driver cycles ``i % support_size`` so the "10000
+# Why this file exists: a driver run once reported N=10000 over the V1
+# generator while the V1 generator's true unique-tuple support was 675;
+# the MeasureDiff.lean driver cycles ``i % support_size`` so the "10000
 # tuples" was actually "675 tuples x 14.8 cycles". Nothing was checking
-# that ``support_size >= claimed_N_evaluations`` (or that the paper
-# instead reported "N evaluations over a support of S").
+# that ``support_size >= claimed_N_evaluations`` (or that the harness
+# instead reported "N evaluations over a support of S"). Bug A
+# regression class.
 #
 # Test contract:
 #   * For each [[generator]] entry, the test computes the true unique-
@@ -16,8 +17,8 @@
 #     `genAny` chain).
 #   * If `claim_kind = "support_eq"`: assert support_size == expected_support.
 #   * If `claim_kind = "support_at_least"`: assert support_size >= expected_support.
-#   * If `claim_kind = "evaluations_with_cycling"`: assert that the paper
-#     text uses "N evaluations over a support of S" rather than "N tuples".
+#   * If `claimed_N_evaluations > expected_support`: require
+#     `claimed_n_exceeds_support = true` so the cycling is disclosed.
 #
 # Update protocol: when widening a generator (e.g. shipping V2 with a
 # larger support), update the expected_support number in the same commit
@@ -35,13 +36,13 @@ path = "cedar-full/CedarFull/PolicyGen.lean"
 expected_support = 675   # 27 * 25
 claim_kind = "support_eq"
 
-# Paper-claim manifest: what the paper reports for the V1 phase-C run.
-# Bug A pre-fix: claimed_N_evaluations = 10000 with claim_kind =
-# "support_eq" would FAIL because 675 != 10000. Post-fix, the paper
-# must either (a) say "10000 evaluations over a support of 675 unique
-# tuples" or (b) widen the generator to >= 10000.
+# Declared evaluation count for the V1 phase-C run. Bug A pre-fix:
+# claimed_N_evaluations = 10000 with claim_kind = "support_eq" would
+# FAIL because 675 != 10000. Post-fix, the harness must either (a)
+# report "10000 evaluations over a support of 675 unique tuples" or
+# (b) widen the generator to >= 10000.
 claimed_N_evaluations = 10000
-paper_must_disclose_cycling = true
+claimed_n_exceeds_support = true
 
 [[generator]]
 id = "cedar_micro_genwelltyped_bool"
@@ -55,7 +56,7 @@ path = "cedar-micro/CedarMicro/GenLLM.lean"
 expected_support = 100
 claim_kind = "support_at_least"
 claimed_N_evaluations = 10000
-paper_must_disclose_cycling = true
+claimed_n_exceeds_support = true
 
 [[generator]]
 id = "cedar_micro_genwelltyped_int"
@@ -63,16 +64,15 @@ path = "cedar-micro/CedarMicro/GenLLM.lean"
 expected_support = 100
 claim_kind = "support_at_least"
 claimed_N_evaluations = 10000
-paper_must_disclose_cycling = true
+claimed_n_exceeds_support = true
 
 [[generator]]
-id = "cedar_full_widened_bug_hunt_2026_04_25"
+id = "cedar_full_widened_shapes"
 path = "experiments/phase_c_diff/bug-hunt-2026-04-25/widened_shapes.py"
-# Type-directed widening shapes from bug-hunt-2026-04-25. 11 shapes
-# yielding 206 unique tuples. The aggregate 'N=206' in the bug-hunt
-# SUMMARY.md exactly matches the realised support so this is the gold
-# example of a passing claim.
+# Type-directed widening shapes: 11 shapes yielding 206 unique tuples.
+# The aggregate 'N=206' in the corresponding SUMMARY.md exactly matches
+# the realised support, so this is the gold example of a passing claim.
 expected_support = 206
 claim_kind = "support_eq"
 claimed_N_evaluations = 206
-paper_must_disclose_cycling = false
+claimed_n_exceeds_support = false

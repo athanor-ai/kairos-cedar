@@ -1,21 +1,19 @@
-# tests/version_pin.toml: paper-claimed toolchain pins for FMCAD 2026.
+# tests/version_pin.toml: canonical toolchain pins for kairos-cedar.
 #
 # Authority: this file is the source of truth that
-# tests/test_version_pin_matches_paper.py asserts the running container
-# against. If a paper claim drifts from the container reality, the test
-# fails and the CI gate blocks merge.
+# tests/test_toolchain_pin_consistency.py asserts the running container
+# against. If a pin in this file drifts from the container reality, the
+# test fails and the CI gate blocks merge.
 #
 # Update protocol: when bumping a pin (e.g. cedar-policy 4.10.0 -> 4.11.0),
-# update BOTH the relevant docstrings/figures in the paper AND this file
-# in the same commit. The test failure forces both moves to land
+# update both the relevant Containerfile / docstrings AND this file in
+# the same commit. The test failure forces both moves to land
 # atomically.
 #
-# Background: bug-hunt-2026-04-25 surfaced that the paper docstring
-# claimed cedar-policy 4.3.1 while the container actually shipped 4.10.0.
-# The gap had been live for an unknown duration with nothing to catch it.
-#
-# Discovered: 2026-04-25 (FMCAD 2026 paper-evidence audit, classification
-# 'Bug B').
+# Background: a docstring elsewhere in the tree once declared
+# cedar-policy 4.3.1 while the container actually shipped 4.10.0. The
+# gap had been live for an unknown duration with nothing to catch it.
+# Bug B regression class.
 
 [cedar_policy]
 # Rust reference implementation (cedar CLI). Verified by:

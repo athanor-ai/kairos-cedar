@@ -1,11 +1,11 @@
 """experiments/lib/cedar_cli.py: canonical cedar CLI result parser.
 
-The Rust ``cedar`` CLI's exit-code semantics surprised us once already
-(bug-hunt-2026-04-25, classification 'Bug C' in the FMCAD 2026 paper-
-evidence audit): ``cedar authorize`` returns ``rc=2`` on a ``Deny``
-decision, *not only* on parser/evaluator errors. Older versions of the
-Phase C diff harness compared the stderr text via uppercase substring
-matching, which papered over the issue but produced fragile results.
+The Rust ``cedar`` CLI has a non-obvious exit-code convention: ``cedar
+authorize`` returns ``rc=2`` on a ``Deny`` decision, not only on
+parser/evaluator errors. Older versions of the Phase C diff harness
+compared the stderr text via uppercase substring matching, which
+papered over the issue but produced fragile results (Bug C
+classification).
 
 This module is the single source of truth for mapping a
 ``subprocess.run(["cedar", "authorize", ...])`` ``CompletedProcess``
@@ -25,7 +25,7 @@ into one of four outcomes:
                      ``decimal("+0.0")``). Same outcome semantics as
                      ParseError, recorded separately.
 
-Both run_diff.py (V1 generator) and run_widened.py (bug-hunt shapes)
+Both run_diff.py (V1 generator) and run_widened.py (widened shapes)
 should call ``parse_cedar_cli_result`` rather than re-implementing the
 substring-match logic. ``tests/test_cedar_cli_rc_semantics.py`` asserts
 the mapping by synthesising real Allow / Deny / parse-error policies
@@ -115,8 +115,8 @@ def parse_cedar_cli_result(
             stderr_tail=_tail(stderr),
         )
 
-    # Evaluator-error markers. Bug-hunt 2026-04-25 surfaced these via
-    # decimal("+0.0") and ip("fe80::1%eth0") literals.
+    # Evaluator-error markers, e.g. decimal("+0.0") and
+    # ip("fe80::1%eth0") literals.
     eval_markers = (
         "error while evaluating",
         "extension function",

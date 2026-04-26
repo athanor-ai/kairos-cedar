@@ -4,9 +4,8 @@ Asserts that ``experiments.lib.cedar_cli.parse_cedar_cli_result`` maps
 real ``cedar authorize`` ``CompletedProcess`` outputs to the correct
 ``{Allow, Deny, ParseError, EvalError}`` outcome.
 
-Background: bug-hunt-2026-04-25 (FMCAD 2026 paper-evidence audit, Bug C)
-re-discovered that ``cedar authorize`` returns ``rc=2`` for any
-``Deny`` decision, *not only* on parser/evaluator errors. The original
+Background: ``cedar authorize`` returns ``rc=2`` for any ``Deny``
+decision, not only on parser/evaluator errors. The original
 ``experiments/phase_c_diff/run_diff.py`` treated ``rc=2`` as "ERROR"
 which silently mis-classified every clean ``Deny`` as a parser failure
 and corrupted the agreement-rate denominator. This test exercises the
@@ -42,8 +41,8 @@ from experiments.lib.cedar_cli import (   # noqa: E402
 
 # ---------------------------------------------------------------
 # Fixtures: real cedar 4.10.0 outputs captured from the kairos-cedar
-# container during bug-hunt-2026-04-25. We re-record these whenever
-# cedar's text format changes upstream.
+# container. We re-record these whenever cedar's text format changes
+# upstream.
 # ---------------------------------------------------------------
 
 # An ``Allow`` decision: cedar prints "ALLOW" on stdout and rc=0.
@@ -79,9 +78,9 @@ PARSE_ERROR_PROC = subprocess.CompletedProcess(
 )
 
 # An evaluator error: cedar prints "DENY" on stdout *and* a
-# "error while evaluating" trace on stderr. The bug-hunt classification
-# distinguishes EvalError from a clean Deny because the cedar-go bug
-# class lives in this bucket (decimal("+0.0"), ip("fe80::1%eth0")).
+# "error while evaluating" trace on stderr. We distinguish EvalError
+# from a clean Deny because the cedar-go extension-type bug class
+# lives in this bucket (decimal("+0.0"), ip("fe80::1%eth0")).
 EVAL_ERROR_PROC = subprocess.CompletedProcess(
     args=["cedar", "authorize"],
     returncode=CEDAR_RC_DENY,
@@ -111,9 +110,8 @@ class FixtureMappingTest(unittest.TestCase):
         self.assertEqual(
             r.outcome, "Deny",
             f"rc=2 with stdout='DENY' was classified as {r.outcome!r}, "
-            f"reproducing Bug C from bug-hunt-2026-04-25. "
-            f"parse_cedar_cli_result must treat rc=2 as a Deny path, "
-            f"not an error path.",
+            f"reproducing Bug C. parse_cedar_cli_result must treat "
+            f"rc=2 as a Deny path, not an error path.",
         )
         self.assertEqual(r.returncode, CEDAR_RC_DENY)
         self.assertEqual(r.decision_outcome, "Deny")
@@ -130,7 +128,7 @@ class FixtureMappingTest(unittest.TestCase):
         self.assertEqual(
             r.outcome, "EvalError",
             "An eval error must NOT be classified as a clean Deny: "
-            "the bug-hunt-2026-04-25 cedar-go bug class lives in the "
+            "the cedar-go extension-type bug class lives in the "
             "EvalError bucket (decimal+0.0, ip fe80::1%%eth0).",
         )
         self.assertEqual(r.decision_outcome, "Deny")

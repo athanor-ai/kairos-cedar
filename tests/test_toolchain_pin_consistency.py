@@ -1,13 +1,12 @@
-"""tests/test_version_pin_matches_paper.py: Bug B regression gate.
+"""tests/test_toolchain_pin_consistency.py: Bug B regression gate.
 
 Asserts that the toolchain versions actually shipped by the
-kairos-cedar container match the pins claimed in
-``tests/version_pin.toml`` (and therefore the paper).
+kairos-cedar container match the canonical pins declared in
+``tests/version_pin.toml``.
 
-Background: bug-hunt-2026-04-25 (FMCAD 2026 paper-evidence audit, Bug B)
-found that the paper docstring claimed cedar-policy 4.3.1 while the
-container actually shipped cedar-policy 4.10.0. The drift had been live
-for an unknown duration with nothing to catch it.
+Background: a docstring elsewhere in the tree once declared cedar-policy
+4.3.1 while the container actually shipped cedar-policy 4.10.0. The
+drift had been live for an unknown duration with nothing to catch it.
 
 The test runs the cedar CLI and inspects the cedar-go submodule pin via
 ``git ls-tree`` rather than entering the submodule (which may not be
@@ -163,10 +162,10 @@ class CedarPolicyPinTest(unittest.TestCase):
         self.assertIn(
             expected, observed,
             f"cedar CLI reports {observed!r} but version_pin.toml "
-            f"claims {expected!r}. The paper's reported version drifted "
-            f"from the container's actual binary. Bug B regression class. "
-            f"Either bump the pin in version_pin.toml or rebuild the "
-            f"container from the matching cedar-policy-cli release.",
+            f"claims {expected!r}. version_pin.toml drifted from the "
+            f"container binary. Bug B regression class. Either bump the "
+            f"pin in version_pin.toml or rebuild the container from the "
+            f"matching cedar-policy-cli release.",
         )
 
     def test_cedar_pin_in_containerfile_matches_manifest(self) -> None:
@@ -187,9 +186,9 @@ class CedarPolicyPinTest(unittest.TestCase):
 
 
 class CedarGoPinTest(unittest.TestCase):
-    """The cedar-go submodule must be pinned to the commit the paper
-    cites. This is the only one of the three implementations whose
-    pin is captured by git itself, so the test is straightforward."""
+    """The cedar-go submodule must be pinned to the commit declared in
+    version_pin.toml. This is the only one of the three implementations
+    whose pin is captured by git itself, so the test is straightforward."""
 
     def test_cedar_go_pin_present_in_manifest(self) -> None:
         pins = _load_pins()
@@ -226,8 +225,7 @@ class CedarGoPinTest(unittest.TestCase):
 
 class LeanPinTest(unittest.TestCase):
     """The Lean toolchain version baked into the Containerfile must
-    match version_pin.toml. The paper cites Lean version explicitly
-    in the methodology section."""
+    match version_pin.toml."""
 
     def test_lean_pin_in_containerfile_matches_manifest(self) -> None:
         pins = _load_pins()
