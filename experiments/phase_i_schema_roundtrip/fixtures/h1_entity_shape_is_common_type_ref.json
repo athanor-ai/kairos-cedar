@@ -1,0 +1,22 @@
+{
+  "": {
+    "commonTypes": {
+      "Foo": {
+        "type": "Record",
+        "attributes": {
+          "bar": {
+            "type": "Long"
+          }
+        }
+      }
+    },
+    "entityTypes": {
+      "Baz": {
+        "shape": {
+          "type": "Foo"
+        }
+      }
+    },
+    "actions": {}
+  }
+}

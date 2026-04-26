@@ -1,0 +1,23 @@
+{
+  "": {
+    "commonTypes": {
+      "Bal": {
+        "type": "Extension",
+        "name": "decimal"
+      }
+    },
+    "entityTypes": {
+      "U": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "bal": {
+              "type": "Bal"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

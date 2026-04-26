@@ -1,0 +1,22 @@
+{
+  "NS": {
+    "commonTypes": {
+      "Foo": {
+        "type": "Record",
+        "attributes": {
+          "bar": {
+            "type": "Long"
+          }
+        }
+      }
+    },
+    "entityTypes": {
+      "Baz": {
+        "shape": {
+          "type": "NS::Foo"
+        }
+      }
+    },
+    "actions": {}
+  }
+}

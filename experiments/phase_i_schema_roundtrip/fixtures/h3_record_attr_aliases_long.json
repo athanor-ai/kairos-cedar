@@ -1,0 +1,22 @@
+{
+  "": {
+    "commonTypes": {
+      "MyLong": {
+        "type": "Long"
+      }
+    },
+    "entityTypes": {
+      "Baz": {
+        "shape": {
+          "type": "Record",
+          "attributes": {
+            "n": {
+              "type": "MyLong"
+            }
+          }
+        }
+      }
+    },
+    "actions": {}
+  }
+}

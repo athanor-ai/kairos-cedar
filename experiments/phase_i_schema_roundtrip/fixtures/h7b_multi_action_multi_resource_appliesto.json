@@ -1,0 +1,54 @@
+{
+  "": {
+    "entityTypes": {
+      "User": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "Admin": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "Doc": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      },
+      "Folder": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        }
+      }
+    },
+    "actions": {
+      "view": {
+        "appliesTo": {
+          "principalTypes": [
+            "User",
+            "Admin"
+          ],
+          "resourceTypes": [
+            "Doc",
+            "Folder"
+          ]
+        }
+      },
+      "edit": {
+        "appliesTo": {
+          "principalTypes": [
+            "Admin"
+          ],
+          "resourceTypes": [
+            "Doc"
+          ]
+        }
+      }
+    }
+  }
+}

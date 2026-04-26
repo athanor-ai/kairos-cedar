@@ -1,0 +1,16 @@
+{
+  "": {
+    "entityTypes": {
+      "Resource": {
+        "shape": {
+          "type": "Record",
+          "attributes": {}
+        },
+        "tags": {
+          "type": "String"
+        }
+      }
+    },
+    "actions": {}
+  }
+}
