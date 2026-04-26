@@ -1,0 +1,54 @@
+# tests/version_pin.toml: canonical toolchain pins for kairos-cedar.
+#
+# Authority: this file is the source of truth that
+# tests/test_toolchain_pin_consistency.py asserts the running container
+# against. If a pin in this file drifts from the container reality, the
+# test fails and the CI gate blocks merge.
+#
+# Update protocol: when bumping a pin (e.g. cedar-policy 4.10.0 -> 4.11.0),
+# update both the relevant Containerfile / docstrings AND this file in
+# the same commit. The test failure forces both moves to land
+# atomically.
+#
+# Background: a docstring elsewhere in the tree once declared
+# cedar-policy 4.3.1 while the container actually shipped 4.10.0. The
+# gap had been live for an unknown duration with nothing to catch it.
+# Bug B regression class.
+
+[cedar_policy]
+# Rust reference implementation (cedar CLI). Verified by:
+#   ./scripts/dc cedar --version
+# In the container the binary prints "cedar-policy-cli <version>".
+version = "4.10.0"
+
+[cedar_go]
+# Go alternative implementation, pinned via the cedar-go submodule. The
+# tag corresponds to the commit hash; the test asserts both. Drift
+# detector mode (warn rather than fail) kicks in if the tag still
+# resolves to v1.6.0 but the commit moved to a later patch on the v1
+# branch. Set strict_commit = true to lock to the exact hash.
+tag = "v1.6.0"
+commit = "a9a4b1b1450917d5df2a3c7c17d6567035fd8fcb"
+strict_commit = true
+
+[lean]
+# Default Lean toolchain (cedar-spec + cedar-full). The palamedes-lean
+# submodule pins a separate v4.24.0 toolchain via its own lean-toolchain
+# file; both pins are tracked.
+version = "4.29.1"
+palamedes_version = "4.24.0"
+
+[rust]
+# Pinned in containers/Containerfile. Stable for cedar-policy build
+# tooling, nightly for the cedar CLI install.
+stable = "1.82.0"
+nightly = "1.94.0-x86_64-unknown-linux-gnu"
+
+[go]
+version = "1.24.5"
+
+[verus]
+version = "0.2026.03.28"
+
+[dafny]
+version = "4.9.1"

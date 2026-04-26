@@ -33,6 +33,9 @@ import kairos
 import kairos.trace as ktrace
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from experiments.lib.cedar_cli import parse_cedar_cli_result  # noqa: E402
 IMAGE = os.environ.get("KAIROS_CEDAR_IMAGE", "ghcr.io/athanor-ai/kairos-cedar:latest")
 
 
@@ -337,9 +340,15 @@ def run_rust_batch(
             f.write(json.dumps(t) + "\n")
 
     # Shell script that reads the JSONL, writes per-tuple policy files, runs cedar authorize,
-    # and emits TSV: idx TAB decision
+    # and emits TSV: idx TAB decision. Uses the shared cedar_cli parser
+    # so rc=2 (clean Deny) is not mis-classified as ERROR. See the
+    # tests/test_cedar_cli_rc_semantics.py docstring for the Bug C
+    # background.
     script = r"""
 import json, subprocess, sys, os
+
+sys.path.insert(0, "/work")
+from experiments.lib.cedar_cli import parse_cedar_cli_result
 
 input_path = "/work/experiments/phase_c_diff/_rust_input.jsonl"
 schema_file = sys.argv[1]
@@ -376,13 +385,12 @@ for line in lines:
         "--resource", r_str,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    txt = (result.stdout + result.stderr).upper()
-    if "ALLOW" in txt:
-        decision = "Allow"
-    elif "DENY" in txt:
-        decision = "Deny"
-    else:
-        decision = "ERROR(" + (result.stdout + result.stderr).strip()[:40] + ")"
+    parsed = parse_cedar_cli_result(result)
+    # V1 policies are generator-validated well-typed, so ParseError /
+    # EvalError shouldn't occur. We collapse to {Allow, Deny} for the
+    # agreement rate; richer per-tuple bucketing lives in the widened
+    # harness (run_widened.py).
+    decision = parsed.decision_outcome
     print(f"{idx}\t{decision}", flush=True)
 """
     # Write the Python runner script into the work tree
