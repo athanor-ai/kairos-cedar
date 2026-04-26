@@ -5,9 +5,10 @@ inside the kairos-cedar dev container. The container ships
 `cedar-policy-cli 4.10` built with `--features analyze` plus CVC5 1.3.1,
 so every `cedar symcc` subcommand is reachable without extra setup.
 
-This walkthrough mirrors the experiments behind paper §9.3 (the
-70-tuple sweep) and ATH-151 (the container bake). Run it on your
-laptop in about five minutes.
+This walkthrough mirrors the experiments behind the 70-tuple sweep
+(see `experiments/phase_c_diff/bug-hunt-2026-04-25/run_70_tuple_sweep.sh`)
+and the container bake (PR #26). Run it on your laptop in about five
+minutes.
 
 ## What `cedar symcc` does
 
@@ -59,7 +60,7 @@ docker run --rm kairos-cedar:dev cedar symcc --help | head -3
 ```
 
 If any of those fail, check that the `--features analyze` flag is on
-the cedar build (the container bakes it in via PR #26 / ATH-151).
+the cedar build (the container bakes it in via PR #26).
 
 ## Worked example: prove a policy never errors
 
@@ -193,13 +194,11 @@ also appears symbolically narrows the bug to either both
 implementations or the symbolic encoder.
 
 Container image: `ghcr.io/athanor-ai/kairos-cedar:latest`.
-Container source: `containers/Containerfile`.
-Paper section: §9.3 (70-tuple sweep + encoder coverage gaps).
-Tracking ticket: ATH-151 (container bake).
+Container source: `containers/Containerfile` (introduced in PR #26).
 
 ## Reference
 
 - `cedar-policy-cli` repo: https://github.com/cedar-policy/cedar
 - CVC5 release notes for 1.3.1: https://github.com/cvc5/cvc5/releases/tag/cvc5-1.3.1
-- The ATH-686 SDK security model touches CVC5 only as a black box; no
+- The SDK security model touches CVC5 only as a black box; no
   trust relationship beyond "we shipped a known-good binary."

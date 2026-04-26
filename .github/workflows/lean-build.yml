@@ -2,19 +2,19 @@ name: Lean Build
 
 # Mainline-protection mirror of pythia (kairos-stats-lean) lean-build.yml
 # shape: every push (every branch, not just main) must lake-build clean.
-# A broken Lean compile cannot land anywhere — not on main, not on a
-# feature branch.
+# A broken Lean compile cannot land anywhere (not on main, not on a
+# feature branch).
 #
 # kairos-cedar has 3 lake projects with 2 distinct lean-toolchains:
-#   - cedar-spec-bridge (lean 4.24.0)  — Prop-wrapper over upstream typeOf
-#   - cedar-micro       (lean 4.29.1)  — flat-shape generator + soundness
-#   - cedar-full        (lean 4.29.1)  — full Cedar.Spec.Expr generator
+#   - cedar-spec-bridge (lean 4.24.0): Prop-wrapper over upstream typeOf
+#   - cedar-micro       (lean 4.29.1): flat-shape generator + soundness
+#   - cedar-full        (lean 4.29.1): full Cedar.Spec.Expr generator
 #
 # elan auto-pins per project from each `lean-toolchain` file (no master
 # float). cedar-spec-bridge runs in its own job because its 4.24.0 cache
 # key differs; cedar-micro + cedar-full share 4.29.1 and run sequentially.
 #
-# AXIOM-AUDIT GAP (ATH-654, P3): pythia ships AxiomAudit.lean per project;
+# AXIOM-AUDIT GAP (P3): pythia ships AxiomAudit.lean per project;
 # kairos-cedar has none yet. This workflow omits the audit step pending
 # the follow-up that adds AxiomAudit.lean to all 3 projects. Lake-build
 # alone catches `sorry` (Soundness.lean is sorry-free per docstring) but

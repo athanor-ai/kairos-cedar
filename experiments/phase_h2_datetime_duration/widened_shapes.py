@@ -1,5 +1,5 @@
 """
-Widened shapes for phase_h2 — datetime + duration drift investigation.
+Widened shapes for phase_h2; datetime + duration drift investigation.
 
 Investigates the §7.4 prediction from the kairos-cedar paper:
 "Cedar ships four extension types (decimal, ipaddr, datetime, duration); we
@@ -60,7 +60,7 @@ DATETIME_LITERALS = [
     ("dt_canon_year_max",           "9999-12-31T23:59:59.999Z"),
     ("dt_canon_pre_epoch",          "1969-12-31T23:59:59Z"),
     # ── RFC 110 expanded year (cedar-go accepts, Rust/Lean REJECT) ──
-    # key hypothesis cases — PREDICT decision-flip
+    # key hypothesis cases; PREDICT decision-flip
     ("dt_expanded_year_pos",        "+000000001-01-01T00:00:00Z"),
     ("dt_expanded_year_neg",        "-000000001-01-01T00:00:00Z"),
     ("dt_expanded_year_2000",       "+000002000-01-01T00:00:00Z"),
@@ -259,7 +259,7 @@ DURATION_LITERALS = [
     ("dur_very_large",  "9999999999999999999d"),
     ("dur_near_max",    "106751991167300d"),  # near i64 max in days
     # ── Zero-duration forms ──
-    ("dur_zero_all",    "0d0h0m0s0ms"),  # all zero — Rust regex matches; cedar-go: does it?
+    ("dur_zero_all",    "0d0h0m0s0ms"),  # all zero; Rust regex matches; cedar-go: does it?
     ("dur_zero_no_ms",  "0d0h0m0s"),
     ("dur_zero_d_only", "0d"),
     # ── Unit without quantity ──
@@ -338,7 +338,7 @@ EXPANDED_YEAR_CASES = [
 
 
 def shape_h3_expanded_year() -> list[dict[str, Any]]:
-    """Targeted expanded-year probes — highest confidence prediction cases."""
+    """Targeted expanded-year probes; highest confidence prediction cases."""
     out = []
     for i, (lit, ref) in enumerate(EXPANDED_YEAR_CASES):
         if '"' in lit or '"' in ref:
