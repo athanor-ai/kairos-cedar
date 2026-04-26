@@ -4,7 +4,7 @@ CI-gated regression tests for the kairos-cedar repository. Each file
 documents the bug class it catches and the latent issue that motivated
 the gate.
 
-## Diff-harness regression gates
+## Diff-testing regression gates
 
 These three tests catch three latent bug classes that previously
 shipped without a regression gate, all surfaced from the diff-testing
@@ -16,7 +16,7 @@ push to main and every PR via `.github/workflows/self-quality.yml`.
 **Impact**: a driver run reported `N=10000` over the V1 generator while
 the generator's true unique-tuple support was 675. `MeasureDiff.lean`
 cycles `i % support_size` so the "10000 tuples" was actually
-"675 tuples replayed 14.8 times". Nothing in the harness or CI was
+"675 tuples replayed 14.8 times". Nothing in the runner or CI was
 asserting that the realised support matched the declared evaluation
 count.
 
