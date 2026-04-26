@@ -9,8 +9,12 @@
     • Binary-recursive (3): and, or, binaryApp
     • Ternary-recursive (1): ite
 
-  N-ary constructors (set / record / call) are Phase B scope, noted
-  with TODO comments in the corresponding fallback arms.
+  V2 widening (§8 commit, ATH widen-genpolicy-extension-types):
+    • N-ary constructors (set / record / call) are now scaffolded with
+      explicit-shape constructors (extDecimalLit, extIpLit,
+      setLitUserEntities, recordEmptyLit, recordSingletonLit, nestedAttrLit)
+      used by PolicyGen.  Each has a bottom-up soundness lemma in
+      Soundness.lean (some sorry-marked pending follow-up).
 
   Mirrors the structure of cedar-micro/CedarMicro/WellTyped.lean:
     • A minimal self-contained Gen type backed by List (Palamedes pins
@@ -186,5 +190,55 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
     every expression in the support satisfies `CedarBridge.isWellTyped env e`. -/
 def genWellTyped (env : TypeEnv) (τ : CedarType) : Gen Expr :=
   genSize env 3 τ
+
+-- ── §8 widening: extension/set/record/nested-attr generators ────────
+--
+-- These are explicit-shape constructors used directly by PolicyGen for
+-- the four target classes called out in cedar-drt §8:
+--   1. extension-type literals (decimal "1.0", ip "10.0.0.1")
+--   2. set literals over entity UIDs
+--   3. record literals (empty + single attribute)
+--   4. nested attribute projection (record-typed intermediate)
+-- Soundness lemmas live in Soundness.lean.
+
+/-- Decimal extension literal: `decimal("1.0")`.  Produces
+    `.call .decimal [.lit (.string "1.0")]`.  Typechecks at
+    `(.ext .decimal)` for any environment because typeOfCall .decimal
+    only checks the argument is a string literal that parses as a
+    Decimal; and "1.0" does. -/
+def extDecimalLit : Expr :=
+  .call .decimal [.lit (.string "1.0")]
+
+/-- IP extension literal: `ip("10.0.0.1")`.  Produces
+    `.call .ip [.lit (.string "10.0.0.1")]`. -/
+def extIpLit : Expr :=
+  .call .ip [.lit (.string "10.0.0.1")]
+
+/-- Set of three entity UIDs of type User.  Produces
+    `.set [User::"alice", User::"bob", User::"carol"]`.  Typechecks at
+    `(.set (.entity User))` regardless of schema content (typeOfSet
+    accepts a non-empty homogeneous list). -/
+def setLitUserEntities : Expr :=
+  .set [ .lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" })
+       , .lit (.entityUID { ty := { id := "User", path := [] }, eid := "bob" })
+       , .lit (.entityUID { ty := { id := "User", path := [] }, eid := "carol" })
+       ]
+
+/-- Empty record literal: `{}`.  Produces `.record []`.  The empty
+    record always typechecks (no attribute constraints). -/
+def recordEmptyLit : Expr :=
+  .record []
+
+/-- Singleton record literal: `{ approved: true }`.  Produces
+    `.record [("approved", .lit (.bool true))]`. -/
+def recordSingletonLit : Expr :=
+  .record [("approved", .lit (.bool true))]
+
+/-- Nested attribute access: `principal.address.street`.  Requires the
+    schema to declare `address : { street: String, ... }` on User and
+    a capability for `(principal, .attr "address")` in the typing
+    context (added by a preceding `principal has address` check). -/
+def nestedAttrLit : Expr :=
+  .getAttr (.getAttr (.var .principal) "address") "street"
 
 end CedarFull

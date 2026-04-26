@@ -41,6 +41,38 @@ def _sha12(b: bytes | str) -> str:
         b = b.encode("utf-8")
     return hashlib.sha256(b).hexdigest()[:12]
 
+
+_EMIT_SEQUENCE = [0]  # mutable single-element list as monotonic counter
+
+
+def _emit(sink, sess, event_type: str, payload: dict) -> None:
+    """Best-effort SDK trace emit. Per Sam 2026-04-25 directive: every meaningful
+    callsite should emit so the run is auditable in sdk_agent_events even on
+    crash. Swallows errors so a sink hiccup never kills the run, but logs.
+
+    Uses the kairos.trace.TraceEvent dataclass; passing a dict to
+    SupabaseTraceSink.emit silently fails validation and drops the event.
+    """
+    if sink is None:
+        return
+    try:
+        from kairos.trace import TraceEvent
+        run_id = (getattr(sess, "run_id", None)
+                  or getattr(sess, "session_id", None)
+                  or getattr(sess, "task_id", "unknown"))
+        _EMIT_SEQUENCE[0] += 1
+        event = TraceEvent(
+            run_id=run_id,
+            run_type="sdk_orchestration",
+            run_subtype="differential_test",
+            event_type=event_type,
+            sequence=_EMIT_SEQUENCE[0],
+            payload=payload,
+        )
+        sink.emit(event)
+    except Exception as e:
+        print(f"      WARN: emit failed for event_type={event_type}: {e}", file=sys.stderr)
+
 # ── Fixed schema / entities ──────────────────────────────────────────────
 #
 # We use a fixed Cedar schema matching the generator's fixedSchema:
@@ -52,8 +84,13 @@ def _sha12(b: bytes | str) -> str:
 # Entities include 3 principals + 3 resources so all requests resolve.
 
 FIXED_SCHEMA_TEXT = """\
-entity User;
-entity Document;
+entity Group;
+entity User {
+    address: { city: String, street: String, zip: String }
+};
+entity Document {
+    owner: User
+};
 entity Photo;
 
 action view, edit, admin appliesTo {
@@ -62,12 +99,23 @@ action view, edit, admin appliesTo {
 };
 """
 
+# §8 widening: User entities expose `address` (record), Document entities
+# expose `owner` (entity).  Attribute values flow into has-attribute /
+# nested-getAttr policy shapes (26-32) added in this commit.
+_ALICE_UID = {"type": "User", "id": "alice"}
+_DEFAULT_ADDRESS = {"city": "Seattle", "street": "Main", "zip": "98101"}
+
 FIXED_ENTITIES = [
-    {"uid": {"type": "User", "id": "alice"}, "attrs": {}, "parents": []},
-    {"uid": {"type": "User", "id": "bob"}, "attrs": {}, "parents": []},
-    {"uid": {"type": "User", "id": "carol"}, "attrs": {}, "parents": []},
-    {"uid": {"type": "Document", "id": "doc1"}, "attrs": {}, "parents": []},
-    {"uid": {"type": "Document", "id": "doc2"}, "attrs": {}, "parents": []},
+    {"uid": {"type": "User", "id": "alice"},
+     "attrs": {"address": _DEFAULT_ADDRESS}, "parents": []},
+    {"uid": {"type": "User", "id": "bob"},
+     "attrs": {"address": _DEFAULT_ADDRESS}, "parents": []},
+    {"uid": {"type": "User", "id": "carol"},
+     "attrs": {"address": _DEFAULT_ADDRESS}, "parents": []},
+    {"uid": {"type": "Document", "id": "doc1"},
+     "attrs": {"owner": _ALICE_UID}, "parents": []},
+    {"uid": {"type": "Document", "id": "doc2"},
+     "attrs": {"owner": _ALICE_UID}, "parents": []},
     {"uid": {"type": "Photo", "id": "photo1"}, "attrs": {}, "parents": []},
     # Action entities are implicit in the schema, but cedar-go may need them listed.
     {"uid": {"type": "Action", "id": "view"}, "attrs": {}, "parents": []},
@@ -475,55 +523,110 @@ def _run_diff(args, sess, sink) -> int:
     print("=" * 72)
 
     t0_total = time.monotonic()
+    _emit(sink, sess, "run_start", {
+        "n_target": n,
+        "image": IMAGE,
+        "skip_rust": bool(args.skip_rust),
+        "go_timeout": args.go_timeout,
+        "rust_timeout": args.timeout,
+    })
 
     # 1. Write fixtures
     print(f"\n[1/4] Writing fixed schema + entities fixtures ...")
-    container_schema, container_entities = setup_fixtures()
+    _emit(sink, sess, "phase_start", {"phase": "fixtures"})
+    try:
+        container_schema, container_entities = setup_fixtures()
+    except Exception as e:
+        _emit(sink, sess, "phase_error", {"phase": "fixtures", "error": str(e)})
+        raise
     print(f"      schema  → {container_schema}")
     print(f"      entities→ {container_entities}")
+    _emit(sink, sess, "phase_complete", {
+        "phase": "fixtures",
+        "schema_path": container_schema,
+        "entities_path": container_entities,
+        "schema_sha12": _sha12(FIXED_SCHEMA_TEXT),
+    })
 
     # 2. Sample tuples from Lean generator
     print(f"\n[2/4] Sampling {n} tuples from CedarFull.PolicyGen ...")
+    _emit(sink, sess, "phase_start", {"phase": "sample_tuples", "n_target": n})
     t_sample = time.monotonic()
-    tuples = sample_tuples(n, timeout=300)
+    try:
+        tuples = sample_tuples(n, timeout=300)
+    except Exception as e:
+        _emit(sink, sess, "phase_error", {"phase": "sample_tuples", "error": str(e)})
+        raise
     elapsed_sample = time.monotonic() - t_sample
     if not tuples:
+        _emit(sink, sess, "phase_error", {
+            "phase": "sample_tuples", "error": "no tuples generated",
+            "elapsed_sec": elapsed_sample,
+        })
+        _emit(sink, sess, "run_complete", {"status": "failed", "reason": "no_tuples"})
         print("FAIL: no tuples generated")
         return 1
     print(f"      Generated {len(tuples)} tuples in {elapsed_sample:.1f}s")
     if len(tuples) < n:
         print(f"      WARNING: only {len(tuples)}/{n} tuples parsed")
+    _emit(sink, sess, "phase_complete", {
+        "phase": "sample_tuples",
+        "n_generated": len(tuples),
+        "n_target": n,
+        "elapsed_sec": elapsed_sample,
+        "underflow": len(tuples) < n,
+    })
 
     # 3. Build Go harness
     print(f"\n[3/4] Building Go diff harness ...")
+    _emit(sink, sess, "phase_start", {"phase": "build_go_harness"})
     t_go = time.monotonic()
     go_ok = build_go_harness()
     if not go_ok:
+        _emit(sink, sess, "phase_error", {"phase": "build_go_harness", "error": "build failed"})
+        _emit(sink, sess, "run_complete", {"status": "failed", "reason": "go_harness_build_failed"})
         print("FAIL: Go harness build failed")
         return 1
     elapsed_go = time.monotonic() - t_go
     print(f"      Go harness built in {elapsed_go:.1f}s")
+    _emit(sink, sess, "phase_complete", {
+        "phase": "build_go_harness", "elapsed_sec": elapsed_go,
+    })
 
     # 4. Run diff: Go batch first (fast), then Rust per-tuple
     print(f"\n[4/4] Running diff (Rust + Go) on {len(tuples)} tuples ...")
 
     # Go batch
     print(f"      [4a] Go batch ...")
+    _emit(sink, sess, "phase_start", {"phase": "go_batch", "n_tuples": len(tuples)})
     t_go_run = time.monotonic()
     go_decisions = run_go_batch(tuples, container_entities, timeout=args.go_timeout)
     elapsed_go_run = time.monotonic() - t_go_run
     print(f"           {len(go_decisions)} decisions in {elapsed_go_run:.1f}s")
+    _emit(sink, sess, "phase_complete", {
+        "phase": "go_batch",
+        "n_decisions": len(go_decisions),
+        "n_tuples": len(tuples),
+        "elapsed_sec": elapsed_go_run,
+    })
 
     # Rust per-tuple (may be slow)
     rust_decisions: dict[str, str] = {}
     if not args.skip_rust:
         print(f"      [4b] Rust cedar authorize (per-tuple, may be slow) ...")
+        _emit(sink, sess, "phase_start", {"phase": "rust_per_tuple", "n_tuples": len(tuples)})
         t_rust = time.monotonic()
         rust_decisions = run_rust_batch(
             tuples, container_schema, container_entities, timeout=args.timeout * len(tuples)
         )
         elapsed_rust = time.monotonic() - t_rust
         print(f"           {len(rust_decisions)} decisions in {elapsed_rust:.1f}s")
+        _emit(sink, sess, "phase_complete", {
+            "phase": "rust_per_tuple",
+            "n_decisions": len(rust_decisions),
+            "n_tuples": len(tuples),
+            "elapsed_sec": elapsed_rust,
+        })
     else:
         print(f"      [4b] Rust skipped (--skip-rust)")
         for t in tuples:
@@ -575,7 +678,6 @@ def _run_diff(args, sess, sink) -> int:
     rust_per = (elapsed_rust if not args.skip_rust else 0.0) / max(1, total)
     go_per = elapsed_go_run / max(1, total)
     schema_hash = _sha12(FIXED_SCHEMA_TEXT)
-    sid = getattr(sess, "session_id", None) or task_id
     if sink is not None:
         for t in tuples:
             idx = t["idx"]
@@ -588,36 +690,31 @@ def _run_diff(args, sess, sink) -> int:
                 "action": t["action"],
                 "resource": t["resource"],
             }, sort_keys=True)
-            try:
-                sink.emit({
-                    "session_id": sid,
-                    "event_type": "differential_test_tuple",
-                    "run_type": "sdk_orchestration",
-                    "run_subtype": "differential_test",
-                    "body": {
-                        "sample_id": str(idx),
-                        "impl_a_name": "cedar-policy",
-                        "impl_a_verdict": rd,
-                        "impl_a_elapsed_sec": rust_per,
-                        "impl_b_name": "cedar-go",
-                        "impl_b_verdict": gd,
-                        "impl_b_elapsed_sec": go_per,
-                        "diff_found": (rd != gd
-                                       and not rd.startswith("ERROR")
-                                       and not gd.startswith("ERROR")),
-                        "input_hashes": {
-                            "policy": _sha12(t["policy"]),
-                            "schema": schema_hash,
-                            "request": _sha12(request_blob),
-                        },
-                        "diff_details": (
-                            f"rust={rd} go={gd} principal={t['principal']} "
-                            f"action={t['action']} resource={t['resource']}"
-                        ) if rd != gd else None,
-                    },
-                })
-            except Exception as e:
-                print(f"      WARN: emit failed for idx={idx}: {e}")
+            # Route through _emit so the per-tuple call uses TraceEvent
+            # dataclass (not dict); without this, SupabaseTraceSink.emit
+            # silently fails with AttributeError on dict.run_subtype. 10k
+            # per-tuple events were dropping this way.
+            _emit(sink, sess, "differential_test_tuple", {
+                "sample_id": str(idx),
+                "impl_a_name": "cedar-policy",
+                "impl_a_verdict": rd,
+                "impl_a_elapsed_sec": rust_per,
+                "impl_b_name": "cedar-go",
+                "impl_b_verdict": gd,
+                "impl_b_elapsed_sec": go_per,
+                "diff_found": (rd != gd
+                               and not rd.startswith("ERROR")
+                               and not gd.startswith("ERROR")),
+                "input_hashes": {
+                    "policy": _sha12(t["policy"]),
+                    "schema": schema_hash,
+                    "request": _sha12(request_blob),
+                },
+                "diff_details": (
+                    f"rust={rd} go={gd} principal={t['principal']} "
+                    f"action={t['action']} resource={t['resource']}"
+                ) if rd != gd else None,
+            })
 
     print("\n" + "=" * 72)
     print("  §8 EVALUATION SUMMARY")
@@ -629,6 +726,29 @@ def _run_diff(args, sess, sink) -> int:
     print(f"  Disagreement count : {len(disagreements)}")
     print(f"  Wall-time total    : {total_elapsed:.1f}s")
     print(f"  Cost per tuple     : {cost_per_tuple:.3f}s")
+
+    # Terminal run_complete event; closes the session in DB so it doesn't
+    # get marked failed by the stale-run watchdog. This event +
+    # the per-tuple differential_test_tuple events below are what populate
+    # paper §8 Table 4.
+    # NaN isn't valid JSON; PostgREST rejects it with PGRST102. Stash as
+    # None when compared=0 so the DB row is clean.
+    import math as _math
+    _agreement_rate = (None if _math.isnan(agreement_rate) else agreement_rate)
+    _emit(sink, sess, "run_complete", {
+        "status": "succeeded",
+        "n_target": n,
+        "n_sampled": total,
+        "n_go_valid": go_valid,
+        "valid_rate": valid_rate,
+        "n_compared": compared,
+        "n_agreements": agreements,
+        "n_disagreements": len(disagreements),
+        "agreement_rate": _agreement_rate,
+        "wall_time_total_sec": total_elapsed,
+        "cost_per_tuple_sec": cost_per_tuple,
+        "skip_rust": bool(args.skip_rust),
+    })
 
     if disagreements:
         print(f"\n  First {min(5, len(disagreements))} disagreements:")
