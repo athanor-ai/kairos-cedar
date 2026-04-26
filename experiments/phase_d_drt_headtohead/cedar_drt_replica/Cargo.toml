@@ -1,0 +1,42 @@
+[package]
+name = "cedar_drt_replica"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Mirrors the byte-level + type-directed pipelines that cedar-drt's
+# `simple-parser`, `abac`, and `abac-type-directed` fuzz targets
+# implement, but standalone (no cargo-fuzz / no Lean FFI / no libfuzzer)
+# so it runs in the kairos-cedar image without the full cedar-spec build.
+#
+# We measure: bytes -> parser-reach + evaluator-reach + disagreement,
+# the same metric cedar-drt produces, against the cedar-policy parser +
+# evaluator already in our image.
+#
+# The `cedar_drt_typed_replica` binary additionally pulls in the
+# *actual* cedar-policy-generators crate (4.0.0, vendored at
+# ../../cedar-spec/cedar-policy-generators) and drives its
+# FuzzTargetInput<TYPE_DIRECTED=true> generator (the same generator
+# AWS's `abac-type-directed` cargo-fuzz target consumes), so the
+# generator code path is byte-identical to the upstream target.
+
+[dependencies]
+cedar-policy = { path = "../../../cedar-spec/cedar/cedar-policy", features = [] }
+cedar-policy-core = { path = "../../../cedar-spec/cedar/cedar-policy-core", features = ["arbitrary"] }
+cedar-policy-generators = { path = "../../../cedar-spec/cedar-policy-generators", features = ["cedar-policy"] }
+arbitrary = "1.4"
+rand = "0.8"
+rand_chacha = "0.3"
+serde_json = "1.0"
+
+[[bin]]
+name = "cedar_drt_replica"
+path = "src/main.rs"
+
+[[bin]]
+name = "cedar_drt_typed_replica"
+path = "src/typed_main.rs"
+
+[profile.release]
+opt-level = 3
+lto = "thin"

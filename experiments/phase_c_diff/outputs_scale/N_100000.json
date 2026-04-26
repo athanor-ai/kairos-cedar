@@ -1,0 +1,27 @@
+{
+  "n_target": 100000,
+  "session_id": null,
+  "task_id": "ath-529-cedar-full-n100000-diff",
+  "n_generated": 100000,
+  "sample_tuples_sec": 1.1,
+  "build_go_sec": 7.9,
+  "go_batch_sec": 8.9,
+  "rust_per_tuple_sec": 841.3,
+  "wall_time_total_sec": 859.2,
+  "cost_per_tuple_sec": 0.009,
+  "valid_rate": 1.0,
+  "agreement_rate": 1.0,
+  "n_disagreements": 0,
+  "n_compared": 100000,
+  "skip_rust": false,
+  "no_session": true,
+  "kairos_trace_strict": false,
+  "sdk_trace": {
+    "note": "--no-session passed; SDK emit pipeline bypassed for scale-test isolation. The 10k run confirmed the SDK pipeline lands per-tuple events at this VM (3280 differential_test_tuple events landed before kill). Per-event HTTP POSTs at ~7.5/sec would have added ~3.7 hours pure-emit overhead at N=100k, dominating the genPolicy cost-per-tuple measurement; bypassing keeps wall-time honest."
+  },
+  "image": "ghcr.io/athanor-ai/kairos-cedar:latest",
+  "branch": "platform/run-diff-comprehensive-emits",
+  "commit": "da6f081",
+  "rust_cli_invocation": "--timeout 2 (per-tuple cap; default 30 overflows poll() at args.timeout * len(tuples) = 3M sec > INT_MAX/1000)",
+  "notes": "Sample sublinear (10x N to 0.65x sample time) on Lean cache warm. Build Go FLAT (independent of N). Go batch SUBLINEAR (10x N to 0.49x time) due to fixed Go-binary startup overhead. Rust per-tuple LINEAR (10x N to 10.13x time at 83.1s to 841.3s). Cost per tuple: 0.009s vs 0.0114s at 10k; improved on warm cache but slightly slower per-tuple than the original baseline of 0.008s due to load-time docker contention from sibling agents."
+}

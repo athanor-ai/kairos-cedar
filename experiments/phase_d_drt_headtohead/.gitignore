@@ -1,0 +1,8 @@
+# Per-attempt JSONL traces; large at 13min budget. Only summary.json
+# is committed.
+outputs/cedar_drt_*_attempts.jsonl
+outputs/type_directed_run.log
+
+# Built binary
+cedar_drt_replica/target/
+cedar_drt_replica/Cargo.lock

@@ -224,6 +224,30 @@ def setLitUserEntities : Expr :=
        , .lit (.entityUID { ty := { id := "User", path := [] }, eid := "carol" })
        ]
 
+/-- Single-element set of User entities.  Produces
+    `.set [User::"alice"]`.  Identical typing to setLitUserEntities
+    (both at `(.set (.entity User))`); the cardinality difference
+    isolates the cedar-drt-flagged single-membership divergence class
+    on `.contains` vs `.mem`. -/
+def setLitSingletonAlice : Expr :=
+  .set [ .lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" }) ]
+
+/-- Decimal extension literal with extra-precision string
+    form `decimal("1.000")`. Same value semantically as `decimal("1.0")`
+    but the string form differs. Probes the parser-level residual:
+    cedar-rust and cedar-go run distinct Decimal parsers. Typechecks at
+    `(.ext .decimal)` for the same reason extDecimalLit does. -/
+def extDecimalLitThousandths : Expr :=
+  .call .decimal [.lit (.string "1.000")]
+
+/-- IPv6 localhost extension literal `ip("::1")`. Same
+    .ext .ipaddr type as extIpLit (which is IPv4); the address-family
+    difference probes whether cedar-rust and cedar-go evaluate IPv6
+    forms identically. The double-colon zero-compression form is the
+    canonical edge case for IPv6 parser drift. -/
+def extIpV6LocalhostLit : Expr :=
+  .call .ip [.lit (.string "::1")]
+
 /-- Empty record literal: `{}`.  Produces `.record []`.  The empty
     record always typechecks (no attribute constraints). -/
 def recordEmptyLit : Expr :=

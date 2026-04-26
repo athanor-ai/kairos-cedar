@@ -421,8 +421,8 @@ private def permitUnlessResourceIsPhoto : Policy :=
                         , body := .unaryApp (.is (mkEty "Photo")) (.var .resource) }]
   }
 
--- ── §8 widening: extension / set / record / nested-attr shapes ──────
--- These are the four cedar-drt-flagged constructor classes from paper §8.
+-- ── widening: extension / set / record / nested-attr shapes ──────
+-- These are the four cedar-drt-flagged constructor classes.
 -- Each uses an extension/set/record/nested-attr expression in a when body.
 -- Soundness lemmas in CedarFull.Soundness.lean.
 
@@ -507,13 +507,216 @@ private def permitWhenNestedAttrEq : Policy :=
                             (.binaryApp .eq nestedAttrLit (.lit (.string "Main"))) }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 32 shapes (was 25 before §8 widening):
-    Shapes 1–15:  scope-only variants (eq/is/in/actionInAny)
-    Shapes 16–24: condition variants (when/unless with eq, in, is, has)
+-- ── cedar-drt-targeted bug-hunt shapes ─────────────────────
+-- Each shape exercises a constructor pair that prior cedar-drt
+-- runs have flagged as disagreement-prone but the prior widening
+-- (shapes 26-32) does not yet reach. Soundness lemmas in
+-- CedarFull.Soundness; shape values are deterministic so the
+-- per-tuple cost is the same as existing shapes.
+
+-- Shape 33: when { setLitUserEntities.containsAll(setLitUserEntities) }
+-- Always true semantically; exercises the .containsAll constructor
+-- which is a distinct evaluator path from .mem (shape 28).
+private def permitWhenSetContainsAllSelf : Policy :=
+  { id             := "permit-when-set-containsAll-self"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .containsAll
+                                    setLitUserEntities setLitUserEntities }]
+  }
+
+-- Shape 34: when { setLitUserEntities.contains(principal) }
+-- Functionally equivalent to `principal in [User::"alice", ...]`
+-- (shape 28) but lands on the .contains binary op rather than .mem.
+-- cedar-drt has historically reported divergences between cedar-policy
+-- and cedar-go on `in` vs `.contains` over single-element membership.
+private def permitWhenSetContainsPrincipal : Policy :=
+  { id             := "permit-when-set-contains-principal"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .contains
+                                    setLitUserEntities (.var .principal) }]
+  }
+
+-- ── single-element set + .contains/.in isolation pair ──────
+-- The 3-element setLitUserEntities (shapes 33-34) does not isolate the
+-- cedar-drt-flagged single-membership divergence class. Shapes 35-36
+-- use setLitSingletonAlice (the singleton [User::"alice"]) so any
+-- disagreement between .contains-side and .mem-side can be
+-- triangulated to the membership cardinality.
+
+-- Shape 35: when { [User::"alice"].contains(principal) }
+-- Single-element .contains. Probes the cedar-drt-flagged class
+-- directly. The principal-is-User scope ensures the contains arg
+-- typechecks as a (.entity User), matching the set's element type.
+private def permitWhenSingletonContainsPrincipal : Policy :=
+  { id             := "permit-when-singleton-contains-principal"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .contains
+                                    setLitSingletonAlice (.var .principal) }]
+  }
+
+-- Shape 36: when { principal in [User::"alice"] }
+-- Same predicate as shape 35 but routed through .mem instead of
+-- .contains. Pair lets us isolate whether a disagreement (if any
+-- ever surfaces) sits on the .contains side or the .mem side.
+private def permitWhenSingletonInPrincipal : Policy :=
+  { id             := "permit-when-singleton-in-principal"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .mem
+                                    (.var .principal) setLitSingletonAlice }]
+  }
+
+-- ── parser-level string-form drift probes ─────────────
+-- Shapes 33-36 cover evaluator-path divergence classes. A separate
+-- residual sits at the parser level: cedar-policy and cedar-go run
+-- distinct Decimal + IPAddr parsers. These shapes use string forms
+-- that differ from the canonical extDecimalLit + extIpLit values to
+-- probe whether cross-form equality stays in agreement.
+
+-- Shape 37: when { decimal("1.0") == decimal("1.000") }
+-- Same value semantically; different string forms. cedar-policy and
+-- cedar-go independently parse + normalize Decimal; cross-form
+-- equality probes whether the two parsers agree on canonical form.
+private def permitWhenDecimalCrossPrecisionEq : Policy :=
+  { id             := "permit-when-decimal-cross-precision-eq"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq
+                                    extDecimalLit extDecimalLitThousandths }]
+  }
+
+-- Shape 38: when { ip("::1") == ip("::1") }
+-- IPv6 self-equality. Same .ext .ipaddr type as IPv4 (extIpLit) but
+-- exercises the IPv6 parser path. cedar-go's IPAddr parser had
+-- historical drift on IPv6 zero-compression forms.
+private def permitWhenIpV6EqSelf : Policy :=
+  { id             := "permit-when-ipv6-eq-self"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq
+                                    extIpV6LocalhostLit extIpV6LocalhostLit }]
+  }
+
+-- ── Novelty sweep: shapes 39-42 ───────────────────
+-- Four constructor classes that the 38-shape grammar does not yet
+-- exercise. Each is one-line + a sorry-stubbed wellTypedAt lemma per
+-- the existing widening-deferral pattern. Diff harness re-runs at
+-- N=10k against the wider 42-shape grammar; soundness lemmas live in
+-- CedarFull.Soundness.
+
+-- Shape 39: when { principal in [] }
+-- Empty-set membership. The 38-shape grammar covers .mem against
+-- 1-element and 3-element sets (shapes 28, 35); the empty set is a
+-- distinct evaluator path: cedar-policy and cedar-go must agree that
+-- `principal in []` evaluates to false unconditionally.
+private def permitWhenPrincipalInEmptySet : Policy :=
+  { id             := "permit-when-principal-in-empty-set"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .mem (.var .principal) (.set []) }]
+  }
+
+-- Shape 40: when { {approved: true, denied: false} has approved }
+-- Multi-key record literal. The 38-shape grammar covers 0-key
+-- (shape 29) and 1-key (shape 30) records; the 2-key case exercises
+-- typeOfRecord's multi-attribute LUB and the .hasAttr evaluator's
+-- record-key lookup on a record with siblings.
+private def recordTwoKeyLit : Expr :=
+  .record [ ("approved", .lit (.bool true))
+          , ("denied",   .lit (.bool false))
+          ]
+
+private def permitWhenTwoKeyRecordHas : Policy :=
+  { id             := "permit-when-two-key-record-has"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .hasAttr recordTwoKeyLit "approved" }]
+  }
+
+-- Shape 41: when { !(principal == User::"alice") }
+-- Boolean negation on an equality. The 38-shape grammar uses
+-- .unaryApp .is (shapes 8-10, 18-20, 25); .not is the second unary
+-- operator and exercises the boolean-inversion evaluator branch.
+private def permitWhenNotPrincipalEqAlice : Policy :=
+  { id             := "permit-when-not-principal-eq-alice"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .unaryApp .not
+                                    (.binaryApp .eq
+                                      (.var .principal)
+                                      (.lit (.entityUID (mkUID "User" "alice")))) }]
+  }
+
+-- Shape 42: when { (1 + 1) == 2 }
+-- Integer arithmetic in a when body. .add on int literals is a
+-- distinct evaluator path that exercises both typecheckers'
+-- arithmetic branches and integer-overflow handling.
+private def permitWhenIntArithEqTwo : Policy :=
+  { id             := "permit-when-int-arith-eq-two"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when
+                        , body := .binaryApp .eq
+                                    (.binaryApp .add
+                                      (.lit (.int 1))
+                                      (.lit (.int 1)))
+                                    (.lit (.int 2)) }]
+  }
+
+/-- Generate a Cedar.Spec.Policy. 42 shapes (was 38 before the novelty sweep):
+    Shapes 1-15:  scope-only variants (eq/is/in/actionInAny)
+    Shapes 16-24: condition variants (when/unless with eq, in, is, has)
     Shape 25:     genWellTyped-derived bool expr (~18 outputs)
-    Shapes 26–32: §8 widening; extension types (decimal/ip), set
+    Shapes 26-32: widening; extension types (decimal/ip), set
                   literals, record literals (empty/singleton), `has`
                   on entity attribute, nested attribute projection.
+    Shapes 33-34: bug-hunt widening; set `.containsAll`
+                  self and set `.contains` of principal. Exercise
+                  binary-op constructors (.containsAll, .contains)
+                  that are distinct evaluator paths from .mem (shape 28).
+    Shapes 35-36: single-element set + .contains/.in
+                  isolation pair. Probes cedar-drt's single-
+                  membership divergence class directly.
+    Shapes 37-38: parser-level string-form drift
+                  (decimal cross-precision eq + IPv6 zero-compression
+                  self-eq). Probes the parser-level residual.
+    Shapes 39-42: novelty sweep; empty-set .mem,
+                  multi-key record literal `has`, .unaryApp .not on a
+                  bool eq, and .binaryApp .add int arithmetic in a when
+                  body. Each probes a constructor class the 38-shape
+                  grammar does not yet exercise.
     Shapes are chained with Gen.pick for uniform sampling. -/
 def genPolicy (_ : Schema) : Gen Policy :=
   -- Scope-only shapes (1–15)
@@ -550,9 +753,23 @@ def genPolicy (_ : Schema) : Gen Policy :=
   (Gen.pick (pure permitWhenSingletonRecordHas)
   (Gen.pick (pure permitWhenPrincipalHasAddress)
   (Gen.pick (pure permitWhenNestedAttrEq)
+  -- bug-hunt shapes (33-34): set .containsAll/.contains
+  (Gen.pick (pure permitWhenSetContainsAllSelf)
+  (Gen.pick (pure permitWhenSetContainsPrincipal)
+  -- single-element-set isolation pair (35-36)
+  (Gen.pick (pure permitWhenSingletonContainsPrincipal)
+  (Gen.pick (pure permitWhenSingletonInPrincipal)
+  -- parser-level string-form drift (37-38)
+  (Gen.pick (pure permitWhenDecimalCrossPrecisionEq)
+  (Gen.pick (pure permitWhenIpV6EqSelf)
+  -- Novelty sweep (39–42): empty-set, multi-key record, .not, .add
+  (Gen.pick (pure permitWhenPrincipalInEmptySet)
+  (Gen.pick (pure permitWhenTwoKeyRecordHas)
+  (Gen.pick (pure permitWhenNotPrincipalEqAlice)
+  (Gen.pick (pure permitWhenIntArithEqTwo)
             -- Shape 25 (placed at end): permit when {<well-typed bool>}
             (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))
+                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 

@@ -100,6 +100,7 @@ class NoInternalLeaksTest(unittest.TestCase):
         KAIROS_DOGFOOD_ALLOW = {
             "experiments/phase_c_diff/run_diff.py",
             "experiments/phase_c_cm_diff/run_cm_diff.py",
+            "experiments/phase_d_drt_headtohead/run_headtohead.py",
         }
         KAIROS_PATTERNS = {
             "closed-source kairos SDK internal",

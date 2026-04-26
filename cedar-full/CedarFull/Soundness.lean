@@ -572,4 +572,71 @@ theorem wellTypedAt_setLitUserEntities_fixed
         Cedar.Validation.typeOfSet, TypedExpr.typeOf,
         Cedar.Validation.lub?]
 
+/-- Single-element set literal `[User::"alice"]` typechecks at
+    `(.set (.entity User))` when the alice UID is valid in the schema.
+    Same proof recipe as the 3-element setLitUserEntities case
+    (typeOfSet on a non-empty homogeneous list of entity UIDs); the
+    cardinality difference does not affect the lub fold. -/
+theorem wellTypedAt_setLitSingletonAlice
+    (env : TypeEnv)
+    (hAlice : env.ets.isValidEntityUID
+              { ty := { id := "User", path := [] }, eid := "alice" } = true) :
+    wellTypedAt env setLitSingletonAlice = true := by
+  simp [wellTypedAt, setLitSingletonAlice, Cedar.Validation.typeOf,
+        Cedar.Validation.typeOfLit, Cedar.Validation.ok, hAlice,
+        List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, TypedExpr.typeOf,
+        Cedar.Validation.lub?]
+
+-- Novelty sweep: shapes 39-42 widening lemmas.
+-- One sorry-stubbed wellTypedAt lemma per new shape, matching the
+-- existing widening-deferral pattern. Mechanically tedious but
+-- solvable; deferred to a follow-up batch as a literal-shape
+-- cardinality caveat.
+
+/-- Shape 39: empty-set membership `principal in []`. The empty set
+    typechecks under any environment (typeOfSet's empty-list branch
+    LUBs over nothing); .mem typechecks against (.entity X) on the
+    left and (.set _) on the right. Deferred follow-up: set-shape sorry. -/
+theorem wellTypedAt_emptySetMem (_env : TypeEnv) :
+    wellTypedAt _env (.binaryApp .mem (.var .principal) (.set [])) = true := by
+  sorry
+
+/-- Shape 40: 2-key record literal `{approved: true, denied: false}
+    has approved`. typeOfRecord LUBs over the two attribute types;
+    typeOfHasAttr returns Bool when the key is statically present.
+    Deferred follow-up: record-shape sorry. -/
+theorem wellTypedAt_twoKeyRecordHas (_env : TypeEnv) :
+    wellTypedAt _env
+      (.hasAttr
+        (.record [ ("approved", .lit (.bool true))
+                 , ("denied",   .lit (.bool false)) ])
+        "approved")
+    = true := by
+  sorry
+
+/-- Shape 41: `!(principal == User::"alice")`. Inner .binaryApp .eq
+    typechecks at Bool; .unaryApp .not preserves Bool. Deferred
+    follow-up: .not-shape sorry. -/
+theorem wellTypedAt_notPrincipalEqAlice (_env : TypeEnv) :
+    wellTypedAt _env
+      (.unaryApp .not
+        (.binaryApp .eq
+          (.var .principal)
+          (.lit (.entityUID { ty := { id := "User", path := [] }, eid := "alice" }))))
+    = true := by
+  sorry
+
+/-- Shape 42: `(1 + 1) == 2`. .binaryApp .add typechecks at Int when
+    both operands are Int; outer .eq typechecks at Bool. Deferred
+    follow-up: int-arith-shape sorry. -/
+theorem wellTypedAt_intArithEqTwo (_env : TypeEnv) :
+    wellTypedAt _env
+      (.binaryApp .eq
+        (.binaryApp .add (.lit (.int 1)) (.lit (.int 1)))
+        (.lit (.int 2)))
+    = true := by
+  sorry
+
 end CedarFull
