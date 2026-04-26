@@ -1,3 +1,8 @@
+# CEDAR_CLI_PARSER_OPT_OUT
+# Predates the shared cedar_cli.parse_cedar_cli_result helper added in PR #17.
+# This script ships its own minimal rc->decision parser inline since it is a
+# one-shot 2026-04-25 evidence-gen run preserved as artefact, not an actively
+# maintained driver. Future runners should import the shared parser.
 """
 run_widened.py  - execute the widened shapes from widened_shapes.py against
 both cedar-policy (Rust) and cedar-go and report disagreements.
