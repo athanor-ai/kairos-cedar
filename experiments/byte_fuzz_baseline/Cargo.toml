@@ -1,0 +1,33 @@
+[package]
+name = "byte_fuzz_baseline"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Standalone byte-level fuzz harness for the cedar-policy parser +
+# evaluator. Inspired by the `simple-parser` / `abac-type-directed`
+# targets shipped in cedar-spec/cedar-drt, but does not depend on
+# cargo-fuzz, libfuzzer, or the Lean FFI. Builds + runs against the
+# cedar-policy crate alone, so it is reachable from the kairos-cedar
+# container image with no additional toolchain.
+#
+# Metric: bytes -> parser-reach + evaluator-reach + disagreement.
+# Useful as a shared baseline for evaluating type-directed Cedar
+# generators, since "1.0 of generated tuples are well-typed" is a
+# vacuous comparison without a byte-level reference.
+
+[dependencies]
+cedar-policy = { version = "4.10", features = [] }
+cedar-policy-core = { version = "4.10", features = ["arbitrary"] }
+arbitrary = "1.4"
+rand = "0.8"
+rand_chacha = "0.3"
+serde_json = "1.0"
+
+[[bin]]
+name = "byte_fuzz_baseline"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
