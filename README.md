@@ -96,6 +96,20 @@ The mechanised Cedar specification and the Rust/Go implementations are the work 
 
 [4] *Cedar: A New Language for Expressive, Fast, Safe, and Analyzable Authorisation.* OOPSLA 2024. https://dl.acm.org/doi/10.1145/3649835
 
+## Citation
+
+If you use kairos-cedar in academic work, please cite it as:
+
+```bibtex
+@misc{kairos_cedar_2026,
+  title  = {kairos-cedar: Lean-Verified Differential Testing for the Cedar Authorisation Engine},
+  author = {Yang, Aidan Z. H. and Hong, Samantha S. K. and {Athanor-AI}},
+  year   = {2026},
+  url    = {https://github.com/athanor-ai/kairos-cedar},
+  note   = {Apache-2.0}
+}
+```
+
 ## License
 
-MIT (see `LICENSE`). Copyright (c) 2026 Athanor AI, Inc.
+Apache-2.0. See `LICENSE`. Copyright 2026 Athanor AI, Inc.
