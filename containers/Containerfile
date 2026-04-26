@@ -17,7 +17,8 @@
 #   Go        1.24 from public golang distro apt
 #   Dafny     4.9.1 via npm (the official install path)
 #   Z3        4.12.1 bundled with Dafny
-#   Cedar     v4.3.1+ via `cargo install cedar-policy-cli`
+#   Cedar     v4.3.1+ via `cargo install cedar-policy-cli --features analyze`
+#   CVC5      1.3.1 static binary (for `cedar symcc`)
 #   Python    3.12 via uv
 # ─────────────────────────────────────────────────────────────────────
 
@@ -80,9 +81,28 @@ RUN rustup install ${RUST_NIGHTLY} \
 # cedar-policy-cli's transitive deps require Rust edition 2024 (stabilised
 # in 1.85); stable 1.82 fails. Use the nightly toolchain installed above
 # for Verus to compile the CLI.
-RUN cargo +${RUST_NIGHTLY} install cedar-policy-cli \
+#
+# `--features analyze` is required for the `cedar symcc` symbolic-compiler
+# subcommand the Negative-Oracles experiments hit. Without it, the binary
+# is concrete-evaluator-only and `cedar symcc` is unreachable
+# (kairos-cedar paper §9.3 sweep + ATH-151 follow-up). cedar-policy-cli
+# 4.10 renamed the CLI from `cedar analyze symcc` → `cedar symcc`; the
+# build feature flag is still `--features analyze`.
+RUN cargo +${RUST_NIGHTLY} install cedar-policy-cli --features analyze \
     && cp /opt/cargo/bin/cedar /usr/local/bin/cedar \
     && cedar --version
+
+# CVC5 — required by `cedar symcc` for symbolic verification.
+# Pinned to 1.3.1 to match the version the symcc encoder was tested
+# against (per kairos-cedar paper §9.3 sweep). Asset name is
+# `cvc5-Linux-x86_64-static.zip`; the binary lives inside at
+# `cvc5-Linux-x86_64-static/bin/cvc5`.
+RUN curl -fsSL -o /tmp/cvc5.zip \
+      "https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.1/cvc5-Linux-x86_64-static.zip" \
+    && unzip -q /tmp/cvc5.zip -d /tmp \
+    && install -m 0755 /tmp/cvc5-Linux-x86_64-static/bin/cvc5 /usr/local/bin/cvc5 \
+    && rm -rf /tmp/cvc5.zip /tmp/cvc5-Linux-x86_64-static \
+    && cvc5 --version | head -1
 
 # ── Lean (two toolchains via elan) ───────────────────────────────────
 ENV ELAN_HOME=/opt/elan
@@ -125,6 +145,7 @@ RUN echo "=== toolchain inventory ===" \
     && echo "rust nightly: $(rustup which --toolchain ${RUST_NIGHTLY} rustc 2>/dev/null | xargs -I{} {} --version || echo none)" \
     && echo "verus: $(verus --version 2>&1 | head -2 | tail -1)" \
     && echo "cedar: $(cedar --version)" \
+    && echo "cvc5: $(cvc5 --version | head -1)" \
     && echo "lean (default): $(lean --version)" \
     && elan toolchain list \
     && echo "go: $(go version)" \
