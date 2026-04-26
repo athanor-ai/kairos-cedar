@@ -1,15 +1,15 @@
-// roundtrip harness — JSON policy → Cedar text → JSON policy
+// roundtrip harness; JSON policy → Cedar text → JSON policy
 //
 // stdin:  one JSON object per line: {"id": "...", "policy_json": {...}}
 // stdout: one JSON result per line
 //
 // Result fields:
-//   id         — probe identifier passed in
-//   outcome    — "panic" | "parse_fail" | "clean" | "silent_diff"
-//   stage      — stage at which outcome occurred
-//   detail     — human-readable detail string
-//   cedar_text — Cedar text produced (if marshal_cedar succeeded)
-//   out_json   — final JSON produced (if full round-trip succeeded)
+//   id        ; probe identifier passed in
+//   outcome   ; "panic" | "parse_fail" | "clean" | "silent_diff"
+//   stage     ; stage at which outcome occurred
+//   detail    ; human-readable detail string
+//   cedar_text; Cedar text produced (if marshal_cedar succeeded)
+//   out_json  ; final JSON produced (if full round-trip succeeded)
 package main
 
 import (
@@ -40,7 +40,7 @@ type ProbeResult struct {
 func runRoundtrip(input ProbeInput) (res ProbeResult) {
 	res.ID = input.ID
 
-	// Recover from panics — these are the NEW-2 class findings
+	// Recover from panics; these are the NEW-2 class findings
 	defer func() {
 		if r := recover(); r != nil {
 			res.Outcome = "panic"

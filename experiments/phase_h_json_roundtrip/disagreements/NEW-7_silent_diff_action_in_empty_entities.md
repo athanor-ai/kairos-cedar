@@ -1,7 +1,7 @@
 # NEW-7: cedar-go drops `entities: []` from action-in scope on JSON round-trip
 
-**Severity:** Low — the empty-set action-in scope has unusual semantics; output is semantically equivalent
-**Class:** Silent diff — `entities` key disappears
+**Severity:** Low; the empty-set action-in scope has unusual semantics; output is semantically equivalent
+**Class:** Silent diff; `entities` key disappears
 
 ## Summary
 

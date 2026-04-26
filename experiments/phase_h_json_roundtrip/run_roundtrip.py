@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-run_roundtrip.py — orchestrates JSON↔Cedar round-trip probing on both impls.
+run_roundtrip.py; orchestrates JSON↔Cedar round-trip probing on both impls.
 
 Runs:
   1. cedar-go:    JSON → Policy.UnmarshalJSON → MarshalCedar → UnmarshalCedar → MarshalJSON → compare
@@ -132,7 +132,7 @@ def run_rust_roundtrip(probe: dict) -> dict:
         }
 
     out_json_str = r2.stdout.strip()
-    # The CLI outputs a policy set JSON — extract first policy
+    # The CLI outputs a policy set JSON; extract first policy
     try:
         out_parsed = json.loads(out_json_str)
         if isinstance(out_parsed, list) and len(out_parsed) > 0:
@@ -261,7 +261,7 @@ def write_finding(probe: dict, go_result: dict, rust_result: dict | None, findin
 ## Classification
 
 {"- cedar-go **PANICS** where Rust returns parse_fail" if go_outcome == "panic" and rust_outcome == "parse_fail" else ""}
-{"- cedar-go **PANICS** — input accepted then crash" if go_outcome == "panic" else ""}
+{"- cedar-go **PANICS**; input accepted then crash" if go_outcome == "panic" else ""}
 {"- cedar-go **silent-drops** information (round-trip not identity)" if go_outcome == "silent_diff" else ""}
 {"- cedar-go and cedar-policy DISAGREE on parse validity" if go_outcome != rust_outcome and go_outcome in ("parse_fail", "clean") and rust_outcome in ("parse_fail", "clean") else ""}
 {"- Both impls clean round-trip" if go_outcome == "clean" and rust_outcome == "clean" else ""}

@@ -1,7 +1,7 @@
 # OBS-1: cedar-go silently drops unrecognized fields in policy JSON
 
-**Severity:** Informational — not a crash, but may hide malformed inputs
-**Class:** Silent diff — extra fields in input disappear from output
+**Severity:** Informational; not a crash, but may hide malformed inputs
+**Class:** Silent diff; extra fields in input disappear from output
 
 ## Summary
 
@@ -15,7 +15,7 @@ not preserved. For the condition body, the behavior depends on the specific fiel
 
 Input: `{"effect": "permit", ..., "UNKNOWN_FIELD": "should be ignored or fail gracefully"}`
 
-Output: `{"effect": "permit", ...}` — `UNKNOWN_FIELD` dropped silently.
+Output: `{"effect": "permit", ...}`; `UNKNOWN_FIELD` dropped silently.
 
 cedar-go uses `encoding/json` with standard unmarshaling for the top-level `policyJSON`
 struct. Unknown fields are silently ignored (no `DisallowUnknownFields` at the top level).
@@ -24,7 +24,7 @@ struct. Unknown fields are silently ignored (no `DisallowUnknownFields` at the t
 
 Input: `{"principal": {"op": "All", "extra": "ignored?"}, ...}`
 
-Output: `{"principal": {"op": "All"}}` — `extra` dropped.
+Output: `{"principal": {"op": "All"}}`; `extra` dropped.
 
 Same mechanism: `scopeJSON` struct does not use `DisallowUnknownFields`.
 
@@ -32,7 +32,7 @@ Same mechanism: `scopeJSON` struct does not use `DisallowUnknownFields`.
 
 Input: `{"conditions": [{"kind": "when", "body": {...}, "extra": "ignored?"}]}`
 
-Output: `{"conditions": [{"kind": "when", "body": {...}}]}` — `extra` dropped.
+Output: `{"conditions": [{"kind": "when", "body": {...}}]}`; `extra` dropped.
 
 ### D-005: Two ops in one body node (ambiguous)
 
@@ -51,7 +51,7 @@ being silently dropped rather than an error.
 
 Silent field dropping at the policy/scope/condition level is consistent with lenient JSON
 parsing conventions. The condition-body ambiguity (two ops in one node) is more
-surprising — cedar-go picks one winner silently.
+surprising; cedar-go picks one winner silently.
 
 The `nodeJSON.UnmarshalJSON` implementation uses `DisallowUnknownFields` for the first
 decode attempt, then falls back to `extensionJSON` on failure. When a node has both a
@@ -67,8 +67,8 @@ ops. The behavior may depend on Go's JSON decode ordering.
 
 ## Affected probes
 
-- `D-001-extra-policy-field` (silent drop — conformant behavior)
-- `D-002-extra-scope-field` (silent drop — conformant behavior)
-- `D-003-extra-condition-field` (silent drop — conformant behavior)
-- `D-005-two-ops-in-node` (ambiguous — one op wins, non-deterministically)
-- `E-002-action-in-both` (both `entity` and `entities` in action scope — `entity` wins)
+- `D-001-extra-policy-field` (silent drop; conformant behavior)
+- `D-002-extra-scope-field` (silent drop; conformant behavior)
+- `D-003-extra-condition-field` (silent drop; conformant behavior)
+- `D-005-two-ops-in-node` (ambiguous; one op wins, non-deterministically)
+- `E-002-action-in-both` (both `entity` and `entities` in action scope; `entity` wins)
