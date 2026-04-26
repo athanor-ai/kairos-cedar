@@ -1,0 +1,158 @@
+name: Lean Build
+
+# Mainline-protection mirror of pythia (kairos-stats-lean) lean-build.yml
+# shape: every push (every branch, not just main) must lake-build clean.
+# A broken Lean compile cannot land anywhere — not on main, not on a
+# feature branch.
+#
+# kairos-cedar has 3 lake projects with 2 distinct lean-toolchains:
+#   - cedar-spec-bridge (lean 4.24.0)  — Prop-wrapper over upstream typeOf
+#   - cedar-micro       (lean 4.29.1)  — flat-shape generator + soundness
+#   - cedar-full        (lean 4.29.1)  — full Cedar.Spec.Expr generator
+#
+# elan auto-pins per project from each `lean-toolchain` file (no master
+# float). cedar-spec-bridge runs in its own job because its 4.24.0 cache
+# key differs; cedar-micro + cedar-full share 4.29.1 and run sequentially.
+#
+# AXIOM-AUDIT GAP (ATH-654, P3): pythia ships AxiomAudit.lean per project;
+# kairos-cedar has none yet. This workflow omits the audit step pending
+# the follow-up that adds AxiomAudit.lean to all 3 projects. Lake-build
+# alone catches `sorry` (Soundness.lean is sorry-free per docstring) but
+# doesn't block additional axioms.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cedar-spec-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install elan
+        shell: bash
+        run: |
+          set -eu
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          bash elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Mathlib (cedar-spec-bridge, lean 4.24.0)
+        uses: actions/cache@v4
+        with:
+          path: cedar-spec-bridge/.lake
+          key: lake-bridge-${{ runner.os }}-${{ hashFiles('cedar-spec-bridge/lake-manifest.json', 'cedar-spec-bridge/lean-toolchain') }}
+          restore-keys: |
+            lake-bridge-${{ runner.os }}-
+
+      - name: Build cedar-spec-bridge (umbrella gate)
+        working-directory: cedar-spec-bridge
+        run: |
+          lean --version
+          lake --version
+          lake exe cache get || true
+          lake build
+
+      - name: Per-file Lean sweep (cedar-spec-bridge, defense-in-depth)
+        working-directory: cedar-spec-bridge
+        run: |
+          # Re-elaborate every umbrella file to catch cache-warmup races
+          # (rare but possible). All cedar-spec-bridge .lean files are in
+          # the umbrella; no orphan exclusions needed.
+          set -e
+          for f in $(find . -name '*.lean' -not -path './.lake/*' | sort); do
+            echo "::group::lake env lean $f"
+            lake env lean "$f"
+            echo "::endgroup::"
+          done
+
+  cedar-micro-and-full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install elan
+        shell: bash
+        run: |
+          set -eu
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o elan-init.sh
+          bash elan-init.sh -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Mathlib (cedar-micro, lean 4.29.1)
+        uses: actions/cache@v4
+        with:
+          path: cedar-micro/.lake
+          key: lake-micro-${{ runner.os }}-${{ hashFiles('cedar-micro/lake-manifest.json', 'cedar-micro/lean-toolchain') }}
+          restore-keys: |
+            lake-micro-${{ runner.os }}-
+
+      - name: Build cedar-micro (umbrella gate)
+        working-directory: cedar-micro
+        run: |
+          lean --version
+          lake --version
+          lake exe cache get || true
+          lake build
+
+      - name: Per-file Lean sweep (cedar-micro, defense-in-depth)
+        working-directory: cedar-micro
+        run: |
+          # Sweep the CedarMicro library subdir (umbrella content) +
+          # CedarMicro.lean. Exclusions:
+          #   - .lake/ build artefacts
+          #   - Main.lean + MainLLM.lean (exe entry points; lakefile
+          #     declares them as `lean_exe`s, lake build covers them)
+          #   - Measure*.lean (measurement harness, not the soundness
+          #     umbrella; exercised by separate evidence-gen jobs not
+          #     by the type-check gate)
+          set -e
+          for f in $(find . -name '*.lean' -not -path './.lake/*' \
+                     -not -name 'Main.lean' -not -name 'MainLLM.lean' \
+                     -not -name 'Measure*.lean' | sort); do
+            echo "::group::lake env lean $f"
+            lake env lean "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Cache Mathlib (cedar-full, lean 4.29.1)
+        uses: actions/cache@v4
+        with:
+          path: cedar-full/.lake
+          key: lake-full-${{ runner.os }}-${{ hashFiles('cedar-full/lake-manifest.json', 'cedar-full/lean-toolchain') }}
+          restore-keys: |
+            lake-full-${{ runner.os }}-
+
+      - name: Build cedar-full (umbrella gate)
+        working-directory: cedar-full
+        run: |
+          lake exe cache get || true
+          lake build
+
+      - name: Per-file Lean sweep (cedar-full, defense-in-depth)
+        working-directory: cedar-full
+        run: |
+          # Sweep the CedarFull library subdir (umbrella content) +
+          # CedarFull.lean. Exclusions:
+          #   - .lake/ build artefacts
+          #   - MeasureDiff.lean + MeasureFull.lean (measurement
+          #     harnesses, not in CedarFull.lean's import graph)
+          set -e
+          for f in $(find . -name '*.lean' -not -path './.lake/*' \
+                     -not -name 'MeasureDiff.lean' -not -name 'MeasureFull.lean' \
+                     | sort); do
+            echo "::group::lake env lean $f"
+            lake env lean "$f"
+            echo "::endgroup::"
+          done
