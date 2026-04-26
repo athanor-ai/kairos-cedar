@@ -4,12 +4,12 @@
 **Filed by:** platform agent (`phase_e_real_bugs`)
 **Severity:** wire-format divergence (NOT a policy-decision divergence)
 
----
+***
 
 ## Versions under test
 
 | Impl | Version | Source |
-| --- | --- | --- |
+| :- | :- | :- |
 | cedar-policy (Rust) | 4.10.0 | `/work/cedar-spec/cedar` workspace pin, commit `6e0f25b` (2026-04-21) |
 | cedar-go (Go) | HEAD on `main` | `/work/cedar-go`, commit `a9a4b1b` (2026-03-20) |
 | Lean evaluator | n/a | **not yet wired into this repro** |
@@ -21,11 +21,11 @@
 ## Recon-claim status check
 
 The recon agent claimed Rust's `IPAddr::Display` (`cedar-policy-core/src/extensions/ipaddr.rs:236-240`)
-always emits `addr/prefix`. **The line-level claim is correct**  - that `fmt::Display` impl
+always emits `addr/prefix`. **The line-level claim is correct**: that `fmt::Display` impl
 unconditionally writes `"{}/{}"`. **But:** the standard `EvalResult` and entity-JSON
 serialisation paths in cedar-policy 4.10.0 do **not** call this `Display`; they echo the
 original constructor argument (see source attribution below). So Rust's *observable*
-output for `ip("127.0.0.1")` is `ip("127.0.0.1")`, not `ip("127.0.0.1/32")`  - 
+output for `ip("127.0.0.1")` is `ip("127.0.0.1")`, not `ip("127.0.0.1/32")` , 
 contrary to the recon agent's prediction.
 
 The `addr/prefix` form fires only via `canonical_repr()` (TPE residual normalisation).
@@ -53,7 +53,7 @@ round-trip            ::1: ...{"__extn":{"fn":"ip","arg":"::1"}}...
 round-trip        ::1/128: ...{"__extn":{"fn":"ip","arg":"::1/128"}}...
 ```
 
-Rust echoes the **original constructor argument string** verbatim  - including any
+Rust echoes the **original constructor argument string** verbatim: including any
 explicit `/N`.
 
 ## Go output (cedar-go a9a4b1b)
@@ -87,17 +87,17 @@ will see the JSON change shape after a single Go hop.
 
 ## Upstream source attribution
 
-* **Rust** `cedar-policy-core/src/extensions/ipaddr.rs:236-240`  - `IPAddr::Display`
+* **Rust** `cedar-policy-core/src/extensions/ipaddr.rs:236-240`: `IPAddr::Display`
   always emits `{}/{}`.
-* **Rust** `cedar-policy-core/src/extensions/ipaddr.rs:252-258`  - `canonical_repr()`
+* **Rust** `cedar-policy-core/src/extensions/ipaddr.rs:252-258`: `canonical_repr()`
   returns the `Display` form (used by TPE).
-* **Rust** `cedar-policy-core/src/extensions/ipaddr.rs:328-346`  - `ip_from_str`
+* **Rust** `cedar-policy-core/src/extensions/ipaddr.rs:328-346`: `ip_from_str`
   constructor stores the original argument literal in `ev.args`. This is what gets
   echoed by `EvalResult::ExtensionValue` and JSON entity serialisation.
-* **Rust** `cedar-policy-core/src/entities/json/value.rs:523-543`  - JSON
+* **Rust** `cedar-policy-core/src/entities/json/value.rs:523-543`: JSON
   serialisation echoes `ev.args[0]` verbatim, NOT the canonical form.
-* **Go** `cedar-go/types/ipaddr.go:42-47`  - `String()` strips `/N` when `Bits() == BitLen()`.
-* **Go** `cedar-go/types/ipaddr.go:122-138`  - `MarshalJSON()` strips `/N` when
+* **Go** `cedar-go/types/ipaddr.go:42-47`: `String()` strips `/N` when `Bits() == BitLen()`.
+* **Go** `cedar-go/types/ipaddr.go:122-138`: `MarshalJSON()` strips `/N` when
   `Bits() == BitLen()` (using `Addr().String()` instead of `String()` in that branch,
   but functionally identical to the trim).
 
@@ -126,7 +126,7 @@ All four combinations agree.
    `{"fn":"ip","arg":"127.0.0.1"}`. Audit-log diff tools will flag this as drift.
 2. **Spec ambiguity.** The Cedar formal model has not (per `cedar-spec`) pinned
    down whether the wire form should preserve or canonicalise the prefix. Both
-   impls disagree, and neither is provably "correct" against the Lean spec  - that
+   impls disagree, and neither is provably "correct" against the Lean spec: that
    gap is itself the contribution.
 3. **Recon-agent claim partially refuted.** The recon agent predicted Rust would
    *emit* `addr/prefix`. The actual behaviour is: Rust *can* emit it (via
@@ -137,12 +137,12 @@ All four combinations agree.
 
 * `experiments/phase_e_real_bugs/ipaddr_repro/rust/{Cargo.toml,main.rs}`
 * `experiments/phase_e_real_bugs/ipaddr_repro/go/{go.mod,main.go}`
-* `experiments/phase_e_real_bugs/ipaddr_repro/go_eval/{go.mod,main.go}`  - policy
+* `experiments/phase_e_real_bugs/ipaddr_repro/go_eval/{go.mod,main.go}`: policy
   decision check.
-* `experiments/phase_e_real_bugs/ipaddr_repro/go_wire/{go.mod,main.go}`  - wire
+* `experiments/phase_e_real_bugs/ipaddr_repro/go_wire/{go.mod,main.go}`: wire
   round-trip showing byte-inequality on /32, /128.
 
----
+***
 
 **Honest classification:** purely cosmetic at the evaluator level; concrete
 wire-format divergence on JSON round-trip for full-bitlen prefixes; not a

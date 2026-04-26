@@ -1,6 +1,6 @@
-# Canonical Reproducer — Datetime Expanded-Year Format Decision Flip (B2.3)
+# Canonical Reproducer: Datetime Expanded-Year Format Decision Flip (B2.3)
 
-**Discovered:** 2026-04-25 by phase_h2_datetime_duration widened-shapes harness.
+**Discovered:** 2026-04-25 by phase_h2_datetime_duration widened-shapes driver.
 
 **Classification:** evaluator_disagreement (decision-flipping). Paper-grade.
 
@@ -17,8 +17,8 @@
 
 Cedar RFC 110 introduces an ISO 8601 "expanded year" format: `(+|-)YYYYYYYYY-MM-DD[T...]`
 where the year is 9 digits (signed). cedar-go v1.6.0 implements RFC 110 in `ParseDatetime`
-(`cedar-go/types/datetime.go`, lines 106–125). The Rust implementation in
-cedar-policy-core 4.10.0 does NOT implement RFC 110 — its `DATE_PATTERN` regex is
+(`cedar-go/types/datetime.go`, lines 106-125). The Rust implementation in
+cedar-policy-core 4.10.0 does NOT implement RFC 110: its `DATE_PATTERN` regex is
 `r"^([0-9]{4})-([0-9]{2})-([0-9]{2})"` (exactly 4 digits, no sign prefix).
 The Lean reference spec (`cedar-spec/cedar-lean/Cedar/Spec/Ext/Datetime.lean`,
 `checkComponentLen`) also requires exactly 4-digit years.
@@ -60,7 +60,7 @@ permit(principal, action, resource) when {
 ## Request
 
 | field | value |
-|---|---|
+| :- | :- |
 | principal | `User::"alice"` |
 | action | `Action::"view"` |
 | resource | `Document::"doc1"` |
@@ -69,7 +69,7 @@ permit(principal, action, resource) when {
 ## Verdicts
 
 | Implementation | Decision | Rationale |
-|---|---|---|
+| :- | :- | :- |
 | `cedar-policy` 4.10.0 (Rust) | **Deny** | `datetime()` extension rejects `+000000001-01-01T00:00:00Z`: "invalid date pattern". The `when` body errors → policy not satisfied → default `Deny`. |
 | `cedar-go` v1.6.0 | **Allow** | `ParseDatetime` detects leading `+`, sets `yearLength=9`, reads 9-digit year `000000001` (year 1 AD), parses successfully. The comparison `year 1 < year 2030` evaluates to `true` → permit condition satisfied → **Allow**. |
 | Lean reference | (not exercised directly) | `checkComponentLen` rejects the input: `year.length` for `+000000001` is 10, not 4. Lean agrees with Rust. |
@@ -77,11 +77,11 @@ permit(principal, action, resource) when {
 ## Decision-flipping variants
 
 All inputs of the form `(+|-)DDDDDDDDD-MM-DDT...` produce a decision-flip when the
-cedar-go evaluation of the resulting comparison yields `true`. The harness found
+cedar-go evaluation of the resulting comparison yields `true`. The driver found
 11 decision-flipping policies:
 
 | Policy condition | Rust | Go | Outcome |
-|---|---|---|---|
+| :- | :- | :- | :- |
 | `datetime("+000000001-01-01T00:00:00Z") < datetime("2030-01-01T00:00:00Z")` | Deny | **Allow** | **decision-flip** |
 | `datetime("-000000001-01-01T00:00:00Z") < datetime("2030-01-01T00:00:00Z")` | Deny | **Allow** | **decision-flip** |
 | `datetime("+000002000-01-01T00:00:00Z") < datetime("2030-01-01T00:00:00Z")` | Deny | **Allow** | **decision-flip** |
@@ -104,7 +104,7 @@ is a strict superset of Cedar's grammar." The datetime case (B2.3) is architectu
 related but mechanistically different: cedar-go's hand-rolled `ParseDatetime` implements
 RFC 110 expanded-year format while the Rust implementation does not (cedar-policy 4.10.0
 predates or did not adopt RFC 110 for this format). The cedar-go parser is not a superset
-due to stdlib delegation — it is a superset due to implementing a specification revision
+due to stdlib delegation: it is a superset due to implementing a specification revision
 (RFC 110) that the Rust implementation has not yet adopted.
 
 In both cases, the cedar-go parser accepts strings that the cedar-policy Rust reference
@@ -132,7 +132,7 @@ cedar authorize --policies /tmp/p_b23.cedar \
 '
 # → DENY; "invalid date pattern"
 
-# Go (via harness):
+# Go (via driver):
 docker run --rm -v $(pwd):/work ghcr.io/athanor-ai/kairos-cedar:latest bash -c '
 cd /work/experiments/phase_h2_datetime_duration/go_harness
 GOFLAGS="-mod=mod -buildvcs=false" go build -o /tmp/h2 . && \
@@ -144,7 +144,7 @@ echo "{\"idx\":\"x\",\"principal\":\"User::alice\",\"action\":\"Action::view\",\
 
 ## cedar-go root cause (code reference)
 
-`cedar-go/types/datetime.go`, `ParseDatetime`, lines 106–124:
+`cedar-go/types/datetime.go`, `ParseDatetime`, lines 106-124:
 
 ```go
 // Check if this is an expanded year format (starts with + or -)
@@ -166,5 +166,5 @@ absYear, s, err := parseUint(s[0:], yearLength, yearMax, "year")
 ```
 
 When the input starts with `+` or `-`, `yearLength` is set to 9 (RFC 110 expanded year).
-cedar-policy Rust (4.10.0) has no equivalent branch — its `DATE_PATTERN` regex anchors
+cedar-policy Rust (4.10.0) has no equivalent branch: its `DATE_PATTERN` regex anchors
 to `^([0-9]{4})-`, requiring exactly 4 ASCII digits with no sign prefix.

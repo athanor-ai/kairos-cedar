@@ -16,7 +16,7 @@ By participating, you agree to abide by the
   mechanised type-checker via program synthesis (per the
   [Palamedes](https://github.com/hgoldstein95/palamedes-lean)
   pattern, ICFP 2025).
-- A differential-testing harness running each generated policy against
+- A differential-testing driver running each generated policy against
   the [Rust reference](https://github.com/cedar-policy/cedar) +
   [Go reimplementation](https://github.com/cedar-policy/cedar-go),
   reporting agreement / disagreement / asymmetric-path counts.
@@ -121,7 +121,7 @@ invocations. Examples of what we mean:
   identifiers)
 
 Error messages match the `cedar-spec` Lean formalisation's tone  - 
-terse, actionable, no project-specific jargon.
+terse, concrete, no project-specific jargon.
 
 ## How to add a new schema constructor
 
@@ -161,7 +161,7 @@ sweeps):
    + an honest sorry. The `genWellTyped_sound` theorem in
    `cedar-full/CedarFull/Soundness.lean` is the umbrella; your new
    shape must compose into it.
-3. **Verify against the differential harness.** Run
+3. **Verify against the differential driver.** Run
    `experiments/phase_c_diff/run_diff.py` at `--n 1000` minimum;
    classify results into clean / disagreement / parse_fail and file
    any disagreements at `experiments/phase_c_diff/disagreements/`.

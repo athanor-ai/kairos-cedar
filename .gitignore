@@ -31,3 +31,6 @@ scratch/
 # Docker build cache (if it ever leaks in)
 .docker/
 cedar-spec-bridge/lake-manifest.json
+
+# Per-agent worktrees (Claude Code .claude/worktrees/agent-* are local-only).
+.claude/worktrees/

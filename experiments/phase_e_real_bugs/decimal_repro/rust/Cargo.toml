@@ -1,0 +1,15 @@
+[package]
+name = "decimal-repro"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+cedar-policy = { path = "/work/cedar-spec/cedar/cedar-policy" }
+serde_json = "1"
+
+[[bin]]
+name = "decimal_repro"
+path = "main.rs"
+
+[workspace]

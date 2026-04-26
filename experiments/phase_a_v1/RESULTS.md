@@ -16,7 +16,7 @@
 ## Per-iteration trace
 
 | Iter | Wall time | Reasoning tokens | Completion tokens | Result |
-| --- | --- | --- | --- | --- |
+| :- | :- | :- | :- | :- |
 | 1 | 77.1 s | 15,415 | 636 | compile fail: `Unknown constant 'Gen.pure'` (used `Gen.pure` where the namespace is just `pure`) |
 | 2 | 23.9 s | 4,461 | 627 | **compile pass** |
 
@@ -68,7 +68,7 @@ The final generator source the model produced lives at `experiments/phase_a_v1/o
 
 ## Observations
 
-1. The verification loop is load-bearing. Iter 1 produced a structurally reasonable generator that would have typechecked at the Lean level only if the helper functions used `pure` (the polymorphic monadic unit) rather than `Gen.pure`. A generator accepted by the programmer's eye but rejected by the Lean compiler is exactly the regime where an LLM-only workflow fails silently.
+1. The verification loop is critical to the result. Iter 1 produced a structurally reasonable generator that would have typechecked at the Lean level only if the helper functions used `pure` (the polymorphic monadic unit) rather than `Gen.pure`. A generator accepted by the programmer's eye but rejected by the Lean compiler is exactly the regime where an LLM-only workflow fails silently.
 2. Reasoning tokens dominate token usage (roughly 90%), as expected for a reasoning model. The `completion_tokens` figure captures the visible Lean source; the reasoning trace explains the model's internal debugging and is not written out.
 3. The second iteration converged faster than the first (23.9 s vs 77.1 s) because most of the reasoning from iter 1 transfers: once the model had the generator structure right, the fix was a local rename.
 4. Zero rejection rate on 40 samples is encouraging but a stronger test requires scaling to the full Cedar `Expr` (12 constructors, extensions) where the generator has many more ways to produce ill-typed output. That is Phase B.

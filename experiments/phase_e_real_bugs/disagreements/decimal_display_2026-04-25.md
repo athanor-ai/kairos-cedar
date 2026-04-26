@@ -4,15 +4,15 @@
 **Filed by:** platform agent (`phase_e_real_bugs`)
 **Severity:** wire-format divergence (NOT a policy-decision divergence)
 
----
+***
 
 ## Versions under test
 
 | Impl | Version | Source |
-| --- | --- | --- |
+| :- | :- | :- |
 | cedar-policy (Rust) | 4.10.0 | `/work/cedar-spec/cedar` workspace pin, commit `6e0f25b` (2026-04-21) |
 | cedar-go (Go) | HEAD on `main` | `/work/cedar-go`, commit `a9a4b1b` (2026-03-20) |
-| Lean evaluator | n/a | **not yet wired into this repro**; phase_c_diff harness compares Rust CLI ↔ Go only |
+| Lean evaluator | n/a | **not yet wired into this repro**; phase_c_diff driver compares Rust CLI ↔ Go only |
 
 ## Inputs
 
@@ -42,7 +42,7 @@ round-trip     5.0000: ...{"__extn":{"fn":"decimal","arg":"5.0000"}}...
 round-trip       1.23: ...{"__extn":{"fn":"decimal","arg":"1.23"}}...
 ```
 
-Rust echoes the **original constructor argument string**  - no padding, no trim.
+Rust echoes the **original constructor argument string**: no padding, no trim.
 
 ## Go output (cedar-go a9a4b1b)
 
@@ -57,7 +57,7 @@ already-canonical input="1.23"    String()="1.23"      MarshalJSON()={"__extn":{
 
 Go canonicalises by formatting the i64 raw value (`12300`) with `fmt.Sprintf("%d.%04d", ...)`
 then trims **up to three** trailing zeros. Note `5.0000 → "5.0"` (only one zero kept because
-the trim cap is 3)  - this is itself a peculiarity worth flagging.
+the trim cap is 3): this is itself a peculiarity worth flagging.
 
 ## Wire round-trip (cedar-go)
 
@@ -72,18 +72,18 @@ in={"__extn":{"fn":"decimal","arg":"1.23"}}     out={"__extn":{"fn":"decimal","a
 
 ## Upstream source attribution
 
-* **Rust** `cedar-policy-core/src/extensions/decimal.rs:164-172`  - `Display` always
+* **Rust** `cedar-policy-core/src/extensions/decimal.rs:164-172`: `Display` always
   prints `{}.{:04}` (4 fractional digits, no trim). Verified at the workspace pin.
-* **Rust** `cedar-policy-core/src/extensions/decimal.rs:175-191`  - `canonical_repr()`
+* **Rust** `cedar-policy-core/src/extensions/decimal.rs:175-191`: `canonical_repr()`
   returns the `Display` form (used by TPE/normalisation, *not* by the standard evaluator
   output path).
-* **Rust** `cedar-policy-core/src/entities/json/value.rs:523-543`  - JSON serialisation
+* **Rust** `cedar-policy-core/src/entities/json/value.rs:523-543`: JSON serialisation
   of `ExtensionValue` echoes the constructor's original args, so `decimal("1.2300")` →
   `{"fn":"decimal","arg":"1.2300"}`. The `Display`/`canonical_repr` output is **not**
   used here.
-* **Go** `cedar-go/types/decimal.go:143-162`  - `String()` always normalises via
+* **Go** `cedar-go/types/decimal.go:143-162`: `String()` always normalises via
   `%d.%04d` then trims up to 3 trailing zeros.
-* **Go** `cedar-go/types/decimal.go:181-188`  - `MarshalJSON()` emits `String()`,
+* **Go** `cedar-go/types/decimal.go:181-188`: `MarshalJSON()` emits `String()`,
   so the trim leaks into the wire.
 
 ## Does this affect policy decisions?
@@ -120,16 +120,16 @@ strictly in **wire/display format**, not in semantics.
 
 ## Reproducer paths
 
-* `experiments/phase_e_real_bugs/decimal_repro/rust/{Cargo.toml,main.rs}`  - 
+* `experiments/phase_e_real_bugs/decimal_repro/rust/{Cargo.toml,main.rs}` , 
   build inside container with `cargo +1.94.0 build --release` (Cargo 1.82.0
   cannot resolve `time-0.3.47` which needs edition2024).
-* `experiments/phase_e_real_bugs/decimal_repro/go/{go.mod,main.go}`  - `go run .`
-* `experiments/phase_e_real_bugs/decimal_repro/go_eval/{go.mod,main.go}`  - policy
+* `experiments/phase_e_real_bugs/decimal_repro/go/{go.mod,main.go}`: `go run .`
+* `experiments/phase_e_real_bugs/decimal_repro/go_eval/{go.mod,main.go}`: policy
   decision check.
-* `experiments/phase_e_real_bugs/ipaddr_repro/go_wire/{go.mod,main.go}`  - wire
+* `experiments/phase_e_real_bugs/ipaddr_repro/go_wire/{go.mod,main.go}`: wire
   round-trip (covers both decimal and ipaddr).
 
----
+***
 
 **Honest classification:** purely cosmetic at the evaluator level; concrete
 wire-format divergence on JSON round-trip; not a policy-decision divergence.

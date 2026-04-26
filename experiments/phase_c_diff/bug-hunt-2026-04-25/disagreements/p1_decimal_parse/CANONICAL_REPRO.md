@@ -1,6 +1,6 @@
-# Canonical Reproducer  - Decimal Leading-`+` Sign Disagreement
+# Canonical Reproducer: Decimal Leading-`+` Sign Disagreement
 
-**Discovered:** 2026-04-25 by widened bug-hunt harness.
+**Discovered:** 2026-04-25 by widened bug-hunt driver.
 
 **Severity:** evaluator_disagreement (decision-flipping). Paper-grade.
 
@@ -29,7 +29,7 @@ action view, edit, admin appliesTo {
 ## Request
 
 | field | value |
-|---|---|
+| :- | :- |
 | principal | `User::"alice"` |
 | action | `Action::"view"` |
 | resource | `Document::"doc1"` |
@@ -46,7 +46,7 @@ permit(principal, action, resource) when {
 ## Verdicts
 
 | Implementation | Decision | Rationale |
-|---|---|---|
+| :- | :- | :- |
 | `cedar-policy` 4.10.0 (Rust) | **Deny** | `decimal()` extension parser rejects `+0.0` ("`+0.0` is not a well-formed decimal value"). The `when` body errors → policy not satisfied → no permit policies match → default `Deny`. |
 | `cedar-go` v1.6.0 | **Allow** | Go's `types.ParseDecimal` calls `strconv.ParseInt(s[0:decimalIndex], 10, 64)` on the integer part, and `ParseInt` accepts a leading `+`. So `+0.0` parses to `Decimal{0}`, which is less than `0.5`, so the body evaluates to `true` and the policy permits. |
 
@@ -61,13 +61,13 @@ Go's `strconv.ParseInt`, which silently accepts the wider input set.
 ## Variant cases that share the root cause
 
 | Policy condition | Rust verdict | Go verdict | Outcome |
-|---|---|---|---|
+| :- | :- | :- | :- |
 | `decimal("+0.0").lessThan(decimal("0.5"))` | Deny (parse err) | **Allow** | **decision-flip** |
 | `decimal("+1.5").lessThan(decimal("0.5"))` | Deny (parse err) | Deny (parses, evals false) | asymmetric path |
 | `decimal("+1.5") == decimal("1.5")` | Deny (parse err) | **Allow** | **decision-flip** |
 | `decimal("+0.0") == decimal("0.0")` | Deny (parse err) | **Allow** | **decision-flip** |
 
-The first row is the canonical reproducer captured by the harness.
+The first row is the canonical reproducer captured by the driver.
 Rows 3-4 are additional decision-flips with the same root cause that
 were *not* in the 206-tuple sweep (the sweep used `lessThan(decimal("0.5"))`
 as its baseline body, which evaluates to false for `1.5`).
@@ -92,7 +92,7 @@ EOF
 '
 # → Deny; "`+0.0` is not a well-formed decimal value"
 
-# Go (via the harness in this repo):
+# Go (via the driver in this repo):
 ./scripts/dc bash -c '
   cd /work/experiments/phase_c_diff/bug-hunt-2026-04-25/go_harness
   GOFLAGS="-mod=mod -buildvcs=false" go build -o /tmp/h . && \

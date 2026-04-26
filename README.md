@@ -17,12 +17,12 @@ disagreements       0
 median wall-time    0.015 s/tuple
 ```
 
-See `experiments/phase_c_diff/run_diff.py` for the harness and `kairos-cedar-paper/` for the FMCAD-2026 write-up.
+See `experiments/phase_c_diff/run_diff.py` for the driver and `kairos-cedar-paper/` for the FMCAD-2026 write-up.
 
 ## Status
 
 | Phase | Component | Status |
-|-------|-----------|--------|
+| :- | :- | :- |
 | V1 | Container image (`ghcr.io/athanor-ai/kairos-cedar`) | ✅ published |
 | V1 | `cedar-spec-bridge`  - `Prop`-wrapper over upstream `Cedar.Validation.typeOf` | ✅ |
 | V1 | `cedar-micro`  - flat type system, `genWellTyped` + `Soundness` sorry-free | ✅ |
@@ -46,12 +46,12 @@ docker pull ghcr.io/athanor-ai/kairos-cedar:latest
 ./scripts/dc python3 experiments/phase_c_diff/run_diff.py --n 10000
 ```
 
-Preflight verifies the Docker daemon, Compose v2, submodule checkout, disk space, and host architecture. The image pull is approximately 9 GB. The bridge build compiles the mechanised Cedar specification from [cedar-spec](https://github.com/cedar-policy/cedar-spec) together with the `Prop`-wrapper defined in `cedar-spec-bridge/CedarBridge/Predicates.lean`. The differential runner cross-checks the Rust reference and Go reimplementation on every generated tuple.
+The first command clones all submodules. Preflight verifies the Docker daemon, Compose v2, submodule checkout, disk space, and host architecture. The image pull is approximately 9 GB. The bridge build compiles the mechanised Cedar specification from [cedar-spec](https://github.com/cedar-policy/cedar-spec) together with the `Prop`-wrapper defined in `cedar-spec-bridge/CedarBridge/Predicates.lean`. The final command runs the Go reimplementation's shipped corpus-test suite, which internally cross-checks each decision against the Rust reference via the bundled `cedar-validation-tool` driver.
 
 ## Where to look
 
 | Question | File |
-|----------|------|
+| :- | :- |
 | What does soundness mean for the generator? | `cedar-full/CedarFull/Soundness.lean` |
 | How is the typing relation defined? | `cedar-micro/CedarMicro/HasType.lean` |
 | How is a well-typed policy generated? | `cedar-full/CedarFull/PolicyGen.lean` |

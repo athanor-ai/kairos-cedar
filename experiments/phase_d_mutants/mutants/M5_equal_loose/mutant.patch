@@ -1,0 +1,12 @@
+--- a/internal/eval/evalers.go
++++ b/internal/eval/evalers.go
+@@ -575,7 +575,7 @@
+ 	rv, err := n.rhs.Eval(env)
+ 	if err != nil {
+ 		return zeroValue(), err
+ 	}
+-	return types.Boolean(lv.Equal(rv)), nil
++	return types.Boolean(true), nil
+ }
+
+ // notEqualEval
