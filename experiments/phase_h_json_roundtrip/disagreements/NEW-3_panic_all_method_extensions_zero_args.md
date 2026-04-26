@@ -15,7 +15,7 @@ This affects all 18 method-style extension operators defined in `extensions.go`.
 ## Affected operators
 
 | Operator | Expected arity | IsMethod |
-|---|---|---|
+| ---- | ---- | ---- |
 | `lessThan` | 2 | true |
 | `lessThanOrEqual` | 2 | true |
 | `greaterThan` | 2 | true |
