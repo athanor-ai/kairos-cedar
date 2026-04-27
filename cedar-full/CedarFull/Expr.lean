@@ -258,8 +258,24 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
           let t ← genSize env 0 (.entity ety)
           let f ← genSize env 0 (.entity ety)
           pure (.ite c t f))
+  | _ + 1, .set inner =>
+    -- Singleton-set arm: `.set [a]` where `a` is any leaf at `inner`.
+    -- typeOfSet on a one-element list of well-typed exprs always
+    -- returns ok at `.set te.typeOf` (no lub fold needed for a
+    -- singleton). Schema-independent.
+    Gen.pick (genLeaf env (.set inner))
+      (do let a ← genLeaf env inner
+          pure (.set [a]))
+  | _ + 1, .record _rty =>
+    -- Empty-record arm: `.record []` typechecks under any environment
+    -- via `wellTypedAt_recordEmpty`. The output type is
+    -- `.record (Map.mk [])`, which need not equal the requested rty;
+    -- but the expression is well-typed, which is what genSize_sound
+    -- requires.
+    Gen.pick (genLeaf env (.record _rty))
+      (pure (.record []))
   | _ + 1, τ =>
-    -- set / record / ext: Phase B (future work). Fall back to leaf.
+    -- ext: Phase B (future work). Fall back to leaf.
     genLeaf env τ
 
 -- ── genWellTyped ────────────────────────────────────────────────────

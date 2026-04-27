@@ -94,6 +94,37 @@ example :
   simp [genLeaf, Gen.support, varGen, varsOfType, litGen, Gen.pick,
         Gen.ret, pure]
 
+-- ── Stage 3 set/record n-ary coverage ──────────────────────────────
+--
+-- The .set arm at .set inner produces `.set [a]` for some a in the
+-- leaf-of-inner support. The .record arm at any .record _ produces
+-- `.record []` (empty record). Both are reachable at fuel 1.
+
+example :
+    Gen.support
+      (genSize fixedEnv 1 (.set (.bool .anyBool)))
+      (.set [.lit (.bool true)]) := by
+  simp only [genSize, support_pick, support_bind, support_pure]
+  refine Or.inr ⟨.lit (.bool true), ?_, rfl⟩
+  simp [genLeaf, Gen.support, varGen, varsOfType, litGen, Gen.pick,
+        Gen.ret, pure]
+
+example :
+    Gen.support
+      (genSize fixedEnv 1 (.set .int))
+      (.set [.lit (.int 0)]) := by
+  simp only [genSize, support_pick, support_bind, support_pure]
+  refine Or.inr ⟨.lit (.int 0), ?_, rfl⟩
+  simp [genLeaf, Gen.support, varGen, varsOfType, litGen, Gen.pick,
+        Gen.ret, pure]
+
+example :
+    Gen.support
+      (genSize fixedEnv 1 (.record (Cedar.Data.Map.mk [])))
+      (.record []) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
 -- ────────────────────────────────────────────────────────────────────
 -- Layer 2: policy-template structural correctness
 -- ────────────────────────────────────────────────────────────────────

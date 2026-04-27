@@ -39,28 +39,28 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 CEDAR_FULL = REPO / "cedar-full"
 
-# Expected ROOT-level constructor heads at the bool / int targets after
-# Stages 1+2. Verified by inspection of CedarFull/Expr.lean's genSize
-# cases. The `.record` constructor IS exercised (as the inner subexpr
-# of getAttr-of-record-singleton), but never appears at the root —
-# generation at type `.record _` is deferred to Stage 3. Same for
-# `.set` and `.call`. `var` is dropped because the default TypeEnv has
-# no bool/int-typed Cedar.Var (principal/action/resource are entities;
-# context is a record).
-EXPECTED_HEADS_BOOL = {
-    "lit", "and", "or", "ite", "unaryApp", "binaryApp",
-    "hasAttr", "getAttr",
-}
-EXPECTED_HEADS_INT = {
-    "lit", "ite", "unaryApp", "binaryApp", "getAttr",
+# Expected ROOT-level constructor heads, by target. Verified by
+# inspection of CedarFull/Expr.lean's genSize cases. `var` is dropped
+# from bool/int because the default TypeEnv has no bool/int-typed
+# Cedar.Var (principal/action/resource are entities; context is a
+# record).
+EXPECTED_HEADS = {
+    "bool":     {"lit", "and", "or", "ite", "unaryApp", "binaryApp",
+                 "hasAttr", "getAttr"},
+    "int":      {"lit", "ite", "unaryApp", "binaryApp", "getAttr"},
+    "string":   {"lit"},
+    "set-bool": {"lit", "set"},   # Stage 3: .set [bool-leaf] arm
+    "set-int":  {"lit", "set"},   # Stage 3: .set [int-leaf] arm
+    "record":   {"lit", "record"},  # Stage 3: empty .record arm
 }
 
 # Expected SUBEXPRESSION heads — these must appear *somewhere* in the
-# term tree across the sample, even if never at the root. The presence
-# of these establishes the genSize compounds reach into less-common
-# constructors. `.record` is reachable via getAttr-of-record-singleton.
-EXPECTED_SUBHEADS_BOOL = {"record"}
-EXPECTED_SUBHEADS_INT = {"record"}
+# term tree across the sample, even if never at the root. `.record` is
+# reachable via getAttr-of-record-singleton in bool/int branches.
+EXPECTED_SUBHEADS = {
+    "bool":   {"record"},
+    "int":    {"record"},
+}
 
 # Five random-condition policy ids wired into PolicyGen.genPolicy.
 # Source: cedar-full/CedarFull/PolicyGen.lean shapes 43-47.
@@ -158,53 +158,44 @@ def property_p1_empirical_soundness(rows: list[tuple[str, str, str, str]]) -> bo
 
 
 def property_p2_constructor_coverage(rows: list[tuple[str, str, str, str]]) -> bool:
-    """Every expected root-level constructor head appears in the bool / int
-    rows; every expected subexpression head appears somewhere in the
-    sample's term column."""
-    bool_rows = [(h, term) for (t, h, _, term) in rows if t == "bool"]
-    int_rows = [(h, term) for (t, h, _, term) in rows if t == "int"]
-    bool_heads = {h for h, _ in bool_rows}
-    int_heads = {h for h, _ in int_rows}
+    """Every expected root-level constructor head appears in each
+    target's rows; every expected subexpression head appears somewhere
+    in the sample's term column for that target."""
+    by_target: dict[str, list[tuple[str, str]]] = {}
+    for (t, h, _, term) in rows:
+        by_target.setdefault(t, []).append((h, term))
 
-    missing_bool = EXPECTED_HEADS_BOOL - bool_heads
-    missing_int = EXPECTED_HEADS_INT - int_heads
-
-    # Subexpression search: a head h is "subreachable" in target t if
-    # `Expr.h ` (with trailing space, the reprStr token shape) appears
-    # anywhere in any term string for that target. Conservative —
-    # may false-positive on a constructor name embedded in a string
-    # literal, but no Cedar grammar produces "Expr.h" inside a string.
-    def subreached(rows_for_target: list[tuple[str, str]], head: str) -> bool:
+    def subreached(target_rows: list[tuple[str, str]], head: str) -> bool:
         token = f"Expr.{head}"
-        return any(token in term for _, term in rows_for_target)
+        return any(token in term for _, term in target_rows)
 
-    missing_subbool = {h for h in EXPECTED_SUBHEADS_BOOL
-                       if not subreached(bool_rows, h)}
-    missing_subint = {h for h in EXPECTED_SUBHEADS_INT
-                      if not subreached(int_rows, h)}
-
-    failures = []
-    if missing_bool:
-        failures.append(f"P2 FAIL (bool root): missing {sorted(missing_bool)}; "
-                        f"saw {sorted(bool_heads)}")
-    if missing_int:
-        failures.append(f"P2 FAIL (int root): missing {sorted(missing_int)}; "
-                        f"saw {sorted(int_heads)}")
-    if missing_subbool:
-        failures.append(f"P2 FAIL (bool subterm): missing {sorted(missing_subbool)}")
-    if missing_subint:
-        failures.append(f"P2 FAIL (int subterm): missing {sorted(missing_subint)}")
+    failures: list[str] = []
+    for target, expected_heads in EXPECTED_HEADS.items():
+        target_rows = by_target.get(target, [])
+        seen_heads = {h for h, _ in target_rows}
+        missing = expected_heads - seen_heads
+        if missing:
+            failures.append(
+                f"P2 FAIL ({target} root): missing {sorted(missing)}; "
+                f"saw {sorted(seen_heads)}"
+            )
+    for target, expected_subs in EXPECTED_SUBHEADS.items():
+        target_rows = by_target.get(target, [])
+        missing = {h for h in expected_subs if not subreached(target_rows, h)}
+        if missing:
+            failures.append(
+                f"P2 FAIL ({target} subterm): missing {sorted(missing)}"
+            )
 
     if failures:
         for f in failures:
             print(f)
         return False
 
-    bool_count = Counter(h for h, _ in bool_rows)
-    int_count = Counter(h for h, _ in int_rows)
-    print(f"P2 OK: all expected root + subterm heads appear")
-    print(f"  bool head freq: {dict(bool_count.most_common())}")
-    print(f"  int  head freq: {dict(int_count.most_common())}")
+    print(f"P2 OK: all expected root + subterm heads appear across {len(by_target)} targets")
+    for target in sorted(by_target):
+        c = Counter(h for h, _ in by_target[target])
+        print(f"  {target} head freq: {dict(c.most_common())}")
     return True
 
 

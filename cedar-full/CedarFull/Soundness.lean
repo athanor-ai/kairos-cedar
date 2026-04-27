@@ -465,6 +465,37 @@ private theorem genGetAttrOfRecordSingleton_int_sound (env : TypeEnv) (e : Expr)
   exact wellTypedAt_getAttr_recordSingleton_intLit env
 
 -- ────────────────────────────────────────────────────────────────────
+-- Step 3f: singleton-set helper (Stage 3 .set arm)
+--
+-- `.set [a]` typechecks whenever `a` typechecks. The proof is
+-- generic over `a`: typeOfSet on a one-element list never invokes
+-- lub? (foldlM on empty tail returns the head's type unchanged), so
+-- the result type is `.set te.typeOf` regardless of what te is. -/
+-- ────────────────────────────────────────────────────────────────────
+
+private theorem wellTypedAt_set_singleton (env : TypeEnv) (a : Expr)
+    (ha : wellTypedAt env a = true) :
+    wellTypedAt env (.set [a]) = true := by
+  obtain ⟨te, c, hok⟩ : ∃ te c, typeOf a [] env = .ok (te, c) := by
+    simp only [wellTypedAt] at ha
+    cases h : typeOf a [] env with
+    | ok pair => exact ⟨pair.1, pair.2, by rw [← h]⟩
+    | error _ => rw [h] at ha; simp at ha
+  simp [wellTypedAt, Cedar.Validation.typeOf, hok,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, TypedExpr.typeOf]
+
+-- Forward declaration: wellTypedAt_recordEmpty proves
+-- `wellTypedAt env (.record []) = true`. Definition lives in the
+-- §8 widening block below; we declare its statement here so
+-- genSize_sound's `.record` arm can cite it.
+private theorem wellTypedAt_recordEmpty_fwd (env : TypeEnv) :
+    wellTypedAt env (.record []) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf,
+        Cedar.Validation.ok, List.mapM₂, List.attach₂]
+
+-- ────────────────────────────────────────────────────────────────────
 -- Step 4: genSize soundness by induction on fuel.
 -- ────────────────────────────────────────────────────────────────────
 
@@ -592,16 +623,27 @@ theorem genSize_sound :
         have hf'   := genLeaf_sound env (.entity ety) f hf2
         exact wellTypedAt_imp_isWellTyped env (.ite c t f)
           (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
-    -- ── .set (Phase B, future work) ────────────────────────────────────
-    | set ty =>
+    -- ── .set (Stage 3: singleton-set arm) ─────────────────────────────
+    | set inner =>
       simp only [genSize] at hmem
-      exact wellTypedAt_imp_isWellTyped env e
-        (genLeaf_sound env (.set ty) e hmem)
-    -- ── .record (Phase B, future work) ─────────────────────────────────
+      simp only [support_pick, support_bind, support_pure] at hmem
+      rcases hmem with hleaf | hsing
+      · exact wellTypedAt_imp_isWellTyped env e
+          (genLeaf_sound env (.set inner) e hleaf)
+      · obtain ⟨a, ha, rfl⟩ := hsing
+        have ha_wt := genLeaf_sound env inner a ha
+        exact wellTypedAt_imp_isWellTyped env (.set [a])
+          (wellTypedAt_set_singleton env a ha_wt)
+    -- ── .record (Stage 3: empty-record arm) ───────────────────────────
     | record rty =>
       simp only [genSize] at hmem
-      exact wellTypedAt_imp_isWellTyped env e
-        (genLeaf_sound env (.record rty) e hmem)
+      simp only [support_pick, support_pure] at hmem
+      rcases hmem with hleaf | hempty
+      · exact wellTypedAt_imp_isWellTyped env e
+          (genLeaf_sound env (.record rty) e hleaf)
+      · subst hempty
+        exact wellTypedAt_imp_isWellTyped env (.record [])
+          (wellTypedAt_recordEmpty_fwd env)
     -- ── .ext (Phase B, future work) ────────────────────────────────────
     | ext xty =>
       simp only [genSize] at hmem
