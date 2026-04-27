@@ -509,6 +509,12 @@ def main() -> int:
 
     sink = ktrace.default_sink_from_env() if not args.no_session else None
     task_id = f"ath-529-cedar-full-n{args.n}-diff"
+    if args.no_session:
+        # Local-only run: skip the kairos.session wrapper. This matters for
+        # OSS users without a license file and for the bundled demo, which
+        # advertises "no paid APIs".
+        print(f"[diff] no-session mode (local-only) task_id={task_id}")
+        return _run_diff(args, None, None)
     session_cm = kairos.session(
         task_id=task_id,
         trace_sink=sink,
