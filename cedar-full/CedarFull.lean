@@ -3,3 +3,4 @@ import CedarFull.Soundness
 import CedarFull.PolicyGen
 import CedarFull.SchemaGen
 import CedarFull.LeanOracle
+import CedarFull.Test

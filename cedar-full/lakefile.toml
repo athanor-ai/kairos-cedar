@@ -28,3 +28,7 @@ root = "MeasureDiff"
 [[lean_exe]]
 name = "measure-lean"
 root = "MeasureLean"
+
+[[lean_exe]]
+name = "measure-full"
+root = "MeasureFull"

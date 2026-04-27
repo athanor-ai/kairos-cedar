@@ -230,7 +230,7 @@ private def forbidForActionAdmin : Policy :=
   }
 
 /-- Build a policy with a `when {<condExpr>}` clause from a generated bool Expr. -/
-private def policyWithWhenCond (condExpr : Expr) : Policy :=
+def policyWithWhenCond (condExpr : Expr) : Policy :=
   { id             := "permit-with-when-cond"
   , effect         := .permit
   , principalScope := .principalScope .any
@@ -243,7 +243,7 @@ private def policyWithWhenCond (condExpr : Expr) : Policy :=
     in `unless` instead of `when`. Together with the three siblings below
     they form the four-way effect × condition-kind crosscut that runs the
     randomly-generated condExpr through every policy-evaluator branch. -/
-private def policyWithUnlessCond (condExpr : Expr) : Policy :=
+def policyWithUnlessCond (condExpr : Expr) : Policy :=
   { id             := "permit-with-unless-cond"
   , effect         := .permit
   , principalScope := .principalScope .any
@@ -252,7 +252,7 @@ private def policyWithUnlessCond (condExpr : Expr) : Policy :=
   , condition      := [{ kind := .unless, body := condExpr }]
   }
 
-private def forbidPolicyWithWhenCond (condExpr : Expr) : Policy :=
+def forbidPolicyWithWhenCond (condExpr : Expr) : Policy :=
   { id             := "forbid-with-when-cond"
   , effect         := .forbid
   , principalScope := .principalScope .any
@@ -261,7 +261,7 @@ private def forbidPolicyWithWhenCond (condExpr : Expr) : Policy :=
   , condition      := [{ kind := .when, body := condExpr }]
   }
 
-private def forbidPolicyWithUnlessCond (condExpr : Expr) : Policy :=
+def forbidPolicyWithUnlessCond (condExpr : Expr) : Policy :=
   { id             := "forbid-with-unless-cond"
   , effect         := .forbid
   , principalScope := .principalScope .any
@@ -274,7 +274,7 @@ private def forbidPolicyWithUnlessCond (condExpr : Expr) : Policy :=
     User) is the most common Cedar scope shape in production rules, so a
     randomly-conditioned policy under that scope exercises the
     scope-then-condition evaluator path that the `.any` shapes do not. -/
-private def policyWithIsUserAndWhenCond (condExpr : Expr) : Policy :=
+def policyWithIsUserAndWhenCond (condExpr : Expr) : Policy :=
   { id             := "permit-principal-is-user-with-when-cond"
   , effect         := .permit
   , principalScope := .principalScope (.is (mkEty "User"))
