@@ -45,9 +45,12 @@ def main (args : List String) : IO Unit := do
   let n : Nat := (args.head?.getD "10000").toNat!
   let env : TypeEnv := default
   let targets : List (String × CedarType) :=
-    [ ("bool",   .bool .anyBool)
-    , ("int",    .int)
-    , ("string", .string)
+    [ ("bool",       .bool .anyBool)
+    , ("int",        .int)
+    , ("string",     .string)
+    , ("set-bool",   .set (.bool .anyBool))
+    , ("set-int",    .set .int)
+    , ("record",     .record (Cedar.Data.Map.mk []))
     ]
 
   for (tag, τ) in targets do

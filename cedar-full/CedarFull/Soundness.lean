@@ -263,6 +263,93 @@ private theorem wellTypedAt_unaryApp_neg_of_intLit (env : TypeEnv) (a : Expr)
              Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
              Cedar.Validation.typeOfUnaryApp, TypedExpr.typeOf]
 
+/-- Given `a` is a bool literal, `.unaryApp .not a` type-checks as .bool. -/
+private theorem wellTypedAt_unaryApp_not_of_boolLit (env : TypeEnv) (a : Expr)
+    (ha : a = .lit (.bool true) ∨ a = .lit (.bool false)) :
+    wellTypedAt env (.unaryApp .not a) = true := by
+  rcases ha with rfl | rfl <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, Cedar.Validation.typeOfUnaryApp,
+          TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .eq a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_eq_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .eq a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  -- `.eq` in `typeOfBinaryApp` delegates to `typeOfEq`, which short-
+  -- circuits when both args are literals (Typechecker.lean:140):
+  -- equal prims → ok (.bool .tt); unequal → ok (.bool .ff). Both are
+  -- .ok so the outer match returns true regardless of branch. Plain
+  -- `simp` evaluates the (Prim.int 0 == Prim.int 0) equality so the
+  -- `if` collapses to its `.tt` branch.
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.typeOfEq, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are bool literals, `.binaryApp .eq a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_eq_of_boolLits (env : TypeEnv) (a b : Expr)
+    (ha : a = .lit (.bool true) ∨ a = .lit (.bool false))
+    (hb : b = .lit (.bool true) ∨ b = .lit (.bool false)) :
+    wellTypedAt env (.binaryApp .eq a b) = true := by
+  -- typeOfEq matches on (.lit, .lit) and either returns ok (.bool .tt) for
+  -- equal prims or ok (.bool .ff) for unequal prims. Both are .ok.
+  rcases ha with rfl | rfl <;> rcases hb with rfl | rfl <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, Cedar.Validation.typeOfBinaryApp,
+          Cedar.Validation.typeOfEq, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .less a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_less_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .less a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .lessEq a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_lessEq_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .lessEq a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .sub a b` type-checks as int. -/
+private theorem wellTypedAt_binaryApp_sub_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .sub a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .mul a b` type-checks as int. -/
+private theorem wellTypedAt_binaryApp_mul_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .mul a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
 -- ────────────────────────────────────────────────────────────────────
 -- Step 3d: bool-literal helpers for .and and .or
 -- ────────────────────────────────────────────────────────────────────
@@ -287,6 +374,194 @@ private theorem wellTypedAt_or_of_boolLits (env : TypeEnv) (a b : Expr)
           Cedar.Validation.ok, Cedar.Validation.typeOfOr, TypedExpr.typeOf]
 
 -- ────────────────────────────────────────────────────────────────────
+-- Step 3e: hasAttr-on-context and getAttr-on-record-singleton helpers
+--
+-- Two new arms in genSize_sound: hasAttr and getAttr. Both use the
+-- principle that (.var .context) types as `.record env.reqty.context`
+-- (so hasAttr-on-context typechecks for *any* attribute name), and
+-- record literals with a singleton known-required attribute typecheck
+-- and project cleanly via getAttr.
+-- ────────────────────────────────────────────────────────────────────
+
+/-- For any attribute name `a`, `hasAttr (.var .context) a` typechecks.
+    The context var always types as `.record env.reqty.context`, and
+    `typeOfHasAttr`'s `.record rty` branch returns `.ok` for both the
+    present-attr and missing-attr cases (the bool subkind varies; all
+    three results are `.ok`). -/
+private theorem wellTypedAt_hasAttr_context (env : TypeEnv) (a : String) :
+    wellTypedAt env (.hasAttr (.var .context) a) = true := by
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfVar,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfHasAttr, Cedar.Validation.hasAttrInRecord,
+             TypedExpr.typeOf]
+  cases h : env.reqty.context.find? a with
+  | none => simp [h]
+  | some qty =>
+    cases qty <;>
+      simp [h, Cedar.Validation.Qualified.isRequired,
+            Cedar.Validation.Capabilities.singleton]
+
+/-- The genHasAttrContext generator's support is exactly the finite set
+    of `.hasAttr (.var .context) a` for `a` in `hasAttrNames`.  Every
+    output is well-typed by `wellTypedAt_hasAttr_context`. -/
+private theorem genHasAttrContext_sound (env : TypeEnv) (e : Expr)
+    (h : Gen.support genHasAttrContext e) : wellTypedAt env e = true := by
+  simp only [genHasAttrContext, Gen.support, List.mem_map] at h
+  obtain ⟨a, _, rfl⟩ := h
+  exact wellTypedAt_hasAttr_context env a
+
+/-- `.getAttr (.record [("v", .lit (.bool b))]) "v"` typechecks. The
+    record literal types at `[("v", .required (.bool .tt or .ff))]`,
+    and getAttr on a known-required key returns the attr's underlying
+    type, both of which are `.ok` results. -/
+private theorem wellTypedAt_getAttr_recordSingleton_boolLit
+    (env : TypeEnv) (b : Bool) :
+    wellTypedAt env (.getAttr (.record [("v", .lit (.bool b))]) "v") = true := by
+  cases b <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, List.mapM₂, List.attach₂,
+          Cedar.Data.Map.make, Cedar.Data.Map.find?, Cedar.Data.Map.toList,
+          List.canonicalize, List.insertCanonical,
+          Except.map, Cedar.Validation.typeOfGetAttr,
+          Cedar.Validation.getAttrInRecord, Cedar.Validation.TypedExpr.typeOf]
+
+/-- `.getAttr (.record [("v", .lit (.int 0))]) "v"` typechecks. Same
+    pattern as the bool variant; record types at
+    `[("v", .required .int)]`, getAttr returns `.int`. -/
+private theorem wellTypedAt_getAttr_recordSingleton_intLit (env : TypeEnv) :
+    wellTypedAt env (.getAttr (.record [("v", .lit (.int 0))]) "v") = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₂, List.attach₂,
+        Cedar.Data.Map.make, Cedar.Data.Map.find?, Cedar.Data.Map.toList,
+        List.canonicalize, List.insertCanonical,
+        Except.map, Cedar.Validation.typeOfGetAttr,
+        Cedar.Validation.getAttrInRecord, Cedar.Validation.TypedExpr.typeOf]
+
+/-- Composed: any output of
+    `genGetAttrOfRecordSingleton (genLeaf env (.bool .anyBool))` is
+    `.getAttr (.record [("v", boolLit)]) "v"`, which typechecks. -/
+private theorem genGetAttrOfRecordSingleton_bool_sound (env : TypeEnv) (e : Expr)
+    (h : Gen.support
+            (genGetAttrOfRecordSingleton (genLeaf env (.bool .anyBool))) e) :
+    wellTypedAt env e = true := by
+  simp only [genGetAttrOfRecordSingleton, support_bind, support_pure] at h
+  obtain ⟨a, ha, rfl⟩ := h
+  have halit := genLeaf_boolAnyBool_is_lit env a ha
+  rcases halit with rfl | rfl
+  · exact wellTypedAt_getAttr_recordSingleton_boolLit env true
+  · exact wellTypedAt_getAttr_recordSingleton_boolLit env false
+
+/-- Composed: any output of
+    `genGetAttrOfRecordSingleton (genLeaf env .int)` is
+    `.getAttr (.record [("v", intLit)]) "v"`, which typechecks. -/
+private theorem genGetAttrOfRecordSingleton_int_sound (env : TypeEnv) (e : Expr)
+    (h : Gen.support
+            (genGetAttrOfRecordSingleton (genLeaf env .int)) e) :
+    wellTypedAt env e = true := by
+  simp only [genGetAttrOfRecordSingleton, support_bind, support_pure] at h
+  obtain ⟨a, ha, rfl⟩ := h
+  have heqa := genLeaf_int_is_intLit env a ha
+  subst heqa
+  exact wellTypedAt_getAttr_recordSingleton_intLit env
+
+-- ────────────────────────────────────────────────────────────────────
+-- Step 3f: singleton-set helper (Stage 3 .set arm)
+--
+-- `.set [a]` typechecks whenever `a` typechecks. The proof is
+-- generic over `a`: typeOfSet on a one-element list never invokes
+-- lub? (foldlM on empty tail returns the head's type unchanged), so
+-- the result type is `.set te.typeOf` regardless of what te is. -/
+-- ────────────────────────────────────────────────────────────────────
+
+private theorem wellTypedAt_set_singleton (env : TypeEnv) (a : Expr)
+    (ha : wellTypedAt env a = true) :
+    wellTypedAt env (.set [a]) = true := by
+  obtain ⟨te, c, hok⟩ : ∃ te c, typeOf a [] env = .ok (te, c) := by
+    simp only [wellTypedAt] at ha
+    cases h : typeOf a [] env with
+    | ok pair => exact ⟨pair.1, pair.2, by rw [← h]⟩
+    | error _ => rw [h] at ha; simp at ha
+  simp [wellTypedAt, Cedar.Validation.typeOf, hok,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, TypedExpr.typeOf]
+
+-- Forward declaration: wellTypedAt_recordEmpty proves
+-- `wellTypedAt env (.record []) = true`. Definition lives in the
+-- §8 widening block below; we declare its statement here so
+-- genSize_sound's `.record` arm can cite it.
+private theorem wellTypedAt_recordEmpty_fwd (env : TypeEnv) :
+    wellTypedAt env (.record []) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf,
+        Cedar.Validation.ok, List.mapM₂, List.attach₂]
+
+-- ────────────────────────────────────────────────────────────────────
+-- Step 3g: closed-form lemmas for the 7 op-coverage arms (Stage 6).
+--
+-- Each new arm of genSize is a *constant* expression: no genWellTyped
+-- recursion, no gen-leaf branching. Soundness for each is therefore a
+-- direct simp through typeOfUnaryApp / typeOfBinaryApp.
+-- ────────────────────────────────────────────────────────────────────
+
+private theorem wellTypedAt_unaryApp_isEmpty_const (env : TypeEnv) :
+    wellTypedAt env (.unaryApp .isEmpty (.set [.lit (.int 0)])) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfUnaryApp,
+        Cedar.Validation.lub?, TypedExpr.typeOf]
+
+private theorem wellTypedAt_unaryApp_like_const (env : TypeEnv) :
+    wellTypedAt env (.unaryApp (.like [.star]) (.lit (.string ""))) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, Cedar.Validation.typeOfUnaryApp,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_unaryApp_is_principal_const (env : TypeEnv) :
+    wellTypedAt env
+      (.unaryApp (.is { id := "User", path := [] }) (.var .principal)) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfVar,
+        Cedar.Validation.ok, Cedar.Validation.typeOfUnaryApp,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_mem_principal_resource_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .mem (.var .principal) (.var .resource)) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfVar,
+        Cedar.Validation.ok, Cedar.Validation.typeOfBinaryApp,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_contains_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .contains (.set [.lit (.int 0)]) (.lit (.int 0))) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.ifLubThenBool, Cedar.Validation.lub?,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_containsAll_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .containsAll (.set [.lit (.int 0)]) (.set [.lit (.int 0)])) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.ifLubThenBool, Cedar.Validation.lub?,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_containsAny_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .containsAny (.set [.lit (.int 0)]) (.set [.lit (.int 0)])) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.ifLubThenBool, Cedar.Validation.lub?,
+        TypedExpr.typeOf]
+
+-- ────────────────────────────────────────────────────────────────────
 -- Step 4: genSize soundness by induction on fuel.
 -- ────────────────────────────────────────────────────────────────────
 
@@ -306,24 +581,23 @@ theorem genSize_sound :
     | bool bty =>
       simp only [genSize] at hmem
       simp only [support_pick, support_bind, support_pure] at hmem
-      rcases hmem with hleaf | hand | hor | hite
+      rcases hmem with hleaf | hand | hor | hite | hnot | heqInt | heqBool
+                     | hless | hlessEq | hhas | hgetBool
+                     | hisEmpty | hlike | his | hmem | hcontains
+                     | hcontainsAll | hcontainsAny
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env (.bool bty) e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hand
-        -- a, b come from genLeaf env (.bool .anyBool) = bool literals only.
         have halit := genLeaf_boolAnyBool_is_lit env a ha
         have hblit := genLeaf_boolAnyBool_is_lit env b hb
         exact wellTypedAt_imp_isWellTyped env (.and a b)
           (wellTypedAt_and_of_boolLits env a b halit hblit)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hor
-        -- a, b come from genLeaf env (.bool .anyBool) = bool literals only.
         have halit := genLeaf_boolAnyBool_is_lit env a ha
         have hblit := genLeaf_boolAnyBool_is_lit env b hb
         exact wellTypedAt_imp_isWellTyped env (.or a b)
           (wellTypedAt_or_of_boolLits env a b halit hblit)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- c comes from genSize env 0 (.bool .anyBool) = genLeaf env (.bool .anyBool)
-        -- which only produces .lit (.bool true) or .lit (.bool false).
         have hc2 : Gen.support (genLeaf env (.bool .anyBool)) c := hc
         have ht2 : Gen.support (genLeaf env (.bool bty)) t := ht
         have hf2 : Gen.support (genLeaf env (.bool bty)) f := hf
@@ -332,23 +606,77 @@ theorem genSize_sound :
         have hf'   := genLeaf_sound env (.bool bty) f hf2
         exact wellTypedAt_imp_isWellTyped env (.ite c t f)
           (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
+      · -- unaryApp .not
+        obtain ⟨a, ha, rfl⟩ := hnot
+        have halit := genLeaf_boolAnyBool_is_lit env a ha
+        exact wellTypedAt_imp_isWellTyped env (.unaryApp .not a)
+          (wellTypedAt_unaryApp_not_of_boolLit env a halit)
+      · -- binaryApp .eq on int×int
+        obtain ⟨a, ha, b, hb, rfl⟩ := heqInt
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .eq a b)
+          (wellTypedAt_binaryApp_eq_of_intLits env a b ha hb)
+      · -- binaryApp .eq on bool×bool
+        obtain ⟨a, ha, b, hb, rfl⟩ := heqBool
+        have halit := genLeaf_boolAnyBool_is_lit env a ha
+        have hblit := genLeaf_boolAnyBool_is_lit env b hb
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .eq a b)
+          (wellTypedAt_binaryApp_eq_of_boolLits env a b halit hblit)
+      · -- binaryApp .less on int×int
+        obtain ⟨a, ha, b, hb, rfl⟩ := hless
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .less a b)
+          (wellTypedAt_binaryApp_less_of_intLits env a b ha hb)
+      · -- binaryApp .lessEq on int×int
+        obtain ⟨a, ha, b, hb, rfl⟩ := hlessEq
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .lessEq a b)
+          (wellTypedAt_binaryApp_lessEq_of_intLits env a b ha hb)
+      · -- hasAttr (.var .context) <name>
+        exact wellTypedAt_imp_isWellTyped env e
+          (genHasAttrContext_sound env e hhas)
+      · -- getAttr (.record [("v", boolLit)]) "v"
+        exact wellTypedAt_imp_isWellTyped env e
+          (genGetAttrOfRecordSingleton_bool_sound env e hgetBool)
+      · -- unaryApp .isEmpty over singleton-set (constant)
+        subst hisEmpty
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_unaryApp_isEmpty_const env)
+      · -- unaryApp (.like [.star]) over empty-string lit (constant)
+        subst hlike
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_unaryApp_like_const env)
+      · -- unaryApp .is over var principal (constant)
+        subst his
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_unaryApp_is_principal_const env)
+      · -- binaryApp .mem entity×entity (constant)
+        subst hmem
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_mem_principal_resource_const env)
+      · -- binaryApp .contains set×elem (constant)
+        subst hcontains
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_contains_const env)
+      · -- binaryApp .containsAll set×set (constant)
+        subst hcontainsAll
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_containsAll_const env)
+      · -- binaryApp .containsAny set×set (constant)
+        subst hcontainsAny
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_containsAny_const env)
     -- ── .int ───────────────────────────────────────────────────────
     | int =>
       simp only [genSize] at hmem
       simp only [support_pick, support_bind, support_pure] at hmem
-      rcases hmem with hleaf | hadd | hneg | hite
+      rcases hmem with hleaf | hadd | hneg | hite | hsub | hmul | hgetInt
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env .int e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hadd
-        -- a, b come from genLeaf env .int = .lit (.int 0) only.
         exact wellTypedAt_imp_isWellTyped env (.binaryApp .add a b)
           (wellTypedAt_binaryApp_add_of_intLits env a b ha hb)
       · obtain ⟨a, ha, rfl⟩ := hneg
-        -- a comes from genLeaf env .int = .lit (.int 0) only.
         exact wellTypedAt_imp_isWellTyped env (.unaryApp .neg a)
           (wellTypedAt_unaryApp_neg_of_intLit env a ha)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- c comes from genLeaf env (.bool .anyBool) = bool literals only.
         have hc2 : Gen.support (genLeaf env (.bool .anyBool)) c := hc
         have ht2 : Gen.support (genLeaf env .int) t := ht
         have hf2 : Gen.support (genLeaf env .int) f := hf
@@ -357,6 +685,17 @@ theorem genSize_sound :
         have hf'   := genLeaf_sound env .int f hf2
         exact wellTypedAt_imp_isWellTyped env (.ite c t f)
           (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
+      · -- binaryApp .sub
+        obtain ⟨a, ha, b, hb, rfl⟩ := hsub
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .sub a b)
+          (wellTypedAt_binaryApp_sub_of_intLits env a b ha hb)
+      · -- binaryApp .mul
+        obtain ⟨a, ha, b, hb, rfl⟩ := hmul
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .mul a b)
+          (wellTypedAt_binaryApp_mul_of_intLits env a b ha hb)
+      · -- getAttr (.record [("v", intLit)]) "v"
+        exact wellTypedAt_imp_isWellTyped env e
+          (genGetAttrOfRecordSingleton_int_sound env e hgetInt)
     -- ── .string ────────────────────────────────────────────────────
     | string =>
       simp only [genSize] at hmem
@@ -381,16 +720,27 @@ theorem genSize_sound :
         have hf'   := genLeaf_sound env (.entity ety) f hf2
         exact wellTypedAt_imp_isWellTyped env (.ite c t f)
           (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
-    -- ── .set (Phase B, future work) ────────────────────────────────────
-    | set ty =>
+    -- ── .set (Stage 3: singleton-set arm) ─────────────────────────────
+    | set inner =>
       simp only [genSize] at hmem
-      exact wellTypedAt_imp_isWellTyped env e
-        (genLeaf_sound env (.set ty) e hmem)
-    -- ── .record (Phase B, future work) ─────────────────────────────────
+      simp only [support_pick, support_bind, support_pure] at hmem
+      rcases hmem with hleaf | hsing
+      · exact wellTypedAt_imp_isWellTyped env e
+          (genLeaf_sound env (.set inner) e hleaf)
+      · obtain ⟨a, ha, rfl⟩ := hsing
+        have ha_wt := genLeaf_sound env inner a ha
+        exact wellTypedAt_imp_isWellTyped env (.set [a])
+          (wellTypedAt_set_singleton env a ha_wt)
+    -- ── .record (Stage 3: empty-record arm) ───────────────────────────
     | record rty =>
       simp only [genSize] at hmem
-      exact wellTypedAt_imp_isWellTyped env e
-        (genLeaf_sound env (.record rty) e hmem)
+      simp only [support_pick, support_pure] at hmem
+      rcases hmem with hleaf | hempty
+      · exact wellTypedAt_imp_isWellTyped env e
+          (genLeaf_sound env (.record rty) e hleaf)
+      · subst hempty
+        exact wellTypedAt_imp_isWellTyped env (.record [])
+          (wellTypedAt_recordEmpty_fwd env)
     -- ── .ext (Phase B, future work) ────────────────────────────────────
     | ext xty =>
       simp only [genSize] at hmem

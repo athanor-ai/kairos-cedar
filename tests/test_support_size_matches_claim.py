@@ -54,21 +54,28 @@ def _load_manifest() -> list[dict]:
 
 
 def _support_cedar_full_v1_policygen() -> int:
-    """Compute V1 PolicyGen support from the Lean source via static analysis.
+    """Compute PolicyGen support from the Lean source via static analysis.
 
-    We parse PolicyGen.lean directly so the test does not need a working
-    Lean toolchain in CI. The contract: the file must declare three
-    list-literal generators (principals, actions, resources) and a
-    genPolicy chain whose Gen.pick depth determines the policy-shape
-    count. Drift in any of those numbers fails the test.
+    Post-Stage-5 (commit 364e101) PolicyGen has 17 hardcoded edge-case
+    fixtures plus one randomised arm (`genRandomPolicy`). The fixture
+    count is straightforward from the Gen.pick chain; the random arm
+    enumerates an effect × principal-scope × action-scope × resource-
+    scope × condition cross-product whose true support is computed by
+    Lean (verified by phase_l_pbt P3/P4) rather than via static analysis.
+    For this CI gate we count the random arm as one shape — drift in
+    that arm is caught by phase_l_pbt + phase_m_mutation, not here.
+    The closed-form value is 27 request triples × 18 policy shapes = 486.
+
+    Stage-5 also dropped `private` from `principals`, `actions`,
+    `resources` so the Test.lean can reach them; the regex below allows
+    the keyword to be optional.
     """
     src = (REPO_ROOT / "cedar-full" / "CedarFull" / "PolicyGen.lean").read_text()
 
     def count_list_literal(name: str) -> int:
-        # Match `private def NAME : List EntityUID := [ ... ]`. We count
-        # mkUID applications inside the immediate brackets.
+        # Match `[private] def NAME : List EntityUID := [ ... ]`.
         pat = re.compile(
-            r"private\s+def\s+" + re.escape(name)
+            r"(?:private\s+)?def\s+" + re.escape(name)
             + r"\s*:\s*List\s+EntityUID\s*:=\s*\[(.*?)\]",
             re.DOTALL,
         )
@@ -82,18 +89,19 @@ def _support_cedar_full_v1_policygen() -> int:
     n_actions = count_list_literal("actions")
     n_resources = count_list_literal("resources")
 
-    # Count Gen.pick branches in genPolicy. Each `Gen.pick (pure FOO)`
-    # contributes one shape; the trailing branch (without Gen.pick) adds
-    # the 25th shape (the genWellTyped condition).
+    # Find the genPolicy block. Anchor on `genRandomPolicy)` which is
+    # the trailing arm of the post-Stage-5 chain.
     genpolicy_block = re.search(
-        r"def\s+genPolicy.*?pure \(policyWithWhenCond.*?\)\)+",
+        r"def\s+genPolicy.*?genRandomPolicy\)+",
         src, re.DOTALL,
     )
     if not genpolicy_block:
         raise AssertionError("could not locate genPolicy block")
-    n_pick = len(re.findall(r"Gen\.pick\s*\(pure\s+", genpolicy_block.group(0)))
-    # Plus the trailing genWellTyped branch.
-    n_shapes = n_pick + 1
+    n_fixture_picks = len(re.findall(
+        r"Gen\.pick\s*\(pure\s+", genpolicy_block.group(0)))
+    # Plus the trailing genRandomPolicy arm (counted as one shape; the
+    # internal random support is verified separately by phase_l_pbt).
+    n_shapes = n_fixture_picks + 1
 
     return n_principals * n_actions * n_resources * n_shapes
 
