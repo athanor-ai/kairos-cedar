@@ -94,6 +94,46 @@ example :
   simp [genLeaf, Gen.support, varGen, varsOfType, litGen, Gen.pick,
         Gen.ret, pure]
 
+-- ── Stage 6 op-coverage ─────────────────────────────────────────────
+--
+-- Seven new constant arms in genSize bool branch. Each canonical
+-- expression must be reachable at fuel ≥ 1.
+
+example : Gen.support (genSize fixedEnv 1 (.bool .anyBool))
+    (.unaryApp .isEmpty (.set [.lit (.int 0)])) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
+example : Gen.support (genSize fixedEnv 1 (.bool .anyBool))
+    (.unaryApp (.like [.star]) (.lit (.string ""))) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
+example : Gen.support (genSize fixedEnv 1 (.bool .anyBool))
+    (.unaryApp (.is { id := "User", path := [] }) (.var .principal)) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
+example : Gen.support (genSize fixedEnv 1 (.bool .anyBool))
+    (.binaryApp .mem (.var .principal) (.var .resource)) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
+example : Gen.support (genSize fixedEnv 1 (.bool .anyBool))
+    (.binaryApp .contains (.set [.lit (.int 0)]) (.lit (.int 0))) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
+example : Gen.support (genSize fixedEnv 1 (.bool .anyBool))
+    (.binaryApp .containsAll (.set [.lit (.int 0)]) (.set [.lit (.int 0)])) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
+example : Gen.support (genSize fixedEnv 1 (.bool .anyBool))
+    (.binaryApp .containsAny (.set [.lit (.int 0)]) (.set [.lit (.int 0)])) := by
+  simp [genSize, support_pick, support_pure, Gen.support, Gen.pick,
+        Gen.ret, pure]
+
 -- ── Stage 3 set/record n-ary coverage ──────────────────────────────
 --
 -- The .set arm at .set inner produces `.set [a]` for some a in the

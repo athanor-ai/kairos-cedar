@@ -213,10 +213,43 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
       -- typeOfHasAttr's record branch returns ok for both present
       -- and missing attribute cases (varying the bool subkind).
       genHasAttrContext
+    (Gen.pick
       -- getAttr (.record [("v", a)]) "v" with a a bool literal:
       -- record literal types as [("v", .required (.bool _))], and
       -- getAttr on a known-required key returns the attr's type.
-      (genGetAttrOfRecordSingleton (genLeaf env (.bool .anyBool))))))))))))
+      (genGetAttrOfRecordSingleton (genLeaf env (.bool .anyBool)))
+    (Gen.pick
+      -- unaryApp .isEmpty over a singleton-set: typeOfUnaryApp's
+      -- (.isEmpty, .set _) case returns ok (.bool .anyBool).
+      (pure (.unaryApp .isEmpty (.set [.lit (.int 0)])))
+    (Gen.pick
+      -- unaryApp .like over a string lit: typeOfUnaryApp's
+      -- (.like _, .string) case returns ok (.bool .anyBool).
+      (pure (.unaryApp (.like [.star]) (.lit (.string ""))))
+    (Gen.pick
+      -- unaryApp .is over var principal: typeOfUnaryApp's
+      -- (.is ety₁, .entity ety₂) returns ok (.bool ...).
+      (pure (.unaryApp (.is { id := "User", path := [] })
+                       (.var .principal)))
+    (Gen.pick
+      -- binaryApp .mem entity×entity: typeOfBinaryApp's
+      -- (.mem, .entity, .entity) returns ok (.bool _).
+      (pure (.binaryApp .mem (.var .principal) (.var .resource)))
+    (Gen.pick
+      -- binaryApp .contains: (.set τ, _) → bool (lub-compatible);
+      -- here both element type and rhs type are .int.
+      (pure (.binaryApp .contains
+                       (.set [.lit (.int 0)])
+                       (.lit (.int 0))))
+    (Gen.pick
+      -- binaryApp .containsAll: (.set τ, .set τ) → bool .anyBool.
+      (pure (.binaryApp .containsAll
+                       (.set [.lit (.int 0)])
+                       (.set [.lit (.int 0)])))
+      -- binaryApp .containsAny: same shape.
+      (pure (.binaryApp .containsAny
+                       (.set [.lit (.int 0)])
+                       (.set [.lit (.int 0)])))))))))))))))))))
   | _ + 1, .int =>
     Gen.pick (genLeaf env .int)
     (Gen.pick

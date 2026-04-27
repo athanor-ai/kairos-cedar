@@ -496,6 +496,72 @@ private theorem wellTypedAt_recordEmpty_fwd (env : TypeEnv) :
         Cedar.Validation.ok, List.mapM₂, List.attach₂]
 
 -- ────────────────────────────────────────────────────────────────────
+-- Step 3g: closed-form lemmas for the 7 op-coverage arms (Stage 6).
+--
+-- Each new arm of genSize is a *constant* expression: no genWellTyped
+-- recursion, no gen-leaf branching. Soundness for each is therefore a
+-- direct simp through typeOfUnaryApp / typeOfBinaryApp.
+-- ────────────────────────────────────────────────────────────────────
+
+private theorem wellTypedAt_unaryApp_isEmpty_const (env : TypeEnv) :
+    wellTypedAt env (.unaryApp .isEmpty (.set [.lit (.int 0)])) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfUnaryApp,
+        Cedar.Validation.lub?, TypedExpr.typeOf]
+
+private theorem wellTypedAt_unaryApp_like_const (env : TypeEnv) :
+    wellTypedAt env (.unaryApp (.like [.star]) (.lit (.string ""))) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, Cedar.Validation.typeOfUnaryApp,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_unaryApp_is_principal_const (env : TypeEnv) :
+    wellTypedAt env
+      (.unaryApp (.is { id := "User", path := [] }) (.var .principal)) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfVar,
+        Cedar.Validation.ok, Cedar.Validation.typeOfUnaryApp,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_mem_principal_resource_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .mem (.var .principal) (.var .resource)) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfVar,
+        Cedar.Validation.ok, Cedar.Validation.typeOfBinaryApp,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_contains_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .contains (.set [.lit (.int 0)]) (.lit (.int 0))) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.ifLubThenBool, Cedar.Validation.lub?,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_containsAll_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .containsAll (.set [.lit (.int 0)]) (.set [.lit (.int 0)])) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.ifLubThenBool, Cedar.Validation.lub?,
+        TypedExpr.typeOf]
+
+private theorem wellTypedAt_binaryApp_containsAny_const (env : TypeEnv) :
+    wellTypedAt env
+      (.binaryApp .containsAny (.set [.lit (.int 0)]) (.set [.lit (.int 0)])) = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₁, List.attach,
+        Cedar.Validation.justType, Except.map,
+        Cedar.Validation.typeOfSet, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.ifLubThenBool, Cedar.Validation.lub?,
+        TypedExpr.typeOf]
+
+-- ────────────────────────────────────────────────────────────────────
 -- Step 4: genSize soundness by induction on fuel.
 -- ────────────────────────────────────────────────────────────────────
 
@@ -515,7 +581,10 @@ theorem genSize_sound :
     | bool bty =>
       simp only [genSize] at hmem
       simp only [support_pick, support_bind, support_pure] at hmem
-      rcases hmem with hleaf | hand | hor | hite | hnot | heqInt | heqBool | hless | hlessEq | hhas | hgetBool
+      rcases hmem with hleaf | hand | hor | hite | hnot | heqInt | heqBool
+                     | hless | hlessEq | hhas | hgetBool
+                     | hisEmpty | hlike | his | hmem | hcontains
+                     | hcontainsAll | hcontainsAny
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env (.bool bty) e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hand
@@ -566,6 +635,34 @@ theorem genSize_sound :
       · -- getAttr (.record [("v", boolLit)]) "v"
         exact wellTypedAt_imp_isWellTyped env e
           (genGetAttrOfRecordSingleton_bool_sound env e hgetBool)
+      · -- unaryApp .isEmpty over singleton-set (constant)
+        subst hisEmpty
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_unaryApp_isEmpty_const env)
+      · -- unaryApp (.like [.star]) over empty-string lit (constant)
+        subst hlike
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_unaryApp_like_const env)
+      · -- unaryApp .is over var principal (constant)
+        subst his
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_unaryApp_is_principal_const env)
+      · -- binaryApp .mem entity×entity (constant)
+        subst hmem
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_mem_principal_resource_const env)
+      · -- binaryApp .contains set×elem (constant)
+        subst hcontains
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_contains_const env)
+      · -- binaryApp .containsAll set×set (constant)
+        subst hcontainsAll
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_containsAll_const env)
+      · -- binaryApp .containsAny set×set (constant)
+        subst hcontainsAny
+        exact wellTypedAt_imp_isWellTyped env _
+          (wellTypedAt_binaryApp_containsAny_const env)
     -- ── .int ───────────────────────────────────────────────────────
     | int =>
       simp only [genSize] at hmem

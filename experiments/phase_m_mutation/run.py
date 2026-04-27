@@ -74,8 +74,8 @@ MUTATIONS: list[Mutation] = [
     Mutation(
         name="M1_drop_hasAttr_arm",
         file=CEDAR_FULL / "CedarFull/Expr.lean",
-        find='      genHasAttrContext\n      -- getAttr (.record [("v", a)]) "v" with a a bool literal:',
-        replace='      (pure (.lit (.bool false)))\n      -- getAttr (.record [("v", a)]) "v" with a a bool literal:',
+        find='      genHasAttrContext\n    (Gen.pick\n      -- getAttr (.record [("v", a)]) "v" with a a bool literal:',
+        replace='      (pure (.lit (.bool false)))\n    (Gen.pick\n      -- getAttr (.record [("v", a)]) "v" with a a bool literal:',
         expected_failure_in="lake-build",
         rationale="Replace genHasAttrContext arm with a constant bool lit. "
                   "Test.lean's hasAttr-in-genSize obligation must fail.",
@@ -138,6 +138,24 @@ MUTATIONS: list[Mutation] = [
                   "PBT P4 fails: distinct-random-bodies drops to 0 "
                   "(constants don't go through genWellTyped, so they're "
                   "filtered out as <no-condition>-or-constant).",
+    ),
+    Mutation(
+        name="M9_drop_isEmpty_op_arm",
+        file=CEDAR_FULL / "CedarFull/Expr.lean",
+        find='      (pure (.unaryApp .isEmpty (.set [.lit (.int 0)])))\n    (Gen.pick\n      -- unaryApp .like over a string lit',
+        replace='      (pure (.lit (.bool false)))\n    (Gen.pick\n      -- unaryApp .like over a string lit',
+        expected_failure_in="lake-build",
+        rationale="Replace .isEmpty arm with a constant bool. Test.lean's "
+                  "isEmpty membership obligation must fail.",
+    ),
+    Mutation(
+        name="M10_drop_containsAll_op_arm",
+        file=CEDAR_FULL / "CedarFull/Expr.lean",
+        find='      -- binaryApp .containsAll: (.set τ, .set τ) → bool .anyBool.\n      (pure (.binaryApp .containsAll',
+        replace='      -- binaryApp .containsAll: (.set τ, .set τ) → bool .anyBool.\n      (pure (.binaryApp .containsAny',
+        expected_failure_in="lake-build",
+        rationale="Replace .containsAll with .containsAny duplicate. "
+                  "Test.lean's containsAll membership obligation must fail.",
     ),
     Mutation(
         name="M8_unwire_random_policy_arm",
