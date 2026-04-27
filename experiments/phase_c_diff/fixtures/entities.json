@@ -4,7 +4,13 @@
       "type": "User",
       "id": "alice"
     },
-    "attrs": {},
+    "attrs": {
+      "address": {
+        "city": "Seattle",
+        "street": "Main",
+        "zip": "98101"
+      }
+    },
     "parents": []
   },
   {
@@ -12,7 +18,13 @@
       "type": "User",
       "id": "bob"
     },
-    "attrs": {},
+    "attrs": {
+      "address": {
+        "city": "Seattle",
+        "street": "Main",
+        "zip": "98101"
+      }
+    },
     "parents": []
   },
   {
@@ -20,7 +32,13 @@
       "type": "User",
       "id": "carol"
     },
-    "attrs": {},
+    "attrs": {
+      "address": {
+        "city": "Seattle",
+        "street": "Main",
+        "zip": "98101"
+      }
+    },
     "parents": []
   },
   {
@@ -28,7 +46,12 @@
       "type": "Document",
       "id": "doc1"
     },
-    "attrs": {},
+    "attrs": {
+      "owner": {
+        "type": "User",
+        "id": "alice"
+      }
+    },
     "parents": []
   },
   {
@@ -36,7 +59,12 @@
       "type": "Document",
       "id": "doc2"
     },
-    "attrs": {},
+    "attrs": {
+      "owner": {
+        "type": "User",
+        "id": "alice"
+      }
+    },
     "parents": []
   },
   {

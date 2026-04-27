@@ -1,0 +1,9 @@
+// Minimal schema for the never-errors property example.
+entity User { name?: String };
+entity File {
+  owner: User,
+};
+action read appliesTo {
+  principal: [User],
+  resource: [File],
+};

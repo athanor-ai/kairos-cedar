@@ -1,6 +1,9 @@
 
 import json, subprocess, sys, os
 
+sys.path.insert(0, "/work")
+from experiments.lib.cedar_cli import parse_cedar_cli_result
+
 input_path = "/work/experiments/phase_c_diff/_rust_input.jsonl"
 schema_file = sys.argv[1]
 entities_file = sys.argv[2]
@@ -36,11 +39,10 @@ for line in lines:
         "--resource", r_str,
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    txt = (result.stdout + result.stderr).upper()
-    if "ALLOW" in txt:
-        decision = "Allow"
-    elif "DENY" in txt:
-        decision = "Deny"
-    else:
-        decision = "ERROR(" + (result.stdout + result.stderr).strip()[:40] + ")"
+    parsed = parse_cedar_cli_result(result)
+    # V1 policies are generator-validated well-typed, so ParseError /
+    # EvalError shouldn't occur. We collapse to {Allow, Deny} for the
+    # agreement rate; richer per-tuple bucketing lives in the widened
+    # harness (run_widened.py).
+    decision = parsed.decision_outcome
     print(f"{idx}\t{decision}", flush=True)

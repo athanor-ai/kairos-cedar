@@ -1,0 +1,42 @@
+[
+    {
+        "uid": {"type": "Role", "id": "admin"},
+        "attrs": {},
+        "parents": []
+    },
+    {
+        "uid": {"type": "Role", "id": "editor"},
+        "attrs": {},
+        "parents": []
+    },
+    {
+        "uid": {"type": "User", "id": "alice"},
+        "attrs": {},
+        "parents": [{"type": "Role", "id": "admin"}]
+    },
+    {
+        "uid": {"type": "User", "id": "bob"},
+        "attrs": {},
+        "parents": [{"type": "Role", "id": "editor"}]
+    },
+    {
+        "uid": {"type": "User", "id": "carol"},
+        "attrs": {},
+        "parents": []
+    },
+    {
+        "uid": {"type": "Document", "id": "bobs_draft"},
+        "attrs": {
+            "owner": {"__entity": {"type": "User", "id": "bob"}}
+        },
+        "parents": []
+    },
+    {
+        "uid": {"type": "Document", "id": "secret_memo"},
+        "attrs": {
+            "owner": {"__entity": {"type": "User", "id": "alice"}},
+            "tag": "confidential"
+        },
+        "parents": []
+    }
+]
