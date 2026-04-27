@@ -1,0 +1,13 @@
+name = "regoFull"
+defaultTargets = ["RegoFull"]
+
+[[require]]
+name = "RegoBridge"
+path = "../opa-bridge"
+
+[[lean_lib]]
+name = "RegoFull"
+
+[[lean_exe]]
+name = "measure-rego"
+root = "MeasureRego"

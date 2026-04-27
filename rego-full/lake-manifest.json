@@ -1,0 +1,12 @@
+{"version": "1.1.0",
+ "packagesDir": ".lake/packages",
+ "packages":
+ [{"type": "path",
+   "scope": "",
+   "name": "RegoBridge",
+   "manifestFile": "lake-manifest.json",
+   "inherited": false,
+   "dir": "../opa-bridge",
+   "configFile": "lakefile.toml"}],
+ "name": "regoFull",
+ "lakeDir": ".lake"}
