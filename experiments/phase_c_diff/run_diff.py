@@ -29,8 +29,17 @@ import time
 from pathlib import Path
 from typing import Any
 
-import kairos
-import kairos.trace as ktrace
+try:
+    import kairos
+    import kairos.trace as ktrace
+    _KAIROS_AVAILABLE = True
+except ImportError:
+    # OSS users without athanor-sdk installed can run this in --no-session
+    # mode; kairos.session and kairos.trace are only reached when
+    # --no-session is false. Stub the imports so the module loads.
+    kairos = None  # type: ignore
+    ktrace = None  # type: ignore
+    _KAIROS_AVAILABLE = False
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -507,14 +516,16 @@ def main() -> int:
                         help="Skip kairos.session wrapping (local-only, no Tahoe trace)")
     args = parser.parse_args()
 
-    sink = ktrace.default_sink_from_env() if not args.no_session else None
     task_id = f"ath-529-cedar-full-n{args.n}-diff"
-    if args.no_session:
+    if args.no_session or not _KAIROS_AVAILABLE:
         # Local-only run: skip the kairos.session wrapper. This matters for
         # OSS users without a license file and for the bundled demo, which
-        # advertises "no paid APIs".
-        print(f"[diff] no-session mode (local-only) task_id={task_id}")
+        # advertises "no paid APIs". Also taken when athanor-sdk is not
+        # installed at all.
+        reason = "no-session" if args.no_session else "athanor-sdk-not-installed"
+        print(f"[diff] local-only mode ({reason}) task_id={task_id}")
         return _run_diff(args, None, None)
+    sink = ktrace.default_sink_from_env()
     session_cm = kairos.session(
         task_id=task_id,
         trace_sink=sink,

@@ -8,9 +8,10 @@ Sample N policy / schema / request tuples from the type-directed Lean generator 
 
 ## Run
 
-Inside the kairos-cedar dev container:
+From the **host** (not inside the dev container — this driver script orchestrates docker run calls under the hood, so it needs docker on PATH):
 
 ```bash
+docker pull ghcr.io/athanor-ai/kairos-cedar:latest
 cd examples/04-type-directed-diff-test
 ./run.sh
 ```

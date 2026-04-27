@@ -6,8 +6,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../../experiments/byte_fuzz_baseline"
 
-echo "Building byte_fuzz_baseline (release) ..."
-cargo build --release
+echo "Building byte_fuzz_baseline (release, nightly) ..."
+# cedar-policy 4.10's transitive deps require Rust nightly (edition2024).
+# The container has the nightly toolchain installed at $RUST_NIGHTLY.
+cargo +"${RUST_NIGHTLY:-nightly}" build --release
 
 echo
 echo "Running bytes mode, n=1000, seed=42 ..."

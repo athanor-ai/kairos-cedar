@@ -24,6 +24,8 @@ cd examples/02-symcc-never-errors
 ./run.sh
 ```
 
+> **Note**: this example requires the `cedar-policy-cli` binary in the container to be built with `--features analyze`. The Containerfile (`containers/Containerfile`) already builds it that way; the published `ghcr.io/athanor-ai/kairos-cedar:latest` image needs a rebuild after PR #26 (the analyze flag) for `cedar symcc` to be reachable. Until the image refresh ships, this example will print "Cannot run `symcc`: this Cedar CLI was built without the 'analyze' feature enabled" and exit non-zero. See `docs/symcc-walkthrough.md` for the same workflow plus a build-from-source path.
+
 Expected output:
 
 ```
