@@ -374,6 +374,97 @@ private theorem wellTypedAt_or_of_boolLits (env : TypeEnv) (a b : Expr)
           Cedar.Validation.ok, Cedar.Validation.typeOfOr, TypedExpr.typeOf]
 
 -- ────────────────────────────────────────────────────────────────────
+-- Step 3e: hasAttr-on-context and getAttr-on-record-singleton helpers
+--
+-- Two new arms in genSize_sound: hasAttr and getAttr. Both use the
+-- principle that (.var .context) types as `.record env.reqty.context`
+-- (so hasAttr-on-context typechecks for *any* attribute name), and
+-- record literals with a singleton known-required attribute typecheck
+-- and project cleanly via getAttr.
+-- ────────────────────────────────────────────────────────────────────
+
+/-- For any attribute name `a`, `hasAttr (.var .context) a` typechecks.
+    The context var always types as `.record env.reqty.context`, and
+    `typeOfHasAttr`'s `.record rty` branch returns `.ok` for both the
+    present-attr and missing-attr cases (the bool subkind varies; all
+    three results are `.ok`). -/
+private theorem wellTypedAt_hasAttr_context (env : TypeEnv) (a : String) :
+    wellTypedAt env (.hasAttr (.var .context) a) = true := by
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfVar,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfHasAttr, Cedar.Validation.hasAttrInRecord,
+             TypedExpr.typeOf]
+  cases h : env.reqty.context.find? a with
+  | none => simp [h]
+  | some qty =>
+    cases qty <;>
+      simp [h, Cedar.Validation.Qualified.isRequired,
+            Cedar.Validation.Capabilities.singleton]
+
+/-- The genHasAttrContext generator's support is exactly the finite set
+    of `.hasAttr (.var .context) a` for `a` in `hasAttrNames`.  Every
+    output is well-typed by `wellTypedAt_hasAttr_context`. -/
+private theorem genHasAttrContext_sound (env : TypeEnv) (e : Expr)
+    (h : Gen.support genHasAttrContext e) : wellTypedAt env e = true := by
+  simp only [genHasAttrContext, Gen.support, List.mem_map] at h
+  obtain ⟨a, _, rfl⟩ := h
+  exact wellTypedAt_hasAttr_context env a
+
+/-- `.getAttr (.record [("v", .lit (.bool b))]) "v"` typechecks. The
+    record literal types at `[("v", .required (.bool .tt or .ff))]`,
+    and getAttr on a known-required key returns the attr's underlying
+    type, both of which are `.ok` results. -/
+private theorem wellTypedAt_getAttr_recordSingleton_boolLit
+    (env : TypeEnv) (b : Bool) :
+    wellTypedAt env (.getAttr (.record [("v", .lit (.bool b))]) "v") = true := by
+  cases b <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, List.mapM₂, List.attach₂,
+          Cedar.Data.Map.make, Cedar.Data.Map.find?, Cedar.Data.Map.toList,
+          List.canonicalize, List.insertCanonical,
+          Except.map, Cedar.Validation.typeOfGetAttr,
+          Cedar.Validation.getAttrInRecord, Cedar.Validation.TypedExpr.typeOf]
+
+/-- `.getAttr (.record [("v", .lit (.int 0))]) "v"` typechecks. Same
+    pattern as the bool variant; record types at
+    `[("v", .required .int)]`, getAttr returns `.int`. -/
+private theorem wellTypedAt_getAttr_recordSingleton_intLit (env : TypeEnv) :
+    wellTypedAt env (.getAttr (.record [("v", .lit (.int 0))]) "v") = true := by
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, List.mapM₂, List.attach₂,
+        Cedar.Data.Map.make, Cedar.Data.Map.find?, Cedar.Data.Map.toList,
+        List.canonicalize, List.insertCanonical,
+        Except.map, Cedar.Validation.typeOfGetAttr,
+        Cedar.Validation.getAttrInRecord, Cedar.Validation.TypedExpr.typeOf]
+
+/-- Composed: any output of
+    `genGetAttrOfRecordSingleton (genLeaf env (.bool .anyBool))` is
+    `.getAttr (.record [("v", boolLit)]) "v"`, which typechecks. -/
+private theorem genGetAttrOfRecordSingleton_bool_sound (env : TypeEnv) (e : Expr)
+    (h : Gen.support
+            (genGetAttrOfRecordSingleton (genLeaf env (.bool .anyBool))) e) :
+    wellTypedAt env e = true := by
+  simp only [genGetAttrOfRecordSingleton, support_bind, support_pure] at h
+  obtain ⟨a, ha, rfl⟩ := h
+  have halit := genLeaf_boolAnyBool_is_lit env a ha
+  rcases halit with rfl | rfl
+  · exact wellTypedAt_getAttr_recordSingleton_boolLit env true
+  · exact wellTypedAt_getAttr_recordSingleton_boolLit env false
+
+/-- Composed: any output of
+    `genGetAttrOfRecordSingleton (genLeaf env .int)` is
+    `.getAttr (.record [("v", intLit)]) "v"`, which typechecks. -/
+private theorem genGetAttrOfRecordSingleton_int_sound (env : TypeEnv) (e : Expr)
+    (h : Gen.support
+            (genGetAttrOfRecordSingleton (genLeaf env .int)) e) :
+    wellTypedAt env e = true := by
+  simp only [genGetAttrOfRecordSingleton, support_bind, support_pure] at h
+  obtain ⟨a, ha, rfl⟩ := h
+  have heqa := genLeaf_int_is_intLit env a ha
+  subst heqa
+  exact wellTypedAt_getAttr_recordSingleton_intLit env
+
+-- ────────────────────────────────────────────────────────────────────
 -- Step 4: genSize soundness by induction on fuel.
 -- ────────────────────────────────────────────────────────────────────
 
@@ -393,7 +484,7 @@ theorem genSize_sound :
     | bool bty =>
       simp only [genSize] at hmem
       simp only [support_pick, support_bind, support_pure] at hmem
-      rcases hmem with hleaf | hand | hor | hite | hnot | heqInt | heqBool | hless | hlessEq
+      rcases hmem with hleaf | hand | hor | hite | hnot | heqInt | heqBool | hless | hlessEq | hhas | hgetBool
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env (.bool bty) e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hand
@@ -438,11 +529,17 @@ theorem genSize_sound :
         obtain ⟨a, ha, b, hb, rfl⟩ := hlessEq
         exact wellTypedAt_imp_isWellTyped env (.binaryApp .lessEq a b)
           (wellTypedAt_binaryApp_lessEq_of_intLits env a b ha hb)
+      · -- hasAttr (.var .context) <name>
+        exact wellTypedAt_imp_isWellTyped env e
+          (genHasAttrContext_sound env e hhas)
+      · -- getAttr (.record [("v", boolLit)]) "v"
+        exact wellTypedAt_imp_isWellTyped env e
+          (genGetAttrOfRecordSingleton_bool_sound env e hgetBool)
     -- ── .int ───────────────────────────────────────────────────────
     | int =>
       simp only [genSize] at hmem
       simp only [support_pick, support_bind, support_pure] at hmem
-      rcases hmem with hleaf | hadd | hneg | hite | hsub | hmul
+      rcases hmem with hleaf | hadd | hneg | hite | hsub | hmul | hgetInt
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env .int e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hadd
@@ -468,6 +565,9 @@ theorem genSize_sound :
         obtain ⟨a, ha, b, hb, rfl⟩ := hmul
         exact wellTypedAt_imp_isWellTyped env (.binaryApp .mul a b)
           (wellTypedAt_binaryApp_mul_of_intLits env a b ha hb)
+      · -- getAttr (.record [("v", intLit)]) "v"
+        exact wellTypedAt_imp_isWellTyped env e
+          (genGetAttrOfRecordSingleton_int_sound env e hgetInt)
     -- ── .string ────────────────────────────────────────────────────
     | string =>
       simp only [genSize] at hmem

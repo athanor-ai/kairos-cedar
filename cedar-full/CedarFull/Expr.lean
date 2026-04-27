@@ -131,6 +131,36 @@ def varGen (vars : List Var) : Gen Expr :=
 def genLeaf (env : TypeEnv) (τ : CedarType) : Gen Expr :=
   Gen.pick (varGen (varsOfType env τ)) (litGen τ)
 
+-- ── hasAttr support ─────────────────────────────────────────────────
+-- A small fixed list of candidate attribute names used by the
+-- `hasAttr (.var .context) <name>` arm of genSize.  For any name `a`,
+-- `hasAttr (.var .context) a` typechecks to a bool: the context var
+-- always types as `.record env.reqty.context`, and typeOfHasAttr's
+-- `.record` branch returns `.ok` for both the present-attr and
+-- missing-attr cases (returning `.bool .tt`, `.bool .anyBool`, or
+-- `.bool .ff` depending on the attribute's required/optional/missing
+-- status; all three are ok-results so wellTypedAt is true).
+def hasAttrNames : List String :=
+  ["approved", "tags", "name", "level", "id"]
+
+/-- Generator for `hasAttr (.var .context) <name>` over a fixed set of
+    attribute names.  Output type is always bool (subkind varies with
+    the schema's actual context shape). -/
+def genHasAttrContext : Gen Expr :=
+  ⟨hasAttrNames.map (fun a => Expr.hasAttr (.var .context) a)⟩
+
+-- ── getAttr-via-record-singleton support ────────────────────────────
+-- For each requested type τ, generate
+--   .getAttr (.record [("v", e)]) "v"
+-- where e is a leaf at type τ.  This pattern exercises both the
+-- `.getAttr` and `.record` constructors in a schema-independent way:
+-- the record literal types as `[("v", .required <τ>)]`, and getAttr
+-- on a known-required key returns `.required τ`'s underlying type.
+-- The output type matches τ for τ ∈ {.bool .anyBool, .int}.
+def genGetAttrOfRecordSingleton (inner : Gen Expr) : Gen Expr :=
+  do let a ← inner
+     pure (.getAttr (.record [("v", a)]) "v")
+
 -- ── genSize ─────────────────────────────────────────────────────────
 
 def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
@@ -173,10 +203,20 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
       (do let a ← genSize env 0 .int
           let b ← genSize env 0 .int
           pure (.binaryApp .less a b))
+    (Gen.pick
       -- binaryApp .lessEq : int × int → bool
       (do let a ← genSize env 0 .int
           let b ← genSize env 0 .int
-          pure (.binaryApp .lessEq a b)))))))))
+          pure (.binaryApp .lessEq a b))
+    (Gen.pick
+      -- hasAttr (.var .context) <name>: context types as record,
+      -- typeOfHasAttr's record branch returns ok for both present
+      -- and missing attribute cases (varying the bool subkind).
+      genHasAttrContext
+      -- getAttr (.record [("v", a)]) "v" with a a bool literal:
+      -- record literal types as [("v", .required (.bool _))], and
+      -- getAttr on a known-required key returns the attr's type.
+      (genGetAttrOfRecordSingleton (genLeaf env (.bool .anyBool))))))))))))
   | _ + 1, .int =>
     Gen.pick (genLeaf env .int)
     (Gen.pick
@@ -199,10 +239,15 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
       (do let a ← genSize env 0 .int
           let b ← genSize env 0 .int
           pure (.binaryApp .sub a b))
+    (Gen.pick
       -- binaryApp .mul : int × int → int
       (do let a ← genSize env 0 .int
           let b ← genSize env 0 .int
-          pure (.binaryApp .mul a b))))))
+          pure (.binaryApp .mul a b))
+      -- getAttr (.record [("v", a)]) "v" with a an int literal:
+      -- record literal types at [("v", .required .int)], and
+      -- getAttr on a known-required key returns .int.
+      (genGetAttrOfRecordSingleton (genLeaf env .int)))))))
   | _ + 1, .string =>
     -- No compound string forms for V1; leaf only.
     genLeaf env .string
