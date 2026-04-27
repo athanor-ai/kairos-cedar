@@ -1,0 +1,26 @@
+{
+  "opa_version": "Version: 1.15.2",
+  "total": 84,
+  "agreed": 82,
+  "disagreed": 2,
+  "bugs": [
+    {
+      "shape": "not-active-and-role-viewer",
+      "input": "EXTENDED:active-missing",
+      "spec_result": "undefined",
+      "opa_result": "true",
+      "classification": "BUG: spec says UNDEFINED, OPA says ALLOW",
+      "policy_rego": "package kairos\n\nallow if {\n    not (input.active == true)\n    input.role == \"viewer\"\n}\n",
+      "input_json": "{\"role\": \"viewer\"}"
+    },
+    {
+      "shape": "groups-contains-ops",
+      "input": "EXTENDED:groups-as-object",
+      "spec_result": "undefined",
+      "opa_result": "true",
+      "classification": "BUG: spec says UNDEFINED, OPA says ALLOW",
+      "policy_rego": "package kairos\n\nallow if {\n    input.groups[_] == \"ops\"\n}\n",
+      "input_json": "{\"groups\": {\"team1\": \"ops\", \"team2\": \"dev\"}}"
+    }
+  ]
+}

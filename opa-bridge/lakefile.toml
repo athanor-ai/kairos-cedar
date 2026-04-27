@@ -1,0 +1,8 @@
+name = "regoBridge"
+defaultTargets = ["RegoBridge"]
+
+# Stand-alone Lake project: no Cedar dependency.
+# Mirrors the structure of cedar-spec-bridge/ but for OPA/Rego.
+
+[[lean_lib]]
+name = "RegoBridge"
