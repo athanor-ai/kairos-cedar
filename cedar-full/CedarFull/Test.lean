@@ -185,4 +185,57 @@ example : ∀ e, ((forbidPolicyWithUnlessCond e).condition.head?.map (·.body)) 
 example : ∀ e, ((policyWithIsUserAndWhenCond e).condition.head?.map (·.body)) = some e := by
   intro e; rfl
 
+-- ────────────────────────────────────────────────────────────────────
+-- Layer 2 (cont.): Stage 5 random scope generators
+--
+-- After the load-bearing scope-randomization commit, genPolicy's bulk
+-- flows through `genRandomPolicy`, which itself depends on the four
+-- scope generators. Each generator must produce all 5 Cedar Scope
+-- variants (.any / .eq / .mem / .is / .isMem); ActionScope must
+-- additionally produce .actionInAny. A regression that drops a
+-- variant from genScope shrinks the support and fails P4 in PBT;
+-- the structural Lean tests below pin the same invariant at build
+-- time as a faster feedback loop.
+-- ────────────────────────────────────────────────────────────────────
+
+private def hasScopeKind (g : Gen Scope) (k : String) : Bool :=
+  g.val.any (fun s => match s with
+    | .any        => k = "any"
+    | .eq _       => k = "eq"
+    | .mem _      => k = "mem"
+    | .is _       => k = "is"
+    | .isMem _ _  => k = "isMem")
+
+example : hasScopeKind (genScope principals principalTypes) "any" = true := by
+  simp [hasScopeKind, genScope, Gen.pick, Gen.bind', Gen.ret, principals,
+        principalTypes, genAny, mkUID, mkEty, pure, bind]
+
+example : hasScopeKind (genScope principals principalTypes) "eq" = true := by
+  simp [hasScopeKind, genScope, Gen.pick, Gen.bind', Gen.ret, principals,
+        principalTypes, genAny, mkUID, mkEty, pure, bind]
+
+example : hasScopeKind (genScope principals principalTypes) "mem" = true := by
+  simp [hasScopeKind, genScope, Gen.pick, Gen.bind', Gen.ret, principals,
+        principalTypes, genAny, mkUID, mkEty, pure, bind]
+
+example : hasScopeKind (genScope principals principalTypes) "is" = true := by
+  simp [hasScopeKind, genScope, Gen.pick, Gen.bind', Gen.ret, principals,
+        principalTypes, genAny, mkUID, mkEty, pure, bind]
+
+example : hasScopeKind (genScope principals principalTypes) "isMem" = true := by
+  simp [hasScopeKind, genScope, Gen.pick, Gen.bind', Gen.ret, principals,
+        principalTypes, genAny, mkUID, mkEty, pure, bind]
+
+/-- ActionScope's actionInAny variant must be reachable. -/
+example :
+    (genActionScope.val).any
+      (fun a => match a with | .actionInAny _ => true | _ => false) = true := by
+  simp [genActionScope, Gen.pick, Gen.bind', Gen.ret, actions, actionTypes,
+        genAny, mkUID, mkEty, pure, bind]
+
+/-- Empty / when / unless conditions all reachable. -/
+example : ([] : Conditions) ∈ genRandomConditions.val := by
+  simp [genRandomConditions, Gen.support, Gen.pick, Gen.ret, Gen.bind',
+        pure, bind]
+
 end CedarFull.Test

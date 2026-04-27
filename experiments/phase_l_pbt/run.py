@@ -62,15 +62,43 @@ EXPECTED_SUBHEADS = {
     "int":    {"record"},
 }
 
-# Five random-condition policy ids wired into PolicyGen.genPolicy.
-# Source: cedar-full/CedarFull/PolicyGen.lean shapes 43-47.
-RANDOM_CONDITION_POLICY_IDS = {
-    "permit-with-when-cond",
-    "permit-with-unless-cond",
-    "forbid-with-when-cond",
-    "forbid-with-unless-cond",
-    "permit-principal-is-user-with-when-cond",
+# Edge-case policy ids that must remain reachable in the support.
+# These are the 17 policies kept post-Stage 5 because each isolates a
+# specific bug class (extension parser drift, record/set edges,
+# negation, int-arith, nested attribute) that the random arm does not
+# reliably reproduce. Source: cedar-full/CedarFull/PolicyGen.lean
+# genPolicy edge-case fixtures.
+EDGE_CASE_POLICY_IDS = {
+    "permit-when-decimal-eq-self",
+    "permit-when-ip-eq-self",
+    "permit-when-principal-in-set",
+    "permit-when-empty-record-has",
+    "permit-when-singleton-record-has",
+    "permit-when-principal-has-address",
+    "permit-when-nested-attr-eq",
+    "permit-when-set-containsAll-self",
+    "permit-when-set-contains-principal",
+    "permit-when-singleton-contains-principal",
+    "permit-when-singleton-in-principal",
+    "permit-when-decimal-cross-precision-eq",
+    "permit-when-ipv6-eq-self",
+    "permit-when-principal-in-empty-set",
+    "permit-when-two-key-record-has",
+    "permit-when-not-principal-eq-alice",
+    "permit-when-int-arith-eq-two",
 }
+
+# Stage 5 random-policy generator emits id "random" for every output.
+RANDOM_POLICY_ID = "random"
+
+# Expected scope kinds for the random arm. A regression that drops a
+# scope variant from genScope would leave one of these missing.
+EXPECTED_SCOPE_KINDS_PRINCIPAL = {"any", "eq", "mem", "is", "isMem"}
+EXPECTED_SCOPE_KINDS_RESOURCE = {"any", "eq", "mem", "is", "isMem"}
+EXPECTED_SCOPE_KINDS_ACTION = {
+    "any", "eq", "mem", "is", "isMem", "actionInAny"
+}
+EXPECTED_CONDITION_KINDS = {"empty", "when", "unless"}
 
 
 def run_measure(n: int) -> list[tuple[str, str, str, str]]:
@@ -95,26 +123,50 @@ def run_measure(n: int) -> list[tuple[str, str, str, str]]:
     return rows
 
 
-def run_genpolicy_sample(n: int) -> list[tuple[str, str]]:
-    """Sample policies from genPolicy and return [(id, body_repr), ...].
+def run_genpolicy_sample(n: int) -> list[tuple[str, str, str, str, str, str]]:
+    """Sample policies from genPolicy and return per-policy
+    (id, principal_scope_kind, action_scope_kind, resource_scope_kind,
+     condition_kind, body_repr).
 
     measure-full doesn't sample policies. We use a one-shot lake script
-    that prints policy id + condition-body repr from genPolicy.val
-    (deterministic enumeration). The body_repr lets P4 measure
-    random-condition body diversity per shape.
+    that prints tab-separated rows from genPolicy.val (deterministic
+    enumeration). The scope kinds let P4 measure scope-shape diversity
+    for the random arm; body_repr lets P4 measure random-condition
+    body diversity.
     """
     script = """
 import CedarFull
 open CedarFull
 open CedarFull.PolicyGen
-def bodyRepr (p : Cedar.Spec.Policy) : String :=
-  match p.condition.head? with
-  | some c => (reprStr c.body).replace "\\n" " "
-  | none   => "<no-condition>"
+def scopeKind : Cedar.Spec.Scope → String
+  | .any        => "any"
+  | .eq _       => "eq"
+  | .mem _      => "mem"
+  | .is _       => "is"
+  | .isMem _ _  => "isMem"
+def actionScopeKind : Cedar.Spec.ActionScope → String
+  | .actionScope s    => scopeKind s
+  | .actionInAny _    => "actionInAny"
+def conditionKind (cs : Cedar.Spec.Conditions) : String :=
+  match cs with
+  | []      => "empty"
+  | c :: _  =>
+    match c.kind with
+    | .when   => "when"
+    | .unless => "unless"
+def bodyRepr (cs : Cedar.Spec.Conditions) : String :=
+  match cs with
+  | []      => "<no-condition>"
+  | c :: _  => (reprStr c.body).replace "\\n" " "
 def main : IO Unit := do
   let pols := (genPolicy fixedSchema).val
   for p in pols do
-    IO.println s!"{p.id}\\t{bodyRepr p}"
+    let pK := scopeKind p.principalScope.scope
+    let aK := actionScopeKind p.actionScope
+    let rK := scopeKind p.resourceScope.scope
+    let cK := conditionKind p.condition
+    let bR := bodyRepr p.condition
+    IO.println s!"{p.id}\\t{pK}\\t{aK}\\t{rK}\\t{cK}\\t{bR}"
 """
     script_path = CEDAR_FULL / ".pbt_genpolicy_ids.lean"
     script_path.write_text(script)
@@ -130,15 +182,14 @@ def main : IO Unit := do
             print("genpolicy sample exited non-zero:", proc.returncode, file=sys.stderr)
             print(proc.stderr, file=sys.stderr)
             sys.exit(2)
-        rows: list[tuple[str, str]] = []
+        rows: list[tuple[str, str, str, str, str, str]] = []
         for line in proc.stdout.splitlines():
             if not line.strip():
                 continue
-            parts = line.split("\t", 1)
-            if len(parts) == 2:
-                rows.append((parts[0], parts[1]))
-            else:
-                rows.append((parts[0], ""))
+            parts = line.split("\t")
+            while len(parts) < 6:
+                parts.append("")
+            rows.append((parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]))
         return rows
     finally:
         if script_path.exists():
@@ -199,61 +250,87 @@ def property_p2_constructor_coverage(rows: list[tuple[str, str, str, str]]) -> b
     return True
 
 
-def property_p3_policy_coverage(rows: list[tuple[str, str]]) -> bool:
-    """Every random-condition policy id must appear in the sample."""
-    ids = [pid for pid, _ in rows]
+def property_p3_policy_coverage(
+        rows: list[tuple[str, str, str, str, str, str]]) -> bool:
+    """Every edge-case policy id must appear in the support, AND the
+    random-policy id must appear with substantial cardinality (the
+    random arm is the new bulk source). Catches a regression that
+    drops an edge-case fixture or unwires genRandomPolicy."""
+    ids = [r[0] for r in rows]
     seen = set(ids)
-    missing = RANDOM_CONDITION_POLICY_IDS - seen
+    missing = EDGE_CASE_POLICY_IDS - seen
     if missing:
-        print(f"P3 FAIL: missing random-condition policy ids: {sorted(missing)}")
-        print(f"   ids seen: {sorted(seen)}")
+        print(f"P3 FAIL: missing edge-case policy ids: {sorted(missing)}")
         return False
-    rc_count = Counter(p for p in ids if p in RANDOM_CONDITION_POLICY_IDS)
-    print(f"P3 OK: all 5 random-condition policy ids appear")
-    print(f"  random-condition freq: {dict(rc_count.most_common())}")
+    if RANDOM_POLICY_ID not in seen:
+        print(f"P3 FAIL: random-policy id '{RANDOM_POLICY_ID}' not in support")
+        return False
+    random_count = sum(1 for pid in ids if pid == RANDOM_POLICY_ID)
+    if random_count < 100:
+        print(f"P3 FAIL: random-policy count {random_count} < 100; "
+              "random arm appears unwired or collapsed")
+        return False
+    print(f"P3 OK: all {len(EDGE_CASE_POLICY_IDS)} edge-case ids present "
+          f"and random-policy count = {random_count}")
     print(f"  total policy ids in support: {len(ids)} ({len(seen)} distinct)")
     return True
 
 
-# Lower bound on distinct condition bodies expected for each
-# random-condition policy shape. genWellTyped at fuel 3 produces
-# ≥ a few hundred distinct exprs at .bool .anyBool, so each shape
-# wired through `do let condExpr ← genWellTyped …` should pull at
-# least this many distinct bodies. A constant-condition mutation
-# (M5 in phase_m_mutation) collapses this to 1, failing P4.
-P4_MIN_DISTINCT_BODIES_PER_SHAPE = 10
+# Lower bound on distinct random-arm scope shapes per role and on
+# distinct condition bodies. genScope produces 5+ shape variants per
+# role × 3 candidate UIDs/types, which yields ≥ 5 distinct kinds.
+# genWellTyped at fuel 3 produces ≥ a few dozen distinct bodies.
+P4_MIN_DISTINCT_BODIES = 10
 
 
-def property_p4_random_cond_body_diversity(
-        rows: list[tuple[str, str]]) -> bool:
-    """Each random-condition policy shape must produce more than
-    P4_MIN_DISTINCT_BODIES_PER_SHAPE distinct condition bodies.
-    A regression that replaces `do let condExpr ← genWellTyped …`
-    with a constant or a single literal collapses the body set
-    and trips this check."""
-    bodies_by_id: dict[str, set[str]] = {}
-    for pid, body in rows:
-        if pid not in RANDOM_CONDITION_POLICY_IDS:
-            continue
-        bodies_by_id.setdefault(pid, set()).add(body)
+def property_p4_random_diversity(
+        rows: list[tuple[str, str, str, str, str, str]]) -> bool:
+    """Random-arm policies (id == 'random') must exhibit:
+       (a) every scope kind in EXPECTED_SCOPE_KINDS_* per role
+       (b) every condition kind in EXPECTED_CONDITION_KINDS
+       (c) ≥ P4_MIN_DISTINCT_BODIES distinct when/unless bodies
+    Catches: scope-arm drop (a), condition-arm drop (b),
+             constant-condition (M5-class) regression (c). """
+    random_rows = [r for r in rows if r[0] == RANDOM_POLICY_ID]
+    if not random_rows:
+        print("P4 FAIL: no random-arm rows to inspect")
+        return False
+
+    p_kinds = {r[1] for r in random_rows}
+    a_kinds = {r[2] for r in random_rows}
+    r_kinds = {r[3] for r in random_rows}
+    c_kinds = {r[4] for r in random_rows}
+    bodies = {r[5] for r in random_rows
+              if r[4] in {"when", "unless"} and r[5] != "<no-condition>"}
 
     failures = []
-    for pid in RANDOM_CONDITION_POLICY_IDS:
-        n = len(bodies_by_id.get(pid, set()))
-        if n < P4_MIN_DISTINCT_BODIES_PER_SHAPE:
-            failures.append((pid, n))
+    miss = EXPECTED_SCOPE_KINDS_PRINCIPAL - p_kinds
+    if miss:
+        failures.append(f"P4 FAIL principal scope kinds missing: {sorted(miss)}")
+    miss = EXPECTED_SCOPE_KINDS_ACTION - a_kinds
+    if miss:
+        failures.append(f"P4 FAIL action scope kinds missing: {sorted(miss)}")
+    miss = EXPECTED_SCOPE_KINDS_RESOURCE - r_kinds
+    if miss:
+        failures.append(f"P4 FAIL resource scope kinds missing: {sorted(miss)}")
+    miss = EXPECTED_CONDITION_KINDS - c_kinds
+    if miss:
+        failures.append(f"P4 FAIL condition kinds missing: {sorted(miss)}")
+    if len(bodies) < P4_MIN_DISTINCT_BODIES:
+        failures.append(
+            f"P4 FAIL: only {len(bodies)} distinct random when/unless bodies "
+            f"(< {P4_MIN_DISTINCT_BODIES}); random-cond arm collapsed")
 
     if failures:
-        for pid, n in failures:
-            print(f"P4 FAIL: shape '{pid}' has only {n} distinct condition "
-                  f"bodies (< {P4_MIN_DISTINCT_BODIES_PER_SHAPE})")
-        print("  This is the M5-class regression: a random-condition arm was "
-              "replaced with a constant or non-genWellTyped expression.")
+        for f in failures:
+            print(f)
         return False
-    print(f"P4 OK: every random-condition shape has "
-          f"≥{P4_MIN_DISTINCT_BODIES_PER_SHAPE} distinct bodies")
-    for pid in sorted(RANDOM_CONDITION_POLICY_IDS):
-        print(f"  {pid}: {len(bodies_by_id.get(pid, set()))} distinct bodies")
+    print(f"P4 OK: random-arm diversity")
+    print(f"  principal scope kinds: {sorted(p_kinds)}")
+    print(f"  action scope kinds:    {sorted(a_kinds)}")
+    print(f"  resource scope kinds:  {sorted(r_kinds)}")
+    print(f"  condition kinds:       {sorted(c_kinds)}")
+    print(f"  distinct random bodies: {len(bodies)}")
     return True
 
 
@@ -275,7 +352,7 @@ def main() -> int:
         property_p1_empirical_soundness(rows),
         property_p2_constructor_coverage(rows),
         property_p3_policy_coverage(policy_rows),
-        property_p4_random_cond_body_diversity(policy_rows),
+        property_p4_random_diversity(policy_rows),
     ]
     if all(results):
         print("\nALL PROPERTIES PASS")

@@ -108,17 +108,47 @@ MUTATIONS: list[Mutation] = [
                   '"id" ∈ hasAttrNames obligations must both fail.',
     ),
     Mutation(
-        name="M5_swap_random_cond_to_constant",
+        name="M5_drop_eq_scope_variant",
         file=CEDAR_FULL / "CedarFull/PolicyGen.lean",
-        find="(do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)\n                  pure (policyWithIsUserAndWhenCond condExpr))",
-        replace="(pure (policyWithIsUserAndWhenCond (.lit (.bool true))))",
+        find="    (do let uid ← genAny uids; pure (.eq uid))\n  (Gen.pick\n    (do let uid ← genAny uids; pure (.mem uid))",
+        replace="    (do let uid ← genAny uids; pure (.mem uid))\n  (Gen.pick\n    (do let uid ← genAny uids; pure (.mem uid))",
         expected_failure_in="pbt",
-        rationale="Replace genWellTyped-bound condExpr with a constant true. "
-                  "lake-build passes (template structure unchanged); PBT P3 "
-                  "passes (id stays reachable, just with reduced count); "
-                  "PBT P4 fails because the affected shape collapses from "
-                  "27+ distinct bodies to 1, which is below the diversity "
-                  "threshold (P4_MIN_DISTINCT_BODIES_PER_SHAPE).",
+        rationale="Drop .eq scope variant from genScope (replace with .mem). "
+                  "lake-build passes (still type-correct Gen Scope). "
+                  "PBT P4 fails: 'eq' missing from random-arm scope-kind set.",
+    ),
+    Mutation(
+        name="M6_drop_actionInAny_variant",
+        file=CEDAR_FULL / "CedarFull/PolicyGen.lean",
+        find="def genActionScope : Gen ActionScope :=\n  Gen.pick\n    (do let s ← genScope actions actionTypes\n        pure (.actionScope s))\n    (pure (.actionInAny actions))",
+        replace="def genActionScope : Gen ActionScope :=\n  do let s ← genScope actions actionTypes\n     pure (.actionScope s)",
+        expected_failure_in="pbt",
+        rationale="Remove the actionInAny variant from genActionScope. "
+                  "lake-build passes (genActionScope still returns Gen ActionScope). "
+                  "PBT P4 fails: 'actionInAny' missing from action scope-kind set.",
+    ),
+    Mutation(
+        name="M7_collapse_random_condition_bodies",
+        file=CEDAR_FULL / "CedarFull/PolicyGen.lean",
+        find="    (do let body ← genWellTyped fixedEnv (.bool .anyBool)\n        pure [{ kind := .when, body := body }])\n    (do let body ← genWellTyped fixedEnv (.bool .anyBool)\n        pure [{ kind := .unless, body := body }]))",
+        replace="    (pure [{ kind := .when, body := .lit (.bool true) }])\n    (pure [{ kind := .unless, body := .lit (.bool false) }]))",
+        expected_failure_in="pbt",
+        rationale="Replace genRandomConditions bodies with constants. "
+                  "lake-build passes (Conditions list still well-formed). "
+                  "PBT P4 fails: distinct-random-bodies drops to 0 "
+                  "(constants don't go through genWellTyped, so they're "
+                  "filtered out as <no-condition>-or-constant).",
+    ),
+    Mutation(
+        name="M8_unwire_random_policy_arm",
+        file=CEDAR_FULL / "CedarFull/PolicyGen.lean",
+        find="            genRandomPolicy))))))))))))))))",
+        replace="            (pure permitWhenDecimalEqSelf)))))))))))))))))",
+        expected_failure_in="pbt",
+        rationale="Replace genRandomPolicy in genPolicy with a duplicate of "
+                  "the first edge-case fixture. lake-build passes (still a "
+                  "Gen Policy). PBT P3 fails: 'random' id missing from "
+                  "support; P4 also fails (no random-arm rows).",
     ),
 ]
 

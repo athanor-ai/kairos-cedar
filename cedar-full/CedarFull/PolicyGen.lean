@@ -126,17 +126,83 @@ def genSchema : Gen Schema := pure fixedSchema
 -- We enumerate all 3 × 3 × 3 = 27 combinations (actually 3×3×3 below
 -- picks 3 principals × 3 actions × 3 resources = 27, deduped by Gen.pick).
 
-private def principals : List EntityUID :=
+def principals : List EntityUID :=
   [ mkUID "User" "alice", mkUID "User" "bob", mkUID "User" "carol" ]
 
-private def actions : List EntityUID :=
+def actions : List EntityUID :=
   [ mkUID "Action" "view", mkUID "Action" "edit", mkUID "Action" "admin" ]
 
-private def resources : List EntityUID :=
+def resources : List EntityUID :=
   [ mkUID "Document" "doc1", mkUID "Photo" "photo1", mkUID "Document" "doc2" ]
 
 /-- Lift a list of values into a Gen that returns any one of them. -/
-private def genAny {α : Type} (xs : List α) : Gen α := ⟨xs⟩
+def genAny {α : Type} (xs : List α) : Gen α := ⟨xs⟩
+
+-- ── Random scope generators (Stage 5: drop hardcoded scopes) ────────
+--
+-- Mike's load-bearing critique: PolicyGen had 41 hardcoded policy
+-- shapes pinning specific entity UIDs, attribute names, and scope
+-- forms. The generators below replace that with a true random-policy
+-- generator: each scope is drawn from the 5 Cedar Scope variants
+-- (.any / .eq / .mem / .is / .isMem) over the schema's declared
+-- entity types and UIDs. ActionScope additionally has the
+-- `actionInAny` variant.
+--
+-- Schema-conditioning: every scope produced is valid against
+-- fixedSchema. principalUIDs / resourceUIDs / actionUIDs are the
+-- declared instances; principalTypes / resourceTypes / actionTypes
+-- are the declared entity types. typecheckPolicy on the scope
+-- toExpr (.binaryApp .eq, .mem, .unaryApp .is) requires the
+-- entity-type to be in env.ets — which it is by construction.
+
+def principalTypes : List EntityType :=
+  [ mkEty "User" ]
+
+def resourceTypes : List EntityType :=
+  [ mkEty "Document", mkEty "Photo" ]
+
+def actionTypes : List EntityType :=
+  [ mkEty "Action" ]
+
+/-- Generate a Cedar Scope across all 5 variants. The .any / .is /
+    .isMem cases use entity types; .eq / .mem / .isMem use entity UIDs.
+    This is a generic scope-builder; principal / resource / action
+    wrap it via genPrincipalScope / genResourceScope / genActionScope. -/
+def genScope (uids : List EntityUID) (etys : List EntityType) : Gen Scope :=
+  Gen.pick (pure .any)
+  (Gen.pick
+    (do let uid ← genAny uids; pure (.eq uid))
+  (Gen.pick
+    (do let uid ← genAny uids; pure (.mem uid))
+  (Gen.pick
+    (do let ety ← genAny etys; pure (.is ety))
+    (do let ety ← genAny etys
+        let uid ← genAny uids
+        pure (.isMem ety uid)))))
+
+def genPrincipalScope : Gen PrincipalScope :=
+  do let s ← genScope principals principalTypes
+     pure (.principalScope s)
+
+def genResourceScope : Gen ResourceScope :=
+  do let s ← genScope resources resourceTypes
+     pure (.resourceScope s)
+
+/-- ActionScope has 5 scope-style variants plus the actionInAny variant
+    (a list of EntityUIDs, semantically a set-membership). The
+    spec-level note in cedar-spec/Cedar/Spec/Policy.lean:46 explicitly
+    permits `is` constraints on actions in the abstract grammar even
+    though the concrete grammar disallows them. -/
+def genActionScope : Gen ActionScope :=
+  Gen.pick
+    (do let s ← genScope actions actionTypes
+        pure (.actionScope s))
+    (pure (.actionInAny actions))
+
+/-- Effects: permit / forbid. -/
+def effects : List Effect := [.permit, .forbid]
+
+-- ── genRequest ──────────────────────────────────────────────────────
 
 /-- Generate a request conditioned on `fixedSchema`.
     Picks from 27 (principal, action, resource) triples; context is always empty. -/
@@ -163,6 +229,40 @@ def fixedEnv : TypeEnv :=
     , context   := Map.empty
     }
   }
+
+-- ── Random conditions + random policy (depends on fixedEnv) ─────────
+
+/-- Random condition list: empty, single-when, or single-unless.
+    when/unless bodies are drawn from genWellTyped at .bool .anyBool
+    (typing-correct by genSize_sound). -/
+def genRandomConditions : Gen Conditions :=
+  Gen.pick (pure [])
+  (Gen.pick
+    (do let body ← genWellTyped fixedEnv (.bool .anyBool)
+        pure [{ kind := .when, body := body }])
+    (do let body ← genWellTyped fixedEnv (.bool .anyBool)
+        pure [{ kind := .unless, body := body }]))
+
+/-- Main random-policy generator. Combines random effect (permit/forbid),
+    random principal/action/resource scope (5+ variants each), and a
+    random condition list (empty / when{} / unless{}). The Mike-Hicks
+    "load-bearing" change: this replaces the bulk of the previously
+    hardcoded scope-only and condition-only templates with a single
+    truly randomized generator. -/
+def genRandomPolicy : Gen Policy :=
+  do let eff ← genAny effects
+     let p   ← genPrincipalScope
+     let a   ← genActionScope
+     let r   ← genResourceScope
+     let cs  ← genRandomConditions
+     pure
+       { id             := "random"
+       , effect         := eff
+       , principalScope := p
+       , actionScope    := a
+       , resourceScope  := r
+       , condition      := cs
+       }
 
 -- ── Policy shape helpers ─────────────────────────────────────────────
 
@@ -739,106 +839,46 @@ private def permitWhenIntArithEqTwo : Policy :=
                                     (.lit (.int 2)) }]
   }
 
-/-- Generate a Cedar.Spec.Policy. 42 shapes (was 38 before the novelty sweep):
-    Shapes 1-15:  scope-only variants (eq/is/in/actionInAny)
-    Shapes 16-24: condition variants (when/unless with eq, in, is, has)
-    Shape 25:     genWellTyped-derived bool expr (~18 outputs)
-    Shapes 26-32: widening; extension types (decimal/ip), set
-                  literals, record literals (empty/singleton), `has`
-                  on entity attribute, nested attribute projection.
-    Shapes 33-34: bug-hunt widening; set `.containsAll`
-                  self and set `.contains` of principal. Exercise
-                  binary-op constructors (.containsAll, .contains)
-                  that are distinct evaluator paths from .mem (shape 28).
-    Shapes 35-36: single-element set + .contains/.in
-                  isolation pair. Probes cedar-drt's single-
-                  membership divergence class directly.
-    Shapes 37-38: parser-level string-form drift
-                  (decimal cross-precision eq + IPv6 zero-compression
-                  self-eq). Probes the parser-level residual.
-    Shapes 39-42: novelty sweep; empty-set .mem,
-                  multi-key record literal `has`, .unaryApp .not on a
-                  bool eq, and .binaryApp .add int arithmetic in a when
-                  body. Each probes a constructor class the 38-shape
-                  grammar does not yet exercise.
-    Shapes are chained with Gen.pick for uniform sampling. -/
+/-- Random Cedar policy generator (Stage 5: scope randomization).
+    Mike Hicks's "load-bearing" critique was that the prior PolicyGen
+    pinned 41 specific scope/condition combinations as fixtures. The
+    new layout drops the 24 generic scope-only / condition-only fixtures
+    (shapes 1-25 in the prior numbering), keeping only the 17 EDGE-CASE
+    fixtures that exercise specific known bug classes the random arm
+    does not reliably reproduce: extension-literal parser drift
+    (decimal, ip, decimal-precision, IPv6), record-literal edges
+    (empty, singleton, two-key, has-attr, nested-attr), set-literal
+    edges (containsAll, contains, singleton-contains, singleton-in,
+    empty-set-mem), and the .not / .add isolation pairs from §VIII.
+    The bulk of policies now flow through `genRandomPolicy` which
+    enumerates the full 5-variant scope cross-product per role
+    (.any / .eq / .mem / .is / .isMem) plus actionInAny, with
+    permit/forbid effect and empty/when/unless condition. -/
 def genPolicy (_ : Schema) : Gen Policy :=
-  -- Scope-only shapes (1–15)
-  Gen.pick (pure permitAny)
-  (Gen.pick (pure forbidAny)
-  (Gen.pick (pure permitIfPrincipalEqAlice)
-  (Gen.pick (pure permitIfPrincipalEqBob)
-  (Gen.pick (pure forbidIfResourceEqDoc1)
-  (Gen.pick (pure permitForActionView)
-  (Gen.pick (pure forbidForActionAdmin)
-  (Gen.pick (pure permitPrincipalIsUser)
-  (Gen.pick (pure permitResourceIsDocument)
-  (Gen.pick (pure forbidResourceIsPhoto)
-  (Gen.pick (pure permitPrincipalInAdmins)
-  (Gen.pick (pure forbidPrincipalInViewers)
-  (Gen.pick (pure permitResourceInFolder)
-  (Gen.pick (pure permitActionInViewEdit)
-  -- Condition shapes (16–24)
-  (Gen.pick (pure permitWhenPrincipalEqAlice)
-  (Gen.pick (pure permitWhenActionEqView)
-  (Gen.pick (pure forbidWhenResourceEqDoc1)
-  (Gen.pick (pure permitWhenPrincipalInAdmins)
-  (Gen.pick (pure permitWhenResourceIsDocument)
-  (Gen.pick (pure permitWhenPrincipalIsUser)
-  (Gen.pick (pure permitWhenContextHasApproved)
-  (Gen.pick (pure forbidUnlessResourceEqDoc2)
-  (Gen.pick (pure permitUnlessPrincipalInViewers)
-  (Gen.pick (pure permitUnlessResourceIsPhoto)
-  -- §8 widening shapes (26–32)
-  (Gen.pick (pure permitWhenDecimalEqSelf)
-  (Gen.pick (pure permitWhenIpEqSelf)
-  (Gen.pick (pure permitWhenPrincipalInSet)
-  (Gen.pick (pure permitWhenEmptyRecordHas)
-  (Gen.pick (pure permitWhenSingletonRecordHas)
-  (Gen.pick (pure permitWhenPrincipalHasAddress)
-  (Gen.pick (pure permitWhenNestedAttrEq)
-  -- bug-hunt shapes (33-34): set .containsAll/.contains
-  (Gen.pick (pure permitWhenSetContainsAllSelf)
-  (Gen.pick (pure permitWhenSetContainsPrincipal)
-  -- single-element-set isolation pair (35-36)
+  -- §VIII / bug-hunt edge-case fixtures (kept because the random arm
+  -- doesn't reliably reproduce these specific shapes):
+  Gen.pick (pure permitWhenDecimalEqSelf)            -- B2 ext drift
+  (Gen.pick (pure permitWhenIpEqSelf)                -- B2 ext drift
+  (Gen.pick (pure permitWhenPrincipalInSet)          -- principal in [uid…]
+  (Gen.pick (pure permitWhenEmptyRecordHas)          -- {} has k
+  (Gen.pick (pure permitWhenSingletonRecordHas)      -- {k:v} has k
+  (Gen.pick (pure permitWhenPrincipalHasAddress)     -- entity-attr has
+  (Gen.pick (pure permitWhenNestedAttrEq)            -- nested attr
+  (Gen.pick (pure permitWhenSetContainsAllSelf)      -- set.containsAll
+  (Gen.pick (pure permitWhenSetContainsPrincipal)    -- set.contains
   (Gen.pick (pure permitWhenSingletonContainsPrincipal)
   (Gen.pick (pure permitWhenSingletonInPrincipal)
-  -- parser-level string-form drift (37-38)
-  (Gen.pick (pure permitWhenDecimalCrossPrecisionEq)
-  (Gen.pick (pure permitWhenIpV6EqSelf)
-  -- Novelty sweep (39–42): empty-set, multi-key record, .not, .add
-  (Gen.pick (pure permitWhenPrincipalInEmptySet)
-  (Gen.pick (pure permitWhenTwoKeyRecordHas)
-  (Gen.pick (pure permitWhenNotPrincipalEqAlice)
-  (Gen.pick (pure permitWhenIntArithEqTwo)
-            -- Shapes 43-46 (random conditions, the headline path):
-            -- four effect × condition-kind crosscut shapes, each
-            -- consuming a fresh genWellTyped bool. With genSize bool
-            -- support = 27 post-stage-1, this is 4 x 27 = 108 distinct
-            -- randomly-conditioned policies, up from the single shape
-            -- 25 (1 x 18 = 18 in the prior submission). Each new shape
-            -- exercises a different evaluator branch:
-            --   .permit when    -> short-circuit on cond=false to deny
-            --   .permit unless  -> short-circuit on cond=true to deny
-            --   .forbid when    -> short-circuit on cond=false to allow
-            --   .forbid unless  -> short-circuit on cond=true to allow
-            -- Shape 47 layers a `principal is User` scope under a
-            -- random when{} so the scope-then-condition path is
-            -- exercised against the random expr corpus too.
-            (Gen.pick
-              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                  pure (policyWithWhenCond condExpr))
-            (Gen.pick
-              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                  pure (policyWithUnlessCond condExpr))
-            (Gen.pick
-              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                  pure (forbidPolicyWithWhenCond condExpr))
-            (Gen.pick
-              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                  pure (forbidPolicyWithUnlessCond condExpr))
-              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                  pure (policyWithIsUserAndWhenCond condExpr))))))))))))))))))))))))))))))))))))))))))))))
+  (Gen.pick (pure permitWhenDecimalCrossPrecisionEq) -- decimal precision drift
+  (Gen.pick (pure permitWhenIpV6EqSelf)              -- IPv6 drift
+  (Gen.pick (pure permitWhenPrincipalInEmptySet)     -- principal in []
+  (Gen.pick (pure permitWhenTwoKeyRecordHas)         -- two-key record
+  (Gen.pick (pure permitWhenNotPrincipalEqAlice)     -- !
+  (Gen.pick (pure permitWhenIntArithEqTwo)           -- int arith
+  -- The load-bearing change: random scope/effect/condition policy.
+  -- Replaces the prior 24 hardcoded generic templates AND the prior
+  -- 5 explicit "policyWith*Cond" wired arms (those defs remain in
+  -- the file as test targets but no longer flow through genPolicy).
+            genRandomPolicy))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 
