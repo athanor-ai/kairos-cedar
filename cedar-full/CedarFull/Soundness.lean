@@ -263,6 +263,93 @@ private theorem wellTypedAt_unaryApp_neg_of_intLit (env : TypeEnv) (a : Expr)
              Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
              Cedar.Validation.typeOfUnaryApp, TypedExpr.typeOf]
 
+/-- Given `a` is a bool literal, `.unaryApp .not a` type-checks as .bool. -/
+private theorem wellTypedAt_unaryApp_not_of_boolLit (env : TypeEnv) (a : Expr)
+    (ha : a = .lit (.bool true) ∨ a = .lit (.bool false)) :
+    wellTypedAt env (.unaryApp .not a) = true := by
+  rcases ha with rfl | rfl <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, Cedar.Validation.typeOfUnaryApp,
+          TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .eq a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_eq_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .eq a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  -- `.eq` in `typeOfBinaryApp` delegates to `typeOfEq`, which short-
+  -- circuits when both args are literals (Typechecker.lean:140):
+  -- equal prims → ok (.bool .tt); unequal → ok (.bool .ff). Both are
+  -- .ok so the outer match returns true regardless of branch. Plain
+  -- `simp` evaluates the (Prim.int 0 == Prim.int 0) equality so the
+  -- `if` collapses to its `.tt` branch.
+  simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+        Cedar.Validation.ok, Cedar.Validation.typeOfBinaryApp,
+        Cedar.Validation.typeOfEq, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are bool literals, `.binaryApp .eq a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_eq_of_boolLits (env : TypeEnv) (a b : Expr)
+    (ha : a = .lit (.bool true) ∨ a = .lit (.bool false))
+    (hb : b = .lit (.bool true) ∨ b = .lit (.bool false)) :
+    wellTypedAt env (.binaryApp .eq a b) = true := by
+  -- typeOfEq matches on (.lit, .lit) and either returns ok (.bool .tt) for
+  -- equal prims or ok (.bool .ff) for unequal prims. Both are .ok.
+  rcases ha with rfl | rfl <;> rcases hb with rfl | rfl <;>
+    simp [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+          Cedar.Validation.ok, Cedar.Validation.typeOfBinaryApp,
+          Cedar.Validation.typeOfEq, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .less a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_less_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .less a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .lessEq a b` type-checks as bool. -/
+private theorem wellTypedAt_binaryApp_lessEq_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .lessEq a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .sub a b` type-checks as int. -/
+private theorem wellTypedAt_binaryApp_sub_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .sub a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
+/-- Given `a` and `b` are int literals, `.binaryApp .mul a b` type-checks as int. -/
+private theorem wellTypedAt_binaryApp_mul_of_intLits (env : TypeEnv) (a b : Expr)
+    (ha : Gen.support (genLeaf env .int) a)
+    (hb : Gen.support (genLeaf env .int) b) :
+    wellTypedAt env (.binaryApp .mul a b) = true := by
+  have heqa := genLeaf_int_is_intLit env a ha
+  have heqb := genLeaf_int_is_intLit env b hb
+  subst heqa; subst heqb
+  simp only [wellTypedAt, Cedar.Validation.typeOf, Cedar.Validation.typeOfLit,
+             Cedar.Validation.ok, Function.comp_apply, Except.bind_ok,
+             Cedar.Validation.typeOfBinaryApp, TypedExpr.typeOf]
+
 -- ────────────────────────────────────────────────────────────────────
 -- Step 3d: bool-literal helpers for .and and .or
 -- ────────────────────────────────────────────────────────────────────
@@ -306,24 +393,20 @@ theorem genSize_sound :
     | bool bty =>
       simp only [genSize] at hmem
       simp only [support_pick, support_bind, support_pure] at hmem
-      rcases hmem with hleaf | hand | hor | hite
+      rcases hmem with hleaf | hand | hor | hite | hnot | heqInt | heqBool | hless | hlessEq
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env (.bool bty) e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hand
-        -- a, b come from genLeaf env (.bool .anyBool) = bool literals only.
         have halit := genLeaf_boolAnyBool_is_lit env a ha
         have hblit := genLeaf_boolAnyBool_is_lit env b hb
         exact wellTypedAt_imp_isWellTyped env (.and a b)
           (wellTypedAt_and_of_boolLits env a b halit hblit)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hor
-        -- a, b come from genLeaf env (.bool .anyBool) = bool literals only.
         have halit := genLeaf_boolAnyBool_is_lit env a ha
         have hblit := genLeaf_boolAnyBool_is_lit env b hb
         exact wellTypedAt_imp_isWellTyped env (.or a b)
           (wellTypedAt_or_of_boolLits env a b halit hblit)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- c comes from genSize env 0 (.bool .anyBool) = genLeaf env (.bool .anyBool)
-        -- which only produces .lit (.bool true) or .lit (.bool false).
         have hc2 : Gen.support (genLeaf env (.bool .anyBool)) c := hc
         have ht2 : Gen.support (genLeaf env (.bool bty)) t := ht
         have hf2 : Gen.support (genLeaf env (.bool bty)) f := hf
@@ -332,23 +415,43 @@ theorem genSize_sound :
         have hf'   := genLeaf_sound env (.bool bty) f hf2
         exact wellTypedAt_imp_isWellTyped env (.ite c t f)
           (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
+      · -- unaryApp .not
+        obtain ⟨a, ha, rfl⟩ := hnot
+        have halit := genLeaf_boolAnyBool_is_lit env a ha
+        exact wellTypedAt_imp_isWellTyped env (.unaryApp .not a)
+          (wellTypedAt_unaryApp_not_of_boolLit env a halit)
+      · -- binaryApp .eq on int×int
+        obtain ⟨a, ha, b, hb, rfl⟩ := heqInt
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .eq a b)
+          (wellTypedAt_binaryApp_eq_of_intLits env a b ha hb)
+      · -- binaryApp .eq on bool×bool
+        obtain ⟨a, ha, b, hb, rfl⟩ := heqBool
+        have halit := genLeaf_boolAnyBool_is_lit env a ha
+        have hblit := genLeaf_boolAnyBool_is_lit env b hb
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .eq a b)
+          (wellTypedAt_binaryApp_eq_of_boolLits env a b halit hblit)
+      · -- binaryApp .less on int×int
+        obtain ⟨a, ha, b, hb, rfl⟩ := hless
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .less a b)
+          (wellTypedAt_binaryApp_less_of_intLits env a b ha hb)
+      · -- binaryApp .lessEq on int×int
+        obtain ⟨a, ha, b, hb, rfl⟩ := hlessEq
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .lessEq a b)
+          (wellTypedAt_binaryApp_lessEq_of_intLits env a b ha hb)
     -- ── .int ───────────────────────────────────────────────────────
     | int =>
       simp only [genSize] at hmem
       simp only [support_pick, support_bind, support_pure] at hmem
-      rcases hmem with hleaf | hadd | hneg | hite
+      rcases hmem with hleaf | hadd | hneg | hite | hsub | hmul
       · exact wellTypedAt_imp_isWellTyped env e
           (genLeaf_sound env .int e hleaf)
       · obtain ⟨a, ha, b, hb, rfl⟩ := hadd
-        -- a, b come from genLeaf env .int = .lit (.int 0) only.
         exact wellTypedAt_imp_isWellTyped env (.binaryApp .add a b)
           (wellTypedAt_binaryApp_add_of_intLits env a b ha hb)
       · obtain ⟨a, ha, rfl⟩ := hneg
-        -- a comes from genLeaf env .int = .lit (.int 0) only.
         exact wellTypedAt_imp_isWellTyped env (.unaryApp .neg a)
           (wellTypedAt_unaryApp_neg_of_intLit env a ha)
       · obtain ⟨c, hc, t, ht, f, hf, rfl⟩ := hite
-        -- c comes from genLeaf env (.bool .anyBool) = bool literals only.
         have hc2 : Gen.support (genLeaf env (.bool .anyBool)) c := hc
         have ht2 : Gen.support (genLeaf env .int) t := ht
         have hf2 : Gen.support (genLeaf env .int) f := hf
@@ -357,6 +460,14 @@ theorem genSize_sound :
         have hf'   := genLeaf_sound env .int f hf2
         exact wellTypedAt_imp_isWellTyped env (.ite c t f)
           (wellTypedAt_ite_of_boolLit env c t f hclit ht' hf')
+      · -- binaryApp .sub
+        obtain ⟨a, ha, b, hb, rfl⟩ := hsub
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .sub a b)
+          (wellTypedAt_binaryApp_sub_of_intLits env a b ha hb)
+      · -- binaryApp .mul
+        obtain ⟨a, ha, b, hb, rfl⟩ := hmul
+        exact wellTypedAt_imp_isWellTyped env (.binaryApp .mul a b)
+          (wellTypedAt_binaryApp_mul_of_intLits env a b ha hb)
     -- ── .string ────────────────────────────────────────────────────
     | string =>
       simp only [genSize] at hmem

@@ -148,11 +148,35 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
       (do let a ← genSize env 0 boolTy
           let b ← genSize env 0 boolTy
           pure (.or a b))
+    (Gen.pick
       -- ite: cond bool, then/else bool
       (do let c ← genSize env 0 boolTy
           let t ← genSize env 0 (.bool bty)
           let f ← genSize env 0 (.bool bty)
-          pure (.ite c t f))))
+          pure (.ite c t f))
+    (Gen.pick
+      -- unaryApp .not : bool → bool
+      (do let a ← genSize env 0 boolTy
+          pure (.unaryApp .not a))
+    (Gen.pick
+      -- binaryApp .eq : int × int → bool (same-type equality)
+      (do let a ← genSize env 0 .int
+          let b ← genSize env 0 .int
+          pure (.binaryApp .eq a b))
+    (Gen.pick
+      -- binaryApp .eq : bool × bool → bool
+      (do let a ← genSize env 0 boolTy
+          let b ← genSize env 0 boolTy
+          pure (.binaryApp .eq a b))
+    (Gen.pick
+      -- binaryApp .less : int × int → bool
+      (do let a ← genSize env 0 .int
+          let b ← genSize env 0 .int
+          pure (.binaryApp .less a b))
+      -- binaryApp .lessEq : int × int → bool
+      (do let a ← genSize env 0 .int
+          let b ← genSize env 0 .int
+          pure (.binaryApp .lessEq a b)))))))))
   | _ + 1, .int =>
     Gen.pick (genLeaf env .int)
     (Gen.pick
@@ -164,11 +188,21 @@ def genSize (env : TypeEnv) : Nat → CedarType → Gen Expr
       -- unaryApp .neg : int → int
       (do let a ← genSize env 0 .int
           pure (.unaryApp .neg a))
+    (Gen.pick
       -- ite: cond bool, then/else int
       (do let c ← genSize env 0 (.bool .anyBool)
           let t ← genSize env 0 .int
           let f ← genSize env 0 .int
-          pure (.ite c t f))))
+          pure (.ite c t f))
+    (Gen.pick
+      -- binaryApp .sub : int × int → int
+      (do let a ← genSize env 0 .int
+          let b ← genSize env 0 .int
+          pure (.binaryApp .sub a b))
+      -- binaryApp .mul : int × int → int
+      (do let a ← genSize env 0 .int
+          let b ← genSize env 0 .int
+          pure (.binaryApp .mul a b))))))
   | _ + 1, .string =>
     -- No compound string forms for V1; leaf only.
     genLeaf env .string
