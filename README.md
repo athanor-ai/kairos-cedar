@@ -22,17 +22,19 @@ See `experiments/phase_c_diff/run_diff.py` for the driver and `kairos-cedar-pape
 ## Status
 
 | Phase | Component | Status |
-| :- | :- | :- |
+| :----- | :----- | :----- |
 | V1 | Container image (`ghcr.io/athanor-ai/kairos-cedar`) | ✅ published |
-| V1 | `cedar-spec-bridge`  - `Prop`-wrapper over upstream `Cedar.Validation.typeOf` | ✅ |
-| V1 | `cedar-micro`  - flat type system, `genWellTyped` + `Soundness` sorry-free | ✅ |
-| V1 | `cedar-micro`  - `isWellTyped ↔ HasType` biconditional | ✅ |
-| V2 | `cedar-full`  - full `Cedar.Spec.Expr` (12 constructors), `genSize_sound` 7-arm | ✅ sorry-free |
-| V2 | `cedar-full/PolicyGen`  - 42 well-typed policy shapes + 27 request combinations | ✅ |
+| V1 | `cedar-spec-bridge` (`Prop`-wrapper over upstream `Cedar.Validation.typeOf`) | ✅ |
+| V1 | `cedar-micro` (flat type system, `genWellTyped` + `Soundness` sorry-free) | ✅ |
+| V1 | `cedar-micro` (`isWellTyped ↔ HasType` biconditional) | ✅ |
+| V2 | `cedar-full` (full `Cedar.Spec.Expr` with 12 constructors, `genSize_sound` 7-arm) | ✅ sorry-free |
+| V2 | `cedar-full/PolicyGen` (42 well-typed policy shapes + 27 request combinations) | ✅ |
 | V2 | Rust ↔ Go differential runner, $N = 10{,}000$, 0 disagreements | ✅ |
-| V3 | Coverage-completeness theorem (sorry-free, branch `platform/cedar-drt-abac-type-directed`) | ✅ |
-| V3 | Mutant-killing study vs. cedar-drt baseline (branch `platform/seeded-mutants-v2`) | ⏳ in progress |
-| V4 | Symbolic-compilation track (Dafny + Z3) | ⏳ scaffolded |
+| V3 | Coverage-completeness theorem (1 documented `sorry`: `ext_parses_blocked`, Lean 4.29.1 String.Slice kernel limit) | ✅ |
+| V3 | `byte_fuzz_baseline` (parser-reach + evaluator-reach metric, no cargo-fuzz / no Lean FFI) | ✅ |
+| V3 | Cross-impl bug evidence: cedar-go method-extension panics (NEW-3, 18 cases) + JSON schema round-trip (NEW-1) + marshaller panic (NEW-2) | ✅ |
+| V3 | Mutant-killing study vs. cedar-drt baseline | ⏳ in progress |
+| V4 | Symbolic-compilation track: `cedar symcc` + CVC5 1.3.1 baked into image (`docs/symcc-walkthrough.md`, `examples/02-symcc-never-errors`) | ✅ |
 | V4 | End-to-end fleet run with Supabase trace capture | ⏳ pending |
 
 ## Reproduce
@@ -51,22 +53,25 @@ The first command clones all submodules. Preflight verifies the Docker daemon, C
 ## Where to look
 
 | Question | File |
-| :- | :- |
+| :----- | :----- |
 | What does soundness mean for the generator? | `cedar-full/CedarFull/Soundness.lean` |
 | How is the typing relation defined? | `cedar-micro/CedarMicro/HasType.lean` |
 | How is a well-typed policy generated? | `cedar-full/CedarFull/PolicyGen.lean` |
 | What are the 42 policy shapes? | `cedar-full/CedarFull/PolicyGen.lean` (search `shape`) |
 | How is the Rust ↔ Go diff run? | `experiments/phase_c_diff/run_diff.py` |
 | What does the deterministic demo look like? | `demo/run_demo.py` |
+| How do I run a small Cedar example end-to-end? | `examples/` (4 self-contained examples with run.sh) |
+| What is the byte-level fuzz baseline? | `experiments/byte_fuzz_baseline/` |
+| Where is the cedar symcc walkthrough? | `docs/symcc-walkthrough.md` |
 | Architectural decisions / phased plan | `docs/ARCHITECTURE.md`, `docs/ROADMAP.md` |
-| Coverage-completeness theorem | branch `platform/cedar-drt-abac-type-directed` |
+| Coverage-completeness theorem | `cedar-full/CedarFull/Coverage.lean` |
 | Mutant-killing study | branch `platform/seeded-mutants-v2` |
 
 ## Repository layout
 
 ```
 kairos-cedar/
-  containers/Containerfile         one-image toolchain bundle (Lean, Rust, Go, Dafny, Z3)
+  containers/Containerfile         one-image toolchain bundle (Lean, Rust, Go, Dafny, CVC5)
   containers/compose.yaml          dev wrapper (`docker compose`)
   scripts/dc                       `./scripts/dc <cmd>` runs inside the image
   scripts/preflight.py             environment sanity check
@@ -74,10 +79,15 @@ kairos-cedar/
   cedar-micro/                     Lake project: minimal Cedar-shape type system
   cedar-full/                      Lake project: full Cedar.Spec.Expr + 42 policy shapes
   experiments/phase_c_diff/        Rust ↔ Go differential runner
+  experiments/byte_fuzz_baseline/  standalone byte-level fuzz harness (cedar-policy)
+  experiments/phase_h_*/           JSON round-trip + open-issue probes (cedar-go bugs)
+  experiments/phase_i_*/           schema round-trip widening (cedar-go marshaller)
+  examples/                        4 self-contained examples (basic-rbac, symcc, byte-fuzz, diff-test)
   demo/                            deterministic end-to-end demo (no API use)
   docs/ARCHITECTURE.md             design decisions
   docs/ROADMAP.md                  phased work plan through V4
-  tests/                           unit, hygiene, integration tests
+  docs/symcc-walkthrough.md        cedar symcc + CVC5 walkthrough
+  tests/                           unit, hygiene, integration tests, regression gates
   cedar-spec/  palamedes-lean/     git submodules (upstream)
   cedar-go/    cedar-integration-tests/
 ```

@@ -25,7 +25,7 @@ where `N` is the number of random-byte inputs that parsed as Cedar policysets an
 
 ## Why this matters
 
-A type-directed Cedar generator that ships "1.0 of generated tuples parse + evaluate" is meaningless without a byte-level reference. `byte_fuzz_baseline` is the comparable harness: same metric, no cargo-fuzz / libfuzzer / Lean FFI required.
+A type-directed Cedar generator that ships "1.0 of generated tuples parse + evaluate" is meaningless without a byte-level reference. `byte_fuzz_baseline` is the comparable driver: same metric, no cargo-fuzz / libfuzzer / Lean FFI required.
 
 For the source plus the full mode set (`bytes`, `corpus-mutate`, `arbitrary`-reserved), see `experiments/byte_fuzz_baseline/README.md`.
 

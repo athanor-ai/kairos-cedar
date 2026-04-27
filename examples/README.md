@@ -32,7 +32,7 @@ Examples 01 and 02 are the cheap ones (a few seconds each); 03 takes ~30 seconds
 
 * The end-to-end demo (`demo/run_demo.py`) chains examples 01, 04, plus the cedar-go corpus test and the Lean bridge build. Run it for a full smoke of every signal the repo offers.
 * `docs/symcc-walkthrough.md` is the longer-form companion to example 02.
-* `experiments/byte_fuzz_baseline/` is the source for the harness in example 03.
+* `experiments/byte_fuzz_baseline/` is the source for the driver in example 03.
 * `experiments/phase_c_diff/` is the source for the runner in example 04.
 
 ## License
