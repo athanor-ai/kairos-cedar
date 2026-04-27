@@ -45,7 +45,7 @@ The orchestration loop (`derive` -> `verify` -> `differential run` -> `widen on 
 | `cedar-micro` (5 constructors, 2 base types: pedagogical) | Soundness (every term in support is well-typed) and coverage (support equals the well-typed terms in the literal palette) | yes |
 | `cedar-full` (12 constructors, 5 arity classes) | `isWellTyped_iff_hasType_full` biconditional and `genSize_sound` per-arm soundness across 12 constructors | yes |
 | `CedarBridge.Attribution` | `attribution_total`: every disagreeing tuple maps to exactly one of `RUST-CORRECT`, `GO-CORRECT`, `BOTH-DIVERGE` | yes |
-| Rego subset (8 shapes) | per-arm soundness for `Rego.Spec.HasType` against `Rego.Spec.Eval` | yes |
+| Rego subset (8 shapes) | per-arm soundness for `RegoBridge.Spec.HasType` against `RegoBridge.Spec.Eval` | yes |
 
 Headline runs use `cedar-full` at depth at most 6. CedarMicro is reference-sized: five constructors (`litInt`, `litBool`, `var`, `ite`, `and`) over `Int` and `Bool`, used for the pedagogical worked example.
 
@@ -68,19 +68,19 @@ The image bundles `cedar-policy` 4.10.0, `cedar-go` 1.6.0, the `cedar-spec` tool
 
 ```bash
 # 18 cedar-go marshaller panics (B3)
-./scripts/dc python3 experiments/phase_h_json_roundtrip/run.py
+./scripts/dc python3 experiments/phase_h_json_roundtrip/run_roundtrip.py
 
 # 4 schema round-trip drifts (B1)
-./scripts/dc python3 experiments/phase_i_schema_roundtrip/run.py
+./scripts/dc python3 experiments/phase_i_schema_roundtrip/probe_schemas.py
 
 # 2 extension-literal parser drifts (B2)
-./scripts/dc python3 experiments/phase_c_diff/run_diff.py --widen extension-literals
+./scripts/dc python3 experiments/phase_c_diff/bug-hunt-2026-04-25/run_widened.py
 
 # 7 cedar symcc encoder gaps including 1 soundness bug (B4)
-./scripts/dc python3 experiments/phase_j_symcc_sweep/run.py
+./scripts/dc python3 experiments/phase_j_symcc_sweep/run_symcc.py
 
 # 2 OPA Rego semantics gaps (B5)
-./scripts/dc python3 experiments/phase_k_opa_diff/run.py
+./scripts/dc python3 experiments/phase_k_opa_diff/run_opa_diff.py
 ```
 
 ## Negative result: LLM proposer
@@ -100,7 +100,7 @@ The contribution of this work is the verification scaffolding that closes that g
 | Differential runner | `experiments/phase_c_diff/run_diff.py` |
 | Spec-source attribution function | `cedar-spec-bridge/CedarBridge/Attribution.lean` |
 | cedar symcc walkthrough | `docs/symcc-walkthrough.md` |
-| OPA Rego subset | `experiments/phase_k_opa_diff/Rego/Spec/` |
+| OPA Rego subset | `opa-bridge/RegoBridge/Spec/` (HasType + Eval) and `rego-full/RegoFull/PolicyGen.lean` (8 shapes) |
 | Architectural decisions | `docs/ARCHITECTURE.md`, `docs/ROADMAP.md` |
 
 ## Repository layout
