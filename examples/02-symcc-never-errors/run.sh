@@ -9,7 +9,7 @@ cd "$(dirname "$0")"
 run_one() {
   local pol="$1"
   echo "  --- $pol ---"
-  if cedar symcc \
+  if /usr/local/bin/cedar symcc \
        --principal-type 'User' \
        --action 'Action::"read"' \
        --resource-type 'File' \

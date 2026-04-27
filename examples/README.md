@@ -4,14 +4,18 @@ Four self-contained examples covering the four things a Cedar consumer typically
 
 ## How to run
 
-From the repo root:
-
 ```bash
 docker pull ghcr.io/athanor-ai/kairos-cedar:latest
-./scripts/dc bash -c "cd examples/01-basic-rbac && bash run.sh"
 ```
 
-Replace the example folder name to run a different one.
+* Examples 01, 02, 03 run **inside** the dev container:
+  ```bash
+  ./scripts/dc bash -c "cd examples/01-basic-rbac && bash run.sh"
+  ```
+* Example 04 runs **on the host** (its driver orchestrates docker run calls under the hood):
+  ```bash
+  cd examples/04-type-directed-diff-test && ./run.sh
+  ```
 
 ## What each example shows
 
