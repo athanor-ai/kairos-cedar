@@ -231,9 +231,53 @@ private def forbidForActionAdmin : Policy :=
 
 /-- Build a policy with a `when {<condExpr>}` clause from a generated bool Expr. -/
 private def policyWithWhenCond (condExpr : Expr) : Policy :=
-  { id             := "permit-with-cond"
+  { id             := "permit-with-when-cond"
   , effect         := .permit
   , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when, body := condExpr }]
+  }
+
+/-- Same scope/effect as `policyWithWhenCond` but the condition is wrapped
+    in `unless` instead of `when`. Together with the three siblings below
+    they form the four-way effect × condition-kind crosscut that runs the
+    randomly-generated condExpr through every policy-evaluator branch. -/
+private def policyWithUnlessCond (condExpr : Expr) : Policy :=
+  { id             := "permit-with-unless-cond"
+  , effect         := .permit
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .unless, body := condExpr }]
+  }
+
+private def forbidPolicyWithWhenCond (condExpr : Expr) : Policy :=
+  { id             := "forbid-with-when-cond"
+  , effect         := .forbid
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .when, body := condExpr }]
+  }
+
+private def forbidPolicyWithUnlessCond (condExpr : Expr) : Policy :=
+  { id             := "forbid-with-unless-cond"
+  , effect         := .forbid
+  , principalScope := .principalScope .any
+  , actionScope    := .actionScope .any
+  , resourceScope  := .resourceScope .any
+  , condition      := [{ kind := .unless, body := condExpr }]
+  }
+
+/-- Restricted-scope random-condition variant. The scope (principal is
+    User) is the most common Cedar scope shape in production rules, so a
+    randomly-conditioned policy under that scope exercises the
+    scope-then-condition evaluator path that the `.any` shapes do not. -/
+private def policyWithIsUserAndWhenCond (condExpr : Expr) : Policy :=
+  { id             := "permit-principal-is-user-with-when-cond"
+  , effect         := .permit
+  , principalScope := .principalScope (.is (mkEty "User"))
   , actionScope    := .actionScope .any
   , resourceScope  := .resourceScope .any
   , condition      := [{ kind := .when, body := condExpr }]
@@ -767,9 +811,34 @@ def genPolicy (_ : Schema) : Gen Policy :=
   (Gen.pick (pure permitWhenTwoKeyRecordHas)
   (Gen.pick (pure permitWhenNotPrincipalEqAlice)
   (Gen.pick (pure permitWhenIntArithEqTwo)
-            -- Shape 25 (placed at end): permit when {<well-typed bool>}
-            (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
-                pure (policyWithWhenCond condExpr))))))))))))))))))))))))))))))))))))))))))
+            -- Shapes 43-46 (random conditions, the headline path):
+            -- four effect × condition-kind crosscut shapes, each
+            -- consuming a fresh genWellTyped bool. With genSize bool
+            -- support = 27 post-stage-1, this is 4 x 27 = 108 distinct
+            -- randomly-conditioned policies, up from the single shape
+            -- 25 (1 x 18 = 18 in the prior submission). Each new shape
+            -- exercises a different evaluator branch:
+            --   .permit when    -> short-circuit on cond=false to deny
+            --   .permit unless  -> short-circuit on cond=true to deny
+            --   .forbid when    -> short-circuit on cond=false to allow
+            --   .forbid unless  -> short-circuit on cond=true to allow
+            -- Shape 47 layers a `principal is User` scope under a
+            -- random when{} so the scope-then-condition path is
+            -- exercised against the random expr corpus too.
+            (Gen.pick
+              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
+                  pure (policyWithWhenCond condExpr))
+            (Gen.pick
+              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
+                  pure (policyWithUnlessCond condExpr))
+            (Gen.pick
+              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
+                  pure (forbidPolicyWithWhenCond condExpr))
+            (Gen.pick
+              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
+                  pure (forbidPolicyWithUnlessCond condExpr))
+              (do let condExpr ← genWellTyped fixedEnv (.bool .anyBool)
+                  pure (policyWithIsUserAndWhenCond condExpr))))))))))))))))))))))))))))))))))))))))))))))
 
 -- ── genTuple ────────────────────────────────────────────────────────
 
