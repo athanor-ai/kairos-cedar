@@ -27,18 +27,19 @@
 [[generator]]
 id = "cedar_full_v1_policygen"
 path = "cedar-full/CedarFull/PolicyGen.lean"
-# Closed-form support: 3 principals * 3 actions * 3 resources = 27
-# request triples, multiplied by 42 policy shapes (genPolicy chain in
-# PolicyGen.lean: 32 shapes from prior widening + shapes 33-34 (set
-# .containsAll/.contains), 35-36 (single-element-set .contains/.in
-# isolation pair), 37-38 (decimal cross-precision + IPv6 zero-
-# compression parser drift), 39-42 (empty-set .mem, multi-key record
-# has, .unaryApp .not, int arithmetic). Shape 25 plus extension/set/
-# record variants use genWellTyped which samples one well-typed
-# expression per draw, so the realised support is bounded above by
-# the shape count, not by the genWellTyped output size; we count
-# each as 1 shape for the unique-tuple count.
-expected_support = 1134   # 27 * 42
+# Closed-form support post-Stage-5 (commit 364e101 on main): 3
+# principals * 3 actions * 3 resources = 27 request triples, multiplied
+# by 18 genPolicy shapes (17 hardcoded edge-case fixtures kept for
+# parser-drift / record-edge / set-edge / negation / int-arith bug
+# isolators + 1 `genRandomPolicy` arm counted as one shape for static-
+# analysis purposes). Stage-5 dropped the prior 24 generic scope-only
+# and condition-only templates and added a random-scope-and-condition
+# arm; the random arm's true cross-product support is ~273k policies,
+# verified separately by phase_l_pbt P3/P4 and the phase_m_mutation
+# harness. Drift in either layer (drop a fixture from genPolicy → fewer
+# Gen.pick arms; drop a Scope variant from genScope → smaller random
+# support) fails the appropriate gate.
+expected_support = 486   # 27 * 18
 claim_kind = "support_eq"
 
 # Declared evaluation count for the V1 phase-C run. Bug A pre-fix:
