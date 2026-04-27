@@ -20,22 +20,7 @@ At N = 10,000 within the base grammar, the residual Rust vs Go disagreement rate
 
 ## Architecture
 
-```
-                                            cedar-policy  (Rust)
-  Lean 4
-  ----------------------                    cedar-go      (Go)
-  proposer (Palamedes)
-            |              isWellTyped
-            v   genWellTyped --> 10,000     cedar-spec    (Lean evaluator)        spec-source
-                                tuples                                       --> attributed
-  per-type scaffolding                                                            finding
-  Data/Cedar.Spec.Expr/                     cedar symcc   (Cedar -> CVC5)
-                                                  ^
-                                          generator widened
-                                          on each finding         OPA Rego     (OPA engine)
-```
-
-The orchestration loop (`derive` -> `verify` -> `differential run` -> `widen on attributed bug`) is driven by the kairos package. Palamedes is the default proposer; LLMs are an alternative proposer that fails on this surface (see [Negative result: LLM proposer](#negative-result-llm-proposer)). The proposer is pluggable; soundness is independent of it and comes from the acceptance oracle.
+A Lean-mechanised proposer (Palamedes by default) synthesises a type-directed generator over `Cedar.Spec.Expr` against the `isWellTyped` bridge predicate. The kairos orchestration loop runs `derive → verify → differential-run → widen on attributed bug`. The differential runner sends every generated tuple to two production engines — `cedar-policy` (the Rust reference) and `cedar-go` — and consults the `cedar-spec` Lean evaluator per finding to attribute each disagreement to a spec source location. The same pipeline is also instantiated against the `cedar symcc` symbolic compiler and an OPA Rego subset. Soundness is independent of the proposer and comes from the acceptance oracle.
 
 ## What is verified in Lean
 
